@@ -4,6 +4,7 @@ import { ConfigModule } from '@nestjs/config';
 import { UserModule } from './modules/user/user.module';
 import { BookingModule } from './modules/booking/booking.module';
 import { WorkoutModule } from './modules/workout/workout.module';
+import { AuthModule } from './modules/auth/auth.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { WorkoutModule } from './modules/workout/workout.module';
     UserModule,
     BookingModule,
     WorkoutModule,
+    AuthModule,
   ],
   controllers: [],
   providers: [],
