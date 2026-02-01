@@ -18,10 +18,16 @@
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
-    "prepare": "cd .. && husky booking-personal-trainer/.husky"
+    "prepare": "cd .. && husky booking-personal-trainer/.husky",
+    "mikro-orm": "mikro-orm",
+    "migration:create": "pnpm mikro-orm migration:create --path=src/migrations --name=$MIGRATION_NAME",
+    "migration:generate": "pnpm mikro-orm migration:generate --config=src/configs/mikro-orm.config.ts",
+    "migration:up": "pnpm mikro-orm migration:up --config=src/configs/mikro-orm.config.ts",
+    "migration:down": "pnpm mikro-orm migration:down --config=src/configs/mikro-orm.config.ts"
   },
   "dependencies": {
     "@mikro-orm/core": "^6.6.6",
+    "@mikro-orm/migrations": "^6.6.6",
     "@mikro-orm/nestjs": "^6.1.1",
     "@mikro-orm/postgresql": "^6.6.6",
     "@nestjs/common": "^11.0.1",

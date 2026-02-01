@@ -1,7 +1,7 @@
 import { PrimaryKey, Property } from '@mikro-orm/core';
 
 export abstract class BaseEntity {
-  @PrimaryKey({ type: 'uuid', defaultRaw: 'gen_random_uuid()' })
+  @PrimaryKey({ type: 'uuid' })
   id!: string;
 
   @Property({ onCreate: () => new Date() })

@@ -1,7 +1,7 @@
 import { Entity, Property, Enum, ManyToOne } from '@mikro-orm/core';
-import { BaseEntity } from 'src/common/entities/base.entity';
-import { BookingStatus } from 'src/common/enums/booking/booking.enum';
-import { User } from 'src/modules/user/entities/user.entity';
+import { BaseEntity } from '../../../common/entities/base.entity';
+import { BookingStatus } from '../../../common/enums/booking/booking.enum';
+import { User } from '../../../modules/user/entities/user.entity';
 
 @Entity({ tableName: 'bookings' })
 export class Booking extends BaseEntity {

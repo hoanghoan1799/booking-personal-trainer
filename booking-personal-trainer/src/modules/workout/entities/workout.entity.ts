@@ -1,6 +1,7 @@
-import { Entity, Property, Enum, ManyToOne, BaseEntity } from '@mikro-orm/core';
-import { WorkoutStatus } from 'src/common/enums/workout/workout.enum';
-import { User } from 'src/modules/user/entities/user.entity';
+import { Entity, Property, Enum, ManyToOne } from '@mikro-orm/core';
+import { BaseEntity } from '../../../common/entities/base.entity';
+import { WorkoutStatus } from '../../../common/enums/workout/workout.enum';
+import { User } from '../../../modules/user/entities/user.entity';
 
 @Entity({ tableName: 'workouts' })
 export class Workout extends BaseEntity {

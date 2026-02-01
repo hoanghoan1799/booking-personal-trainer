@@ -1,14 +1,14 @@
 import { Entity, Property, Enum, Unique, OneToMany } from '@mikro-orm/core';
-import { BaseEntity } from 'src/common/entities/base.entity';
-import { ApprovalStatus } from 'src/common/enums/base/base.enum';
+import { BaseEntity } from '../../../common/entities/base.entity';
+import { ApprovalStatus } from '../../../common/enums/base/base.enum';
 import {
   UserRole,
   UserStatus,
   UserType,
-} from 'src/common/enums/user/user.enum';
-import { RefreshToken } from 'src/modules/auth/entities/refresh-token.entity';
-import { Booking } from 'src/modules/booking/entities/booking.entity';
-import { Workout } from 'src/modules/workout/entities/workout.entity';
+} from '../../../common/enums/user/user.enum';
+import { RefreshToken } from '../../../modules/auth/entities/refresh-token.entity';
+import { Booking } from '../../../modules/booking/entities/booking.entity';
+import { Workout } from '../../../modules/workout/entities/workout.entity';
 
 @Entity({ tableName: 'users' })
 export class User extends BaseEntity {

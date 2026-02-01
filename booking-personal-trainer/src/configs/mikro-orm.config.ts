@@ -2,6 +2,8 @@ import { MikroOrmModuleAsyncOptions } from '@mikro-orm/nestjs';
 import { defineConfig } from '@mikro-orm/postgresql';
 import { ConfigService } from '@nestjs/config';
 import { config } from 'dotenv';
+import { PostgreSqlDriver } from '@mikro-orm/postgresql';
+import { Migrator } from '@mikro-orm/migrations';
 
 config({ path: '.env' });
 
@@ -15,6 +17,7 @@ export default defineConfig({
   dbName: process.env.POSTGRES_DB,
   entities: ['dist/**/*.entity.js'],
   entitiesTs: ['src/**/*.entity.ts'],
+  extensions: [Migrator],
   migrations: {
     path: 'dist/migrations',
     pathTs: 'src/migrations',
@@ -25,7 +28,7 @@ export default defineConfig({
 export const mikroORMConfig: MikroOrmModuleAsyncOptions = {
   inject: [ConfigService],
   useFactory: (config: ConfigService) => ({
-    type: 'postgresql',
+    driver: PostgreSqlDriver,
     host: config.getOrThrow('POSTGRES_HOST'),
     port: config.get<number>('POSTGRES_PORT', POSTGRES_PORT_DEFAULT),
     user: config.getOrThrow('POSTGRES_USER'),
