@@ -1,6 +1,6 @@
 import { Migration } from '@mikro-orm/migrations';
 
-export class Migration20260201173145_create-users-table extends Migration {
+export class Migration20260201174935_create_users_table extends Migration {
 
   override async up(): Promise<void> {
     this.addSql(`create table "users" ("id" uuid not null, "created_at" timestamptz not null, "updated_at" timestamptz not null, "user_name" varchar(255) not null, "email" varchar(255) not null, "password" varchar(255) not null, "first_name" varchar(255) not null, "last_name" varchar(255) not null, "role" text check ("role" in ('ADMIN', 'TRAINER', 'TRAINEE')) not null, "user_type" text check ("user_type" in ('TRAINER', 'TRAINEE')) not null, "approval_status" text check ("approval_status" in ('NONE', 'PENDING', 'APPROVED', 'REJECTED')) not null default 'NONE', "status" text check ("status" in ('ACTIVE', 'INACTIVE', 'SUSPENDED')) not null default 'ACTIVE', "age" int null, "height" int null, "weight" int null, constraint "users_pkey" primary key ("id"));`);
