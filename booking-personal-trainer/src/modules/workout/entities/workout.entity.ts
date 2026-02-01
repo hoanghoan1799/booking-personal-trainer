@@ -1,0 +1,30 @@
+import { Entity, Property, Enum, ManyToOne, BaseEntity } from '@mikro-orm/core';
+import { WorkoutStatus } from 'src/common/enums/workout/workout.enum';
+import { User } from 'src/modules/user/entities/user.entity';
+
+@Entity({ tableName: 'workouts' })
+export class Workout extends BaseEntity {
+  @ManyToOne(() => User)
+  trainer!: User;
+
+  @ManyToOne(() => User)
+  trainee!: User;
+
+  @Enum(() => WorkoutStatus)
+  status: WorkoutStatus = WorkoutStatus.PENDING;
+
+  @Property()
+  startTime!: Date;
+
+  @Property()
+  endTime!: Date;
+
+  @Property({ default: 0 })
+  totalExercises!: number;
+
+  @Property({ default: 0 })
+  completedExercises!: number;
+
+  @Property({ nullable: true })
+  progress?: string;
+}
