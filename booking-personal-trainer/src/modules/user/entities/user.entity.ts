@@ -10,7 +10,6 @@ import {
 } from '../../../common/enums/user/user.enum';
 
 // Entities
-import { RefreshToken } from '../../../modules/auth/entities/refresh-token.entity';
 import { Booking } from '../../../modules/booking/entities/booking.entity';
 import { Workout } from '../../../modules/workout/entities/workout.entity';
 
@@ -53,9 +52,6 @@ export class User extends BaseEntity {
 
   @Property({ nullable: true })
   weight?: number;
-
-  @OneToMany(() => RefreshToken, (token) => token.user)
-  refreshTokens = new Array<RefreshToken>();
 
   @OneToMany(() => Booking, (booking) => booking.trainer)
   trainerBookings = new Array<Booking>();
