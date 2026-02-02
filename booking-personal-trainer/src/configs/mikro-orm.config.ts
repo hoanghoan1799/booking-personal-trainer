@@ -4,10 +4,9 @@ import { ConfigService } from '@nestjs/config';
 import { config } from 'dotenv';
 import { PostgreSqlDriver } from '@mikro-orm/postgresql';
 import { Migrator } from '@mikro-orm/migrations';
+import { POSTGRES_PORT_DEFAULT } from '../common/constants/app.constant';
 
 config({ path: '.env' });
-
-export const POSTGRES_PORT_DEFAULT = 5432 as const;
 
 export default defineConfig({
   host: process.env.POSTGRES_HOST,
