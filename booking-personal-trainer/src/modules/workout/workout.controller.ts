@@ -8,8 +8,8 @@ import {
   Delete,
 } from '@nestjs/common';
 import { WorkoutService } from './workout.service';
-import { CreateWorkoutDto } from './dto/create-workout.dto';
-import { UpdateWorkoutDto } from './dto/update-workout.dto';
+import { CreateWorkoutDto } from './dtos/create-workout.dto';
+import { UpdateWorkoutDto } from './dtos/update-workout.dto';
 
 @Controller('workout')
 export class WorkoutController {

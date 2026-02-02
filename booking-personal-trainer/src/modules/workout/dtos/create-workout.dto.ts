@@ -1,2 +1,2 @@
-// TODO: Will refactor in future
+// TODO: Need to implement
 export class CreateWorkoutDto {}

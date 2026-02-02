@@ -1,4 +1,4 @@
-// TODO: Will refactor in future
+// TODO: Need to implement
 
 import { PartialType } from '@nestjs/mapped-types';
 import { CreateBookingDto } from './create-booking.dto';
