@@ -1,8 +1,14 @@
 import { Module } from '@nestjs/common';
-import { BookingService } from './booking.service';
-import { BookingController } from './booking.controller';
-import { Booking } from './entities/booking.entity';
 import { MikroOrmModule } from '@mikro-orm/nestjs';
+
+// Entities
+import { Booking } from './entities/booking.entity';
+
+// Services
+import { BookingService } from './booking.service';
+
+// Controllers
+import { BookingController } from './booking.controller';
 
 @Module({
   imports: [MikroOrmModule.forFeature([Booking])],

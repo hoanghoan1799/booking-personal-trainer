@@ -7,9 +7,13 @@ import {
   Param,
   Delete,
 } from '@nestjs/common';
-import { AuthService } from './auth.service';
+
+// DTOs
 import { CreateAuthDto } from './dtos/create-auth.dto';
 import { UpdateAuthDto } from './dtos/update-auth.dto';
+
+// Services
+import { AuthService } from './auth.service';
 
 @Controller('auth')
 export class AuthController {

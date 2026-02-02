@@ -1,6 +1,8 @@
 // TODO: Need to implement
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { Injectable } from '@nestjs/common';
+
+// DTOs
 import { CreateAuthDto } from './dtos/create-auth.dto';
 import { UpdateAuthDto } from './dtos/update-auth.dto';
 

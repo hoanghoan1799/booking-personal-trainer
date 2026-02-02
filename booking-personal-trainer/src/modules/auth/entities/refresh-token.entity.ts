@@ -1,5 +1,9 @@
 import { Entity, Property, ManyToOne, Unique } from '@mikro-orm/core';
+
+// Commons
 import { BaseEntity } from '../../../common/entities/base.entity';
+
+// Entities
 import { User } from '../../../modules/user/entities/user.entity';
 
 @Entity({ tableName: 'refresh_tokens' })

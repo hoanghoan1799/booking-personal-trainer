@@ -7,9 +7,13 @@ import {
   Param,
   Delete,
 } from '@nestjs/common';
-import { WorkoutService } from './workout.service';
+
+// DTOs
 import { CreateWorkoutDto } from './dtos/create-workout.dto';
 import { UpdateWorkoutDto } from './dtos/update-workout.dto';
+
+// Services
+import { WorkoutService } from './workout.service';
 
 @Controller('workout')
 export class WorkoutController {

@@ -7,9 +7,13 @@ import {
   Param,
   Delete,
 } from '@nestjs/common';
-import { BookingService } from './booking.service';
+
+// DTOs
 import { CreateBookingDto } from './dtos/create-booking.dto';
 import { UpdateBookingDto } from './dtos/update-booking.dto';
+
+// Services
+import { BookingService } from './booking.service';
 
 @Controller('booking')
 export class BookingController {

@@ -1,6 +1,8 @@
 // TODO: Need to implement
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { Injectable } from '@nestjs/common';
+
+// DTOs
 import { CreateWorkoutDto } from './dtos/create-workout.dto';
 import { UpdateWorkoutDto } from './dtos/update-workout.dto';
 

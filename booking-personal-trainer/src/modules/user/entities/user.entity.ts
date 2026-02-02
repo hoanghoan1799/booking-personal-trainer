@@ -1,4 +1,6 @@
 import { Entity, Property, Enum, Unique, OneToMany } from '@mikro-orm/core';
+
+// Commons
 import { BaseEntity } from '../../../common/entities/base.entity';
 import {
   TrainerApprovalStatus,
@@ -6,6 +8,8 @@ import {
   UserStatus,
   UserType,
 } from '../../../common/enums/user/user.enum';
+
+// Entities
 import { RefreshToken } from '../../../modules/auth/entities/refresh-token.entity';
 import { Booking } from '../../../modules/booking/entities/booking.entity';
 import { Workout } from '../../../modules/workout/entities/workout.entity';

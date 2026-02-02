@@ -1,8 +1,14 @@
 import { Module } from '@nestjs/common';
-import { AuthService } from './auth.service';
-import { AuthController } from './auth.controller';
 import { MikroOrmModule } from '@mikro-orm/nestjs';
+
+// Entities
 import { RefreshToken } from './entities/refresh-token.entity';
+
+// Services
+import { AuthService } from './auth.service';
+
+// Controllers
+import { AuthController } from './auth.controller';
 
 @Module({
   imports: [MikroOrmModule.forFeature([RefreshToken])],

@@ -1,6 +1,9 @@
 import { Entity, Property, Enum, ManyToOne } from '@mikro-orm/core';
+// Commons
 import { BaseEntity } from '../../../common/entities/base.entity';
 import { WorkoutStatus } from '../../../common/enums/workout/workout.enum';
+
+// Entities
 import { User } from '../../../modules/user/entities/user.entity';
 
 @Entity({ tableName: 'workouts' })

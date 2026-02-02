@@ -4,6 +4,8 @@ import { ConfigService } from '@nestjs/config';
 import { config } from 'dotenv';
 import { PostgreSqlDriver } from '@mikro-orm/postgresql';
 import { Migrator } from '@mikro-orm/migrations';
+
+// Commons
 import { POSTGRES_PORT_DEFAULT } from '../common/constants/app.constant';
 
 config({ path: '.env' });
