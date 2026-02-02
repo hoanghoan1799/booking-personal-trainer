@@ -1,7 +1,7 @@
 import { Entity, Property, Enum, Unique, OneToMany } from '@mikro-orm/core';
 import { BaseEntity } from '../../../common/entities/base.entity';
-import { ApprovalStatus } from '../../../common/enums/base/base.enum';
 import {
+  TrainerApprovalStatus,
   UserRole,
   UserStatus,
   UserType,
@@ -35,8 +35,8 @@ export class User extends BaseEntity {
   @Enum(() => UserType)
   userType!: UserType;
 
-  @Enum(() => ApprovalStatus)
-  approvalStatus: ApprovalStatus = ApprovalStatus.NONE;
+  @Enum(() => TrainerApprovalStatus)
+  approvalStatus: TrainerApprovalStatus = TrainerApprovalStatus.NONE;
 
   @Enum(() => UserStatus)
   status: UserStatus = UserStatus.ACTIVE;
