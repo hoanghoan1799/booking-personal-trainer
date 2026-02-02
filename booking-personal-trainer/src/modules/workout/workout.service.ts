@@ -14,15 +14,15 @@ export class WorkoutService {
     return `This action returns all workout`;
   }
 
-  findOne(id: number) {
+  findOne(id: string) {
     return `This action returns a #${id} workout`;
   }
 
-  update(id: number, updateWorkoutDto: UpdateWorkoutDto) {
+  update(id: string, updateWorkoutDto: UpdateWorkoutDto) {
     return `This action updates a #${id} workout`;
   }
 
-  remove(id: number) {
+  remove(id: string) {
     return `This action removes a #${id} workout`;
   }
 }

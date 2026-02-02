@@ -27,16 +27,16 @@ export class WorkoutController {
 
   @Get(':id')
   findOne(@Param('id') id: string) {
-    return this.workoutService.findOne(+id);
+    return this.workoutService.findOne(id);
   }
 
   @Patch(':id')
   update(@Param('id') id: string, @Body() updateWorkoutDto: UpdateWorkoutDto) {
-    return this.workoutService.update(+id, updateWorkoutDto);
+    return this.workoutService.update(id, updateWorkoutDto);
   }
 
   @Delete(':id')
   remove(@Param('id') id: string) {
-    return this.workoutService.remove(+id);
+    return this.workoutService.remove(id);
   }
 }

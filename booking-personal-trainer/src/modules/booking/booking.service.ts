@@ -14,15 +14,15 @@ export class BookingService {
     return `This action returns all booking`;
   }
 
-  findOne(id: number) {
+  findOne(id: string) {
     return `This action returns a #${id} booking`;
   }
 
-  update(id: number, updateBookingDto: UpdateBookingDto) {
+  update(id: string, updateBookingDto: UpdateBookingDto) {
     return `This action updates a #${id} booking`;
   }
 
-  remove(id: number) {
+  remove(id: string) {
     return `This action removes a #${id} booking`;
   }
 }
