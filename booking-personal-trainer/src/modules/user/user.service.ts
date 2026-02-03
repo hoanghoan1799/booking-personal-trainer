@@ -47,7 +47,7 @@ export class UserService {
 
   async findByEmailOrUserName(
     email: string,
-    userName: string,
+    userName?: string,
   ): Promise<User | null> {
     return this.userRepo.findOne({
       $or: [{ userName }, { email }],
