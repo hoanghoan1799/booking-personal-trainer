@@ -36,5 +36,9 @@ export const mikroORMConfig: MikroOrmModuleAsyncOptions = {
     password: config.getOrThrow('POSTGRES_PASSWORD'),
     dbName: config.getOrThrow('POSTGRES_DB'),
     autoLoadEntities: true,
+    migrations: {
+      path: 'dist/migrations',
+      pathTs: 'src/migrations',
+    },
   }),
 };

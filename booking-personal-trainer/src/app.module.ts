@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { PassportModule } from '@nestjs/passport';
 
 // Modules
 import { DatabaseModule } from './modules/database/database.module';
@@ -18,6 +19,7 @@ import { AuthModule } from './modules/auth/auth.module';
     BookingModule,
     WorkoutModule,
     AuthModule,
+    PassportModule,
   ],
   controllers: [],
   providers: [],
