@@ -1,7 +1,14 @@
-import { Controller, Post, Body } from '@nestjs/common';
+import { Controller, Post, Body, Res } from '@nestjs/common';
+import type { Response } from 'express';
 
 // Commons
 import { Public } from '../../common/decorators/public.decorator';
+import {
+  TOKEN_COOKIE,
+  TOKEN_MAX_AGE,
+} from '../../common/constants/token.constants';
+import { ROUTES } from 'src/common/constants/route.constant';
+import { COOKIE_SAME_SITE } from 'src/common/constants/cookie.constant';
 
 // DTOs
 import { RegisterDto } from './dtos/register.dto';
@@ -22,7 +29,22 @@ export class AuthController {
 
   @Public()
   @Post('login')
-  async login(@Body() data: LoginDto) {
-    return this.authService.login(data);
+  async login(
+    @Body() data: LoginDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const userResponse = await this.authService.login(data);
+
+    const { accessToken, user } = userResponse;
+
+    res.cookie(TOKEN_COOKIE.ACCESS, accessToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: COOKIE_SAME_SITE.strict,
+      path: ROUTES.ROOT,
+      maxAge: TOKEN_MAX_AGE.ACCESS,
+    });
+
+    return user;
   }
 }

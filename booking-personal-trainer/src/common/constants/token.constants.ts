@@ -11,4 +11,9 @@ export const TOKEN_EXPIRATION = {
 export const TOKEN_COOKIE = {
   ACCESS: 'access_token',
   REFRESH: 'refresh_token',
+} as const;
+
+export const TOKEN_MAX_AGE = {
+  ACCESS: 15 * 60 * 1000,
+  REFRESH: 7 * 24 * 60 * 60 * 1000,
 };
