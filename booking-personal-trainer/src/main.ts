@@ -1,7 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { MikroORM } from '@mikro-orm/core';
-import { ValidationPipe } from '@nestjs/common';
+import { ValidationPipe, VersioningType } from '@nestjs/common';
 
 // Commons
 import { APP_PORT_DEFAULT } from './common/constants/app.constant';
@@ -15,6 +15,18 @@ async function bootstrap() {
   // Run migrations
   const orm = app.get(MikroORM);
   await orm.migrator.up();
+
+  // Enable cors
+  app.enableCors();
+
+  // Global prefix for all routes
+  app.setGlobalPrefix('api');
+
+  // Enable versioning for all routes
+  app.enableVersioning({
+    type: VersioningType.URI,
+    defaultVersion: '1',
+  });
 
   // Global interceptors
   app.useGlobalInterceptors(new TransformInterceptor());
