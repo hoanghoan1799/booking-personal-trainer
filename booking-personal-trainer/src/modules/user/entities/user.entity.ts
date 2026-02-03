@@ -33,7 +33,7 @@ export class User extends BaseEntity {
   lastName!: string;
 
   @Enum(() => UserRole)
-  role!: UserRole;
+  role: UserRole = UserRole.TRAINEE;
 
   @Enum(() => UserType)
   userType!: UserType;
@@ -54,14 +54,14 @@ export class User extends BaseEntity {
   weight?: number;
 
   @OneToMany(() => Booking, (booking) => booking.trainer)
-  trainerBookings = new Array<Booking>();
+  trainerBookings? = new Array<Booking>();
 
   @OneToMany(() => Booking, (booking) => booking.trainee)
-  traineeBookings = new Array<Booking>();
+  traineeBookings? = new Array<Booking>();
 
   @OneToMany(() => Workout, (workout) => workout.trainer)
-  trainerWorkouts = new Array<Workout>();
+  trainerWorkouts? = new Array<Workout>();
 
   @OneToMany(() => Workout, (workout) => workout.trainee)
-  traineeWorkouts = new Array<Workout>();
+  traineeWorkouts? = new Array<Workout>();
 }
