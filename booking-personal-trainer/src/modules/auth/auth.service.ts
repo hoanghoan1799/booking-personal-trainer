@@ -1,30 +1,65 @@
-// TODO: Need to implement
-/* eslint-disable @typescript-eslint/no-unused-vars */
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable } from '@nestjs/common';
+
+// Commons
+import { ERROR_MESSAGES } from '../../common/constants/message.constant';
 
 // DTOs
-import { CreateAuthDto } from './dtos/create-auth.dto';
-import { UpdateAuthDto } from './dtos/update-auth.dto';
+import { RegisterDto } from './dtos/register.dto';
+import { ResponseUserDto } from '../user/dtos/response-user.dto';
+
+// Services
+import { UserService } from '../user/user.service';
+import { HashingService } from './services/hashing.service';
 
 @Injectable()
 export class AuthService {
-  create(createAuthDto: CreateAuthDto) {
-    return 'This action adds a new auth';
-  }
+  constructor(
+    private readonly userService: UserService,
+    private readonly hashingService: HashingService,
+  ) {}
 
-  findAll() {
-    return `This action returns all auth`;
-  }
+  async register(data: RegisterDto) {
+    const {
+      email,
+      password,
+      userName,
+      userType,
+      firstName,
+      lastName,
+      role,
+      approvalStatus,
+      status,
+    } = data;
 
-  findOne(id: string) {
-    return `This action returns a #${id} auth`;
-  }
+    const existingUser = await this.userService.findByEmailOrUserName(
+      email,
+      userName,
+    );
 
-  update(id: string, updateAuthDto: UpdateAuthDto) {
-    return `This action updates a #${id} auth`;
-  }
+    if (existingUser) {
+      if (existingUser.email === email) {
+        throw new ConflictException(ERROR_MESSAGES.USER.EMAIL_TAKEN);
+      }
 
-  remove(id: string) {
-    return `This action removes a #${id} auth`;
+      if (existingUser.userName === data.userName) {
+        throw new ConflictException(ERROR_MESSAGES.USER.USERNAME_TAKEN);
+      }
+    }
+
+    const hashedPassword = await this.hashingService.hash(password);
+
+    const newUser: ResponseUserDto = await this.userService.create({
+      email,
+      password: hashedPassword,
+      userName,
+      userType,
+      firstName,
+      lastName,
+      role,
+      approvalStatus,
+      status,
+    });
+
+    return newUser;
   }
 }
