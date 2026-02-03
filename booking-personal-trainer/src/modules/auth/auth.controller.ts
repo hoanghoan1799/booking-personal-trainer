@@ -5,6 +5,7 @@ import { Public } from '../../common/decorators/public.decorator';
 
 // DTOs
 import { RegisterDto } from './dtos/register.dto';
+import { LoginDto } from './dtos/login.dto';
 
 // Services
 import { AuthService } from './auth.service';
@@ -17,5 +18,11 @@ export class AuthController {
   @Post('register')
   async create(@Body() data: RegisterDto) {
     return this.authService.register(data);
+  }
+
+  @Public()
+  @Post('login')
+  async login(@Body() data: LoginDto) {
+    return this.authService.login(data);
   }
 }
