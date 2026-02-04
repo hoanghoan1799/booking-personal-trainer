@@ -10,7 +10,7 @@ services:
     ports:
       - "3000:3000"
     env_file:
-      - .env
+      - .docker.env
     depends_on:
       postgres:
         condition: service_healthy
@@ -24,12 +24,24 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     env_file:
-      - .env
+      - .docker.env
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $POSTGRES_USER -d $POSTGRES_DB"]
       interval: 2s
       timeout: 5s
       retries: 5
+
+  redis:
+    container_name: booking-pt-redis
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 5s
+      retries: 10
 
 volumes:
   postgres_data: 
