@@ -19,10 +19,10 @@ import { ROUTES } from '../../common/constants/route.constant';
 import {
   COOKIE_OPTIONS,
   COOKIE_SAME_SITE,
-} from 'src/common/constants/cookie.constant';
-import { ERROR_MESSAGES } from 'src/common/constants/message.constant';
-import { Cookie } from 'src/common/decorators/cookie.decorator';
-import { CurrentUser } from 'src/common/decorators/user.decorator';
+} from '../../common/constants/cookie.constant';
+import { ERROR_MESSAGES } from '../../common/constants/message.constant';
+import { Cookie } from '../../common/decorators/cookie.decorator';
+import { CurrentUser } from '../../common/decorators/user.decorator';
 
 // DTOs
 import { RegisterDto } from './dtos/register.dto';

@@ -6,7 +6,13 @@ import {
   Patch,
   Param,
   Delete,
+  UseGuards,
 } from '@nestjs/common';
+
+// Commons
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { Roles } from '../../common/decorators/role.decorator';
+import { UserRole } from '../../common/enums/user/user.enum';
 
 // DTOs
 import { CreateBookingDto } from './dtos/create-booking.dto';
@@ -15,7 +21,12 @@ import { UpdateBookingDto } from './dtos/update-booking.dto';
 // Services
 import { BookingService } from './booking.service';
 
-@Controller('booking')
+// Guards
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(UserRole.ADMIN)
+@Controller('bookings')
 export class BookingController {
   constructor(private readonly bookingService: BookingService) {}
 
