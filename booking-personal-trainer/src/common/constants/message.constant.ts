@@ -9,6 +9,8 @@ export const ERROR_MESSAGES = {
     REFRESH_TOKEN_EXPIRED: 'Refresh token is expired',
     REFRESH_TOKEN_NOT_FOUND: 'Refresh token not found',
     ACCESS_TOKEN_INVALID: 'Access token is invalid or expired',
+    UNAUTHORIZED: 'You are not authorized to perform this action',
+    FORBIDDEN: 'You do not have permission to perform this action',
   },
   USER: {
     NOT_FOUND: 'User not found',

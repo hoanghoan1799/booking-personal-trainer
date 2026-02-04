@@ -6,7 +6,7 @@ import { createClient } from 'redis';
 import {
   DEFAULT_HOST,
   DEFAULT_REDIS_PORT,
-} from 'src/common/constants/app.constant';
+} from '../../common/constants/app.constant';
 import { REDIS_CLIENT_TOKEN } from '../../common/constants/cache.constant';
 
 // Services

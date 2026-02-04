@@ -15,7 +15,7 @@ import {
   UserType,
 } from '../../../common/enums/user/user.enum';
 import { VALIDATION } from '../../../common/constants/validation.constant';
-import { ERROR_MESSAGES } from 'src/common/constants/message.constant';
+import { ERROR_MESSAGES } from '../../../common/constants/message.constant';
 
 export class RegisterDto {
   @IsEmail()
