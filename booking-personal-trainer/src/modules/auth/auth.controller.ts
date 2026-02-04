@@ -1,9 +1,11 @@
 import {
   Body,
   Controller,
+  Get,
   Post,
   Res,
   UnauthorizedException,
+  UseGuards,
 } from '@nestjs/common';
 import type { Response, Request } from 'express';
 
@@ -20,6 +22,7 @@ import {
 } from 'src/common/constants/cookie.constant';
 import { ERROR_MESSAGES } from 'src/common/constants/message.constant';
 import { Cookie } from 'src/common/decorators/cookie.decorator';
+import { CurrentUser } from 'src/common/decorators/user.decorator';
 
 // DTOs
 import { RegisterDto } from './dtos/register.dto';
@@ -28,6 +31,10 @@ import { TokenResponseDto } from './dtos/token.dto';
 
 // Services
 import { AuthService } from './auth.service';
+import type { JwtAuthPayload } from './types/jwt-auth.type';
+
+// Guards
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
 
 @Controller('auth')
 export class AuthController {
@@ -123,5 +130,16 @@ export class AuthController {
     res.clearCookie(TOKEN_COOKIE.ACCESS, { path: ROUTES.ROOT });
     res.clearCookie(TOKEN_COOKIE.REFRESH, { path: ROUTES.ROOT });
     return { success: true };
+  }
+
+  @Get('profile')
+  @UseGuards(JwtAuthGuard)
+  /**
+   * Gets the profile of the current user.
+   * @throws NotFoundException if user is not found
+   * @returns The profile of the current user
+   */
+  async getProfile(@CurrentUser() user: JwtAuthPayload) {
+    return this.authService.getProfile(user.id);
   }
 }

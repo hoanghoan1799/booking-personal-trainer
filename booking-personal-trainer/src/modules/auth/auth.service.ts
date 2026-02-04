@@ -28,6 +28,13 @@ import { RefreshTokenService } from './services/refresh-token.service';
 
 @Injectable()
 export class AuthService {
+  /**
+   * Initializes a new instance of the AuthService.
+   * @param {UserService} userService - The user service used to interact with the user database.
+   * @param {JwtService} jwtService - The JWT service used to generate and validate JWT tokens.
+   * @param {HashingService} hashingService - The hashing service used to hash passwords.
+   * @param {RefreshTokenService} refreshTokenService - The refresh token service used to manage refresh tokens in Redis.
+   */
   constructor(
     private readonly userService: UserService,
     private readonly jwtService: JwtService,
@@ -35,6 +42,12 @@ export class AuthService {
     private readonly refreshTokenService: RefreshTokenService,
   ) {}
 
+  /**
+   * Registers a new user.
+   * @param data The user data to be registered.
+   * @returns The newly registered user.
+   * @throws ConflictException If the email or user name already exists.
+   */
   async register(data: RegisterDto): Promise<ResponseUserDto> {
     const {
       email,
@@ -80,6 +93,13 @@ export class AuthService {
     return newUser;
   }
 
+  /**
+   * Logs in the user.
+   * @param data The user data to be logged in.
+   * @returns The logged in user.
+   * @throws {NotFoundException} If the user is not found.
+   * @throws {BadRequestException} If the password is not valid.
+   */
   async login(data: LoginDto): Promise<LoginResponseDto> {
     const { email, password } = data;
 
@@ -128,6 +148,14 @@ export class AuthService {
     return { accessToken, refreshToken, user: responseUser };
   }
 
+  /**
+   * Refreshes the access token and refresh token.
+   * @param args The arguments to refresh the tokens.
+   * @returns A promise that resolves to a TokensDto with the new access token and its expiration time in seconds.
+   * @throws {BadRequestException} If the refreshToken is not provided.
+   * @throws {UnauthorizedException} If the refreshToken is not valid.
+   * @throws {NotFoundException} If the user is not found.
+   */
   async refreshTokens(args: RefreshTokenRequestDto): Promise<TokensDto> {
     const { refreshToken } = args;
     if (!refreshToken) {
@@ -217,6 +245,12 @@ export class AuthService {
     }
   }
 
+  /**
+   * Retrieves a user's profile by their ID.
+   * @param {string} userId - The ID of the user to retrieve.
+   * @throws {NotFoundException} If the user is not found.
+   * @returns {Promise<User>} The user profile if found.
+   */
   async getProfile(userId: string) {
     const user = await this.userService.findById(userId);
 
