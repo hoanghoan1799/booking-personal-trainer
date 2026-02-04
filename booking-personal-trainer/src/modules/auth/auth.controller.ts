@@ -79,7 +79,7 @@ export class AuthController {
   }
 
   @Public()
-  @Post('refresh')
+  @Post('token/refresh')
   /**
    * Refreshes the access token and refresh token.
    * @throws UnauthorizedException if refresh token is not found
