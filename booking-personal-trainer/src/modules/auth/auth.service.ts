@@ -104,6 +104,7 @@ export class AuthService {
       id: existingUser.id,
       email: existingUser.email,
       userName: existingUser.userName,
+      role: existingUser.role,
     };
 
     const { accessToken, refreshToken } = await this.createTokens(payload);
@@ -171,6 +172,7 @@ export class AuthService {
       id: existingUser.id,
       email: existingUser.email,
       userName: existingUser.userName,
+      role: existingUser.role,
     });
 
     await this.refreshTokenService.saveRefreshToken({
@@ -213,6 +215,16 @@ export class AuthService {
     } catch {
       return;
     }
+  }
+
+  async getProfile(userId: string) {
+    const user = await this.userService.findById(userId);
+
+    if (!user) {
+      throw new NotFoundException(ERROR_MESSAGES.USER.NOT_FOUND);
+    }
+
+    return user;
   }
 
   /**
