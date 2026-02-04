@@ -16,6 +16,11 @@ export class UserService {
     private readonly em: EntityManager,
   ) {}
 
+  /**
+   * Creates a new user in the database.
+   * @param data The user data to be created.
+   * @returns The newly created user.
+   */
   async create(data: RegisterDto): Promise<ResponseUserDto> {
     const newUser: User = this.userRepo.create({
       email: data.email,
@@ -45,6 +50,12 @@ export class UserService {
     return responseUser;
   }
 
+  /**
+   * Finds a user by either their email or user name.
+   * @param email The email address of the user.
+   * @param userName The user name of the user.
+   * @returns The user if found, or null if not found.
+   */
   async findByEmailOrUserName(
     email: string,
     userName?: string,
@@ -52,5 +63,14 @@ export class UserService {
     return this.userRepo.findOne({
       $or: [{ userName }, { email }],
     });
+  }
+
+  /**
+   * Finds a user by their id.
+   * @param id The id of the user to find.
+   * @returns The user if found, or null if not found.
+   */
+  async findById(id: string): Promise<User | null> {
+    return this.userRepo.findOne({ id });
   }
 }
