@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { MikroORM } from '@mikro-orm/core';
 import { ValidationPipe, VersioningType } from '@nestjs/common';
+import cookieParser from 'cookie-parser';
 
 // Commons
 import { APP_PORT_DEFAULT } from './common/constants/app.constant';
@@ -15,6 +16,9 @@ async function bootstrap() {
   // Run migrations
   const orm = app.get(MikroORM);
   await orm.migrator.up();
+
+  // Enable cookies
+  app.use(cookieParser());
 
   // Enable cors
   app.enableCors();

@@ -4,6 +4,10 @@ export const ERROR_MESSAGES = {
     PASSWORD_MIN_LENGTH: (min: number) =>
       `Password must be at least ${min} characters long`,
     MISSING_REQUIRED_FIELDS: 'Required fields are missing',
+    INVALID_REFRESH_TOKEN: 'Refresh token is invalid or expired',
+    REFRESH_TOKEN_REQUIRED: 'Refresh token is required',
+    REFRESH_TOKEN_EXPIRED: 'Refresh token is expired',
+    REFRESH_TOKEN_NOT_FOUND: 'Refresh token not found',
   },
   USER: {
     NOT_FOUND: 'User not found',
