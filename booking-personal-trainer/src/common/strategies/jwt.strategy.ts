@@ -1,9 +1,12 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { InjectRepository } from '@mikro-orm/nestjs';
 import { EntityRepository } from '@mikro-orm/core';
 import { ExtractJwt, Strategy } from 'passport-jwt';
+
+// Constants
+import { ERROR_MESSAGES } from '../constants/message.constant';
 
 // Entities
 import { User } from '../../modules/user/entities/user.entity';
@@ -24,8 +27,13 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     });
   }
 
-  async validate(payload: JwtAuthPayload) {
+  async validate(payload: JwtAuthPayload): Promise<User | null> {
     const user = await this.userRepo.findOne({ id: payload.id });
+
+    if (!user) {
+      throw new UnauthorizedException(ERROR_MESSAGES.AUTH.ACCESS_TOKEN_INVALID);
+    }
+
     return user;
   }
 }
