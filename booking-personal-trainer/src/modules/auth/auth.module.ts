@@ -14,16 +14,19 @@ import { User } from '../user/entities/user.entity';
 import { AuthService } from './auth.service';
 import { HashingService } from './services/hashing.service';
 import { BcryptService } from './services/bcrypt.service';
+import { RefreshTokenService } from './services/refresh-token.service';
 
 // Controllers
 import { AuthController } from './auth.controller';
 
 // Modules
 import { UserModule } from '../user/user.module';
+import { RedisModule } from '../redis/redis.module';
 
 @Module({
   imports: [
     UserModule,
+    RedisModule,
     MikroOrmModule.forFeature([User]),
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -39,6 +42,7 @@ import { UserModule } from '../user/user.module';
   providers: [
     AuthService,
     JwtStrategy,
+    RefreshTokenService,
     {
       provide: HashingService,
       useClass: BcryptService,
