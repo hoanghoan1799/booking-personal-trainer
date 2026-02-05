@@ -20,6 +20,14 @@ export const ERROR_MESSAGES = {
     ADMIN_UPDATE: 'Cannot update role of another admin',
     CANNOT_UPDATE_SELF_ROLE: 'You cannot update your own role',
     CANNOT_ASSIGN_ADMIN: 'You cannot assign admin role to other users',
+    TRAINER_NOT_AVAILABLE: 'Trainer is not available',
+  },
+  BOOKING: {
+    INVALID_TIME_RANGE: 'Start time must be before end time',
+    CANNOT_BOOK_SELF: 'You cannot book yourself',
+    TIME_SLOT_NOT_AVAILABLE: 'Time slot is not available',
+    CANNOT_BOOK_IN_PAST: 'You cannot book in the past',
+    MUST_BOOK_BEFORE_30_MINUTES: 'You must book before 30 minutes',
   },
   VALIDATION: {
     USERNAME_REQUIRED: 'Username is required',
