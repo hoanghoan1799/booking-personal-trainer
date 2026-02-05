@@ -25,6 +25,12 @@ import { LogoutDto } from './dtos/logout.dto';
 import { UserService } from '../user/user.service';
 import { HashingService } from './services/hashing.service';
 import { RefreshTokenService } from './services/refresh-token.service';
+import {
+  TrainerApprovalStatus,
+  UserRole,
+  UserStatus,
+  UserType,
+} from '../../common/enums/user/user.enum';
 
 @Injectable()
 export class AuthService {
@@ -49,17 +55,7 @@ export class AuthService {
    * @throws ConflictException If the email or user name already exists.
    */
   async register(data: RegisterDto): Promise<ResponseUserDto> {
-    const {
-      email,
-      password,
-      userName,
-      userType,
-      firstName,
-      lastName,
-      role,
-      approvalStatus,
-      status,
-    } = data;
+    const { email, password, userName, userType, firstName, lastName } = data;
 
     const existingUser = await this.userService.findByEmailOrUserName(
       email,
@@ -78,6 +74,11 @@ export class AuthService {
 
     const hashedPassword = await this.hashingService.hash(password);
 
+    const approvalStatus =
+      data.userType === UserType.TRAINEE
+        ? TrainerApprovalStatus.NONE
+        : TrainerApprovalStatus.PENDING;
+
     const newUser: ResponseUserDto = await this.userService.create({
       email,
       password: hashedPassword,
@@ -85,9 +86,9 @@ export class AuthService {
       userType,
       firstName,
       lastName,
-      role,
+      role: UserRole.TRAINEE,
       approvalStatus,
-      status,
+      status: UserStatus.ACTIVE,
     });
 
     return newUser;
@@ -135,6 +136,7 @@ export class AuthService {
     });
 
     const responseUser: ResponseUserDto = {
+      id: existingUser.id,
       userName: existingUser.userName,
       email: existingUser.email,
       firstName: existingUser.firstName,
