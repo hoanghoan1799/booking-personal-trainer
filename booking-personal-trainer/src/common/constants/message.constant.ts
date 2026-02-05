@@ -17,6 +17,9 @@ export const ERROR_MESSAGES = {
     ALREADY_EXISTS: 'User already exists',
     USERNAME_TAKEN: 'Username already exists',
     EMAIL_TAKEN: 'Email already exists',
+    ADMIN_UPDATE: 'Cannot update role of another admin',
+    CANNOT_UPDATE_SELF_ROLE: 'You cannot update your own role',
+    CANNOT_ASSIGN_ADMIN: 'You cannot assign admin role to other users',
   },
   VALIDATION: {
     USERNAME_REQUIRED: 'Username is required',
