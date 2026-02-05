@@ -39,10 +39,10 @@ export class User extends BaseEntity {
   userType!: UserType;
 
   @Enum(() => TrainerApprovalStatus)
-  approvalStatus: TrainerApprovalStatus = TrainerApprovalStatus.NONE;
+  approvalStatus: TrainerApprovalStatus;
 
   @Enum(() => UserStatus)
-  status: UserStatus = UserStatus.ACTIVE;
+  status: UserStatus;
 
   @Property({ nullable: true })
   age?: number;
