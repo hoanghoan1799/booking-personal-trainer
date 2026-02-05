@@ -7,7 +7,6 @@ import cookieParser from 'cookie-parser';
 // Commons
 import { APP_PORT_DEFAULT } from './common/constants/app.constant';
 import { AllExceptionsFilter } from './common/filters/all-exception.filter';
-import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 
 async function bootstrap() {
   // Create app
@@ -31,9 +30,6 @@ async function bootstrap() {
     type: VersioningType.URI,
     defaultVersion: '1',
   });
-
-  // Global interceptors
-  app.useGlobalInterceptors(new TransformInterceptor());
 
   // Global pipes
   app.useGlobalPipes(
