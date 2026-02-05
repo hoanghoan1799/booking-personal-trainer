@@ -260,7 +260,7 @@ export class AuthService {
       throw new NotFoundException(ERROR_MESSAGES.USER.NOT_FOUND);
     }
 
-    return user;
+    return { data: user };
   }
 
   /**
