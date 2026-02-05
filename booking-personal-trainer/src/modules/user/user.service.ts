@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@mikro-orm/nestjs';
-import { EntityManager, EntityRepository } from '@mikro-orm/core';
+import { EntityManager, EntityRepository, FilterQuery } from '@mikro-orm/core';
 
 // DTOs
 import { RegisterDto } from '../auth/dtos/register.dto';
@@ -17,12 +17,17 @@ import {
   UserRole,
   UserType,
 } from '../../common/enums/user/user.enum';
+import {
+  SortBy,
+  SortOrder,
+} from '../../common/enums/pagination/pagination.enum';
 
 // Entities
 import { User } from './entities/user.entity';
 
 // DTOs
 import { UpdateUserRoleDto } from './dtos/update-user.dto';
+import { GetUsersQueryDto } from './dtos/get-user.dto';
 
 @Injectable()
 export class UserService {
@@ -90,12 +95,53 @@ export class UserService {
     return this.userRepo.findOne({ id });
   }
 
-  /**
-   * Retrieves all users from the database.
-   * @returns A promise that resolves with an array of all users.
-   */
-  async getAll(): Promise<User[]> {
-    return this.userRepo.findAll();
+  async getAll(query: GetUsersQueryDto) {
+    const {
+      page = 1,
+      limit = 20,
+      userType,
+      approvalStatus,
+      search,
+      sortBy,
+      order,
+    } = query;
+
+    const where: FilterQuery<User> = {};
+
+    if (userType) {
+      where.userType = userType;
+    }
+
+    if (approvalStatus) {
+      where.approvalStatus = approvalStatus;
+    }
+
+    if (search) {
+      where.$or = [
+        { email: { $ilike: `%${search}%` } },
+        { userName: { $ilike: `%${search}%` } },
+      ];
+    }
+
+    const orderBy = {
+      [sortBy ?? SortBy.CREATED_AT]: order ?? SortOrder.DESC,
+    };
+
+    const [data, totalItems] = await this.userRepo.findAndCount(where, {
+      limit,
+      offset: (page - 1) * limit,
+      orderBy,
+    });
+
+    return {
+      data,
+      meta: {
+        page,
+        limit,
+        totalItems,
+        totalPages: Math.ceil(totalItems / limit),
+      },
+    };
   }
 
   /**

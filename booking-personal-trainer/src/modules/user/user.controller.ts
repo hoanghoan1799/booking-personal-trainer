@@ -1,5 +1,14 @@
 // TODO: Need to implement
-import { Body, Controller, Param, Patch, Req, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Query,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 
 // Commons
 import { UserRole } from '../../common/enums/user/user.enum';
@@ -11,6 +20,7 @@ import { User } from './entities/user.entity';
 
 // DTOs
 import { UpdateUserRoleDto } from './dtos/update-user.dto';
+import { GetUsersQueryDto } from './dtos/get-user.dto';
 
 // Services
 import { UserService } from './user.service';
@@ -27,6 +37,11 @@ export interface RequestWithUser extends Request {
 @Controller('admin/users')
 export class UserController {
   constructor(private readonly userService: UserService) {}
+
+  @Get()
+  async getAll(@Query() query: GetUsersQueryDto) {
+    return this.userService.getAll(query);
+  }
 
   @Patch(':userId/role')
   async updateUserRole(

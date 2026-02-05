@@ -8,6 +8,10 @@ import {
   DEFAULT_LIMIT,
   DEFAULT_PAGE,
 } from '../../../common/constants/pagination.constant';
+import {
+  SortBy,
+  SortOrder,
+} from '../../../common/enums/pagination/pagination.enum';
 
 export class GetUsersQueryDto {
   @IsOptional()
@@ -23,6 +27,10 @@ export class GetUsersQueryDto {
   limit = DEFAULT_LIMIT;
 
   @IsOptional()
+  @IsEnum(SortOrder)
+  order?: SortOrder = SortOrder.DESC;
+
+  @IsOptional()
   @IsEnum(UserType)
   userType?: UserType;
 
@@ -33,4 +41,8 @@ export class GetUsersQueryDto {
   @IsOptional()
   @IsString()
   search?: string;
+
+  @IsOptional()
+  @IsEnum(SortBy)
+  sortBy?: SortBy;
 }
