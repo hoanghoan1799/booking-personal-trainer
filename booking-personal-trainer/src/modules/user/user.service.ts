@@ -22,6 +22,9 @@ import {
   SortOrder,
 } from '../../common/enums/pagination/pagination.enum';
 
+// Types
+import type { JwtAuthPayload } from '../auth/types/jwt-auth.type';
+
 // Entities
 import { User } from './entities/user.entity';
 
@@ -158,7 +161,7 @@ export class UserService {
   async updateUserRole(
     targetUserId: string,
     data: UpdateUserRoleDto,
-    currentUser: User,
+    currentUser: JwtAuthPayload,
   ) {
     // Check if the user is trying to update their own role
     if (currentUser.id === targetUserId) {

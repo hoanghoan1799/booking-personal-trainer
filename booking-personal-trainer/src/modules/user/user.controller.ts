@@ -6,7 +6,6 @@ import {
   Param,
   Patch,
   Query,
-  Req,
   UseGuards,
 } from '@nestjs/common';
 
@@ -14,9 +13,10 @@ import {
 import { UserRole } from '../../common/enums/user/user.enum';
 import { Roles } from '../../common/decorators/role.decorator';
 import { RolesGuard } from '../../common/guards/roles.guard';
+import { CurrentUser } from '../../common/decorators/user.decorator';
 
-// Entities
-import { User } from './entities/user.entity';
+// Types
+import type { JwtAuthPayload } from '../auth/types/jwt-auth.type';
 
 // DTOs
 import { UpdateUserRoleDto } from './dtos/update-user.dto';
@@ -27,10 +27,6 @@ import { UserService } from './user.service';
 
 // Guards
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-
-export interface RequestWithUser extends Request {
-  user: User;
-}
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(UserRole.ADMIN)
@@ -47,8 +43,8 @@ export class UserController {
   async updateUserRole(
     @Param('userId') id: string,
     @Body() data: UpdateUserRoleDto,
-    @Req() req: RequestWithUser,
+    @CurrentUser() user: JwtAuthPayload,
   ) {
-    return this.userService.updateUserRole(id, data, req.user);
+    return this.userService.updateUserRole(id, data, user);
   }
 }
