@@ -107,12 +107,17 @@ export class UserService {
       search,
       sortBy,
       order,
+      role,
     } = query;
 
     const where: FilterQuery<User> = {};
 
     if (userType) {
       where.userType = userType;
+    }
+
+    if (role) {
+      where.role = role;
     }
 
     if (approvalStatus) {

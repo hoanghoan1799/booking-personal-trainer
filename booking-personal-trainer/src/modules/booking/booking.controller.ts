@@ -1,22 +1,20 @@
 import {
   Controller,
   Get,
-  Post,
   Body,
-  Patch,
   Param,
-  Delete,
   UseGuards,
+  Query,
+  Post,
+  Req,
 } from '@nestjs/common';
 
 // Commons
-import { RolesGuard } from '../../common/guards/roles.guard';
-import { Roles } from '../../common/decorators/role.decorator';
-import { UserRole } from '../../common/enums/user/user.enum';
+import type { CurrentRequestUser } from '../../common/interfaces/request.interface';
 
 // DTOs
+import { GetBookingsQueryDto } from './dtos/get-booking.dto';
 import { CreateBookingDto } from './dtos/create-booking.dto';
-import { UpdateBookingDto } from './dtos/update-booking.dto';
 
 // Services
 import { BookingService } from './booking.service';
@@ -24,34 +22,23 @@ import { BookingService } from './booking.service';
 // Guards
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.ADMIN)
+@UseGuards(JwtAuthGuard)
 @Controller('bookings')
 export class BookingController {
   constructor(private readonly bookingService: BookingService) {}
 
   @Post()
-  create(@Body() createBookingDto: CreateBookingDto) {
-    return this.bookingService.create(createBookingDto);
+  create(@Req() req: CurrentRequestUser, @Body() data: CreateBookingDto) {
+    return this.bookingService.create(data, req.user);
   }
 
   @Get()
-  findAll() {
-    return this.bookingService.findAll();
+  getAll(@Query() query: GetBookingsQueryDto) {
+    return this.bookingService.getAll(query);
   }
 
   @Get(':id')
   findOne(@Param('id') id: string) {
-    return this.bookingService.findOne(id);
-  }
-
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateBookingDto: UpdateBookingDto) {
-    return this.bookingService.update(id, updateBookingDto);
-  }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.bookingService.remove(id);
+    return this.bookingService.getOne(id);
   }
 }
