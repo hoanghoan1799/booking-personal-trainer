@@ -2,6 +2,7 @@ import { Type } from 'class-transformer';
 import { IsEnum, IsInt, IsOptional, IsString, Min } from 'class-validator';
 import {
   TrainerApprovalStatus,
+  UserRole,
   UserType,
 } from '../../../common/enums/user/user.enum';
 import {
@@ -33,6 +34,10 @@ export class GetUsersQueryDto {
   @IsOptional()
   @IsEnum(UserType)
   userType?: UserType;
+
+  @IsOptional()
+  @IsEnum(UserRole)
+  role?: UserRole;
 
   @IsOptional()
   @IsEnum(TrainerApprovalStatus)
