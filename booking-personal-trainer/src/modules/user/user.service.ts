@@ -1,4 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@mikro-orm/nestjs';
 import { EntityManager, EntityRepository } from '@mikro-orm/core';
 
@@ -6,8 +10,19 @@ import { EntityManager, EntityRepository } from '@mikro-orm/core';
 import { RegisterDto } from '../auth/dtos/register.dto';
 import { ResponseUserDto } from './dtos/response-user.dto';
 
+// Commons
+import { ERROR_MESSAGES } from '../../common/constants/message.constant';
+import {
+  TrainerApprovalStatus,
+  UserRole,
+  UserType,
+} from '../../common/enums/user/user.enum';
+
 // Entities
 import { User } from './entities/user.entity';
+
+// DTOs
+import { UpdateUserRoleDto } from './dtos/update-user.dto';
 
 @Injectable()
 export class UserService {
@@ -37,6 +52,7 @@ export class UserService {
     await this.em.persist(newUser).flush();
 
     const responseUser: ResponseUserDto = {
+      id: newUser.id,
       userName: newUser.userName,
       email: newUser.email,
       firstName: newUser.firstName,
@@ -72,5 +88,79 @@ export class UserService {
    */
   async findById(id: string): Promise<User | null> {
     return this.userRepo.findOne({ id });
+  }
+
+  /**
+   * Retrieves all users from the database.
+   * @returns A promise that resolves with an array of all users.
+   */
+  async getAll(): Promise<User[]> {
+    return this.userRepo.findAll();
+  }
+
+  /**
+   * Updates the role of a user.
+   * @throws {ForbiddenException} If the user is trying to update their own role.
+   * @throws {ForbiddenException} If the user is trying to assign an admin role to another user.
+   * @throws {NotFoundException} If the user to be updated is not found.
+   * @throws {ForbiddenException} If the user is trying to update the role of an admin.
+   * @param targetUserId The id of the user to be updated.
+   * @param data The new role of the user.
+   * @param currentUser The user performing the update.
+   * @returns The updated user.
+   */
+  async updateUserRole(
+    targetUserId: string,
+    data: UpdateUserRoleDto,
+    currentUser: User,
+  ) {
+    // Check if the user is trying to update their own role
+    if (currentUser.id === targetUserId) {
+      throw new ForbiddenException(ERROR_MESSAGES.USER.CANNOT_UPDATE_SELF_ROLE);
+    }
+
+    if (data.role === UserRole.ADMIN) {
+      throw new ForbiddenException(ERROR_MESSAGES.USER.CANNOT_ASSIGN_ADMIN);
+    }
+
+    const targetUser = await this.userRepo.findOne({ id: targetUserId });
+
+    if (!targetUser) {
+      throw new NotFoundException(ERROR_MESSAGES.USER.NOT_FOUND);
+    }
+
+    // Check if the user is trying to update the role of an admin
+    if (targetUser.role === UserRole.ADMIN) {
+      throw new ForbiddenException(ERROR_MESSAGES.USER.ADMIN_UPDATE);
+    }
+
+    if (targetUser.userType === UserType.TRAINER) {
+      // ADMIN APPROVE
+      if (data.role === UserRole.TRAINER) {
+        targetUser.role = UserRole.TRAINER;
+        targetUser.approvalStatus = TrainerApprovalStatus.APPROVED;
+      }
+
+      // ADMIN REJECT
+      else if (data.role === UserRole.TRAINEE) {
+        targetUser.role = UserRole.TRAINEE;
+        targetUser.approvalStatus = TrainerApprovalStatus.REJECTED;
+      }
+
+      await this.em.persist(targetUser).flush();
+
+      return targetUser;
+    }
+
+    if (targetUser.role === data.role) {
+      return targetUser;
+    }
+
+    targetUser.role = data.role;
+    targetUser.approvalStatus = TrainerApprovalStatus.NONE;
+
+    await this.em.persist(targetUser).flush();
+
+    return targetUser;
   }
 }
