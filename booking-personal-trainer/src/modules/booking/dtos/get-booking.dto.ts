@@ -1,32 +1,11 @@
-import { IsEnum, IsOptional, IsString, Min, IsInt } from 'class-validator';
-import { Type } from 'class-transformer';
-import { SortOrder } from '../../../common/enums/pagination/pagination.enum';
+import { IsEnum, IsOptional } from 'class-validator';
+
+// Commons
 import { BookingStatus } from '../../../common/enums/booking/booking.enum';
+import { BaseQueryDto } from '../../../common/dtos/base-query.dto';
 
-export class GetBookingsQueryDto {
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  page = 1;
-
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  limit = 20;
-
+export class GetBookingsQueryDto extends BaseQueryDto {
   @IsOptional()
   @IsEnum(BookingStatus)
   status?: BookingStatus;
-
-  @IsOptional()
-  @IsString()
-  traineeId?: string;
-
-  @IsOptional()
-  @IsString()
-  trainerId?: string;
-
-  @IsOptional()
-  @IsEnum(SortOrder)
-  order: SortOrder = SortOrder.DESC;
 }
