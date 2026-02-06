@@ -17,6 +17,7 @@ import { BookingModule } from './modules/booking/booking.module';
 import { WorkoutModule } from './modules/workout/workout.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { RedisModule } from './modules/redis/redis.module';
+import { ExerciseModule } from './modules/exercise/exercise.module';
 
 @Module({
   imports: [
@@ -40,6 +41,7 @@ import { RedisModule } from './modules/redis/redis.module';
     AuthModule,
     RedisModule,
     PassportModule,
+    ExerciseModule,
   ],
   controllers: [],
   providers: [],
