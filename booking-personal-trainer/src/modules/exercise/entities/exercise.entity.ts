@@ -1,4 +1,4 @@
-import { Entity, Enum, Property } from '@mikro-orm/core';
+import { Entity, Enum, Index, Property } from '@mikro-orm/core';
 
 // Commons
 import { BaseEntity } from '../../../common/entities/base.entity';
@@ -8,6 +8,7 @@ import {
 } from '../../../common/enums/exercise/exercise.enum';
 
 @Entity()
+@Index({ properties: ['isDeleted'] })
 export class Exercise extends BaseEntity {
   @Property({ length: 255 })
   name!: string;
@@ -26,4 +27,10 @@ export class Exercise extends BaseEntity {
 
   @Property({ nullable: true })
   thumbnailUrl?: string;
+
+  @Property({ default: false })
+  isDeleted?: boolean;
+
+  @Property({ nullable: true })
+  deletedAt?: Date | null;
 }

@@ -8,6 +8,7 @@ import {
   Delete,
   Query,
   UseGuards,
+  ParseUUIDPipe,
 } from '@nestjs/common';
 
 // Commons
@@ -25,6 +26,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 // DTOs
 import { CreateExerciseDto } from './dto/create-exercise.dto';
+import { UpdateExerciseDto } from './dto/update-exercise.dto';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('exercises')
@@ -52,15 +54,20 @@ export class ExerciseController {
   @Roles(UserRole.ADMIN)
   @Patch(':id')
   update(
-    @Param('id') id: string,
-    // @Body() updateExerciseDto: UpdateExerciseDto,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: UpdateExerciseDto,
   ) {
-    return this.exerciseService.update(id);
+    return this.exerciseService.update(id, body);
+  }
+
+  @Patch(':id/restore')
+  restore(@Param('id') id: string) {
+    return this.exerciseService.restore(id);
   }
 
   @Roles(UserRole.ADMIN)
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.exerciseService.remove(id);
+  remove(@Param('id', ParseUUIDPipe) id: string) {
+    return this.exerciseService.softDelete(id);
   }
 }

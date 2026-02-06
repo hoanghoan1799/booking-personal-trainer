@@ -1,6 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@mikro-orm/nestjs';
 import { EntityManager, EntityRepository, FilterQuery } from '@mikro-orm/core';
+import { plainToInstance } from 'class-transformer';
 
 // Commons
 import {
@@ -9,6 +10,9 @@ import {
 } from '../../common/enums/pagination/pagination.enum';
 import { BaseResponse } from '../../common/dtos/base-response.dto';
 
+// Constants
+import { ERROR_MESSAGES } from '../../common/constants/message.constant';
+
 // Entities
 import { Exercise } from './entities/exercise.entity';
 
@@ -16,6 +20,7 @@ import { Exercise } from './entities/exercise.entity';
 import { ExercisesQueryDto } from './dto/query-exercise.dto';
 import { CreateExerciseDto } from './dto/create-exercise.dto';
 import { ResponseExerciseDto } from './dto/response-exercise.dto';
+import { UpdateExerciseDto } from './dto/update-exercise.dto';
 
 @Injectable()
 export class ExerciseService {
@@ -46,7 +51,9 @@ export class ExerciseService {
     } = query;
     const offset = (page - 1) * limit;
 
-    const where: FilterQuery<Exercise> = {};
+    const where: FilterQuery<Exercise> = {
+      isDeleted: false,
+    };
 
     if (muscleGroup) {
       where.muscleGroup = muscleGroup;
@@ -71,7 +78,9 @@ export class ExerciseService {
     });
 
     return {
-      data,
+      data: plainToInstance(ResponseExerciseDto, data, {
+        excludeExtraneousValues: true,
+      }),
       meta: {
         page,
         limit,
@@ -85,11 +94,58 @@ export class ExerciseService {
     return `This action returns a #${id} exercise`;
   }
 
-  update(id: string) {
-    return `This action updates a #${id} exercise`;
+  async update(id: string, body: UpdateExerciseDto) {
+    const exercise = await this.exerciseRepo.findOne({ id });
+
+    if (!exercise) {
+      throw new NotFoundException(ERROR_MESSAGES.EXERCISE.NOT_FOUND);
+    }
+
+    await this.em.persist(body).flush();
+
+    return exercise;
   }
 
-  remove(id: string) {
-    return `This action removes a #${id} exercise`;
+  async remove(id: string): Promise<void> {
+    const exercise = await this.exerciseRepo.findOne({ id });
+
+    if (!exercise) {
+      throw new NotFoundException(ERROR_MESSAGES.EXERCISE.NOT_FOUND);
+    }
+
+    await this.em.remove(exercise).flush();
+  }
+
+  async softDelete(id: string) {
+    const exercise = await this.exerciseRepo.findOne({
+      id,
+      isDeleted: false,
+    });
+
+    if (!exercise) {
+      throw new NotFoundException(ERROR_MESSAGES.EXERCISE.NOT_FOUND);
+    }
+
+    exercise.isDeleted = true;
+    exercise.deletedAt = new Date();
+
+    await this.em.flush();
+
+    return { message: 'Exercise deleted' };
+  }
+
+  async restore(id: string) {
+    const exercise = await this.exerciseRepo.findOne({ id, isDeleted: true });
+
+    if (!exercise) {
+      throw new NotFoundException(ERROR_MESSAGES.EXERCISE.NOT_FOUND);
+    }
+
+    exercise.isDeleted = false;
+    exercise.deletedAt = null;
+
+    await this.em.flush();
+
+    return { message: 'Exercise restored' };
   }
 }

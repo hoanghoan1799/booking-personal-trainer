@@ -1,4 +1,5 @@
 import {
+  IsBoolean,
   IsEnum,
   IsNotEmpty,
   IsOptional,
@@ -34,4 +35,8 @@ export class CreateExerciseDto {
   @IsUrl()
   @IsOptional()
   videoUrl?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  isDeleted?: boolean;
 }

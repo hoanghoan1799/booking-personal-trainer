@@ -22,6 +22,10 @@ export const ERROR_MESSAGES = {
     CANNOT_ASSIGN_ADMIN: 'You cannot assign admin role to other users',
     TRAINER_NOT_AVAILABLE: 'Trainer is not available',
   },
+
+  EXERCISE: {
+    NOT_FOUND: 'Exercise not found',
+  },
   BOOKING: {
     INVALID_TIME_RANGE: 'Start time must be before end time',
     CANNOT_BOOK_SELF: 'You cannot book yourself',
