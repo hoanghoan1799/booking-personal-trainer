@@ -6,7 +6,7 @@ import {
 } from '../../../common/enums/user/user.enum';
 
 export class ResponseUserDto {
-  id: string;
+  id?: string;
   userName: string;
   email: string;
   firstName: string;
