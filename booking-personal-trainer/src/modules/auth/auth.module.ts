@@ -15,6 +15,7 @@ import { AuthService } from './auth.service';
 import { HashingService } from './services/hashing.service';
 import { BcryptService } from './services/bcrypt.service';
 import { RefreshTokenService } from './services/refresh-token.service';
+import { AdminSeedService } from './services/admin-seed.service';
 
 // Controllers
 import { AuthController } from './auth.controller';
@@ -41,6 +42,7 @@ import { RedisModule } from '../redis/redis.module';
   controllers: [AuthController],
   providers: [
     AuthService,
+    AdminSeedService,
     JwtStrategy,
     RefreshTokenService,
     {

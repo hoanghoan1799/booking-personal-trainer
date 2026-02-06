@@ -10,6 +10,7 @@ import { JwtService } from '@nestjs/jwt';
 // Commons
 import { ERROR_MESSAGES } from '../../common/constants/message.constant';
 import { TOKEN_EXPIRATION } from '../../common/constants/token.constants';
+import { BaseResponse } from '../../common/dtos/base-response.dto';
 
 // Types
 import { JwtAuthPayload } from './types/jwt-auth.type';
@@ -54,7 +55,7 @@ export class AuthService {
    * @returns The newly registered user.
    * @throws ConflictException If the email or user name already exists.
    */
-  async register(data: RegisterDto): Promise<ResponseUserDto> {
+  async register(data: RegisterDto): Promise<BaseResponse<ResponseUserDto>> {
     const { email, password, userName, userType, firstName, lastName } = data;
 
     const existingUser = await this.userService.findByEmailOrUserName(
@@ -79,7 +80,7 @@ export class AuthService {
         ? TrainerApprovalStatus.NONE
         : TrainerApprovalStatus.PENDING;
 
-    const newUser: ResponseUserDto = await this.userService.create({
+    const newUser = await this.userService.create({
       email,
       password: hashedPassword,
       userName,

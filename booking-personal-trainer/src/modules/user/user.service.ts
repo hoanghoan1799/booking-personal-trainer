@@ -31,6 +31,7 @@ import { User } from './entities/user.entity';
 // DTOs
 import { UpdateUserRoleDto } from './dtos/update-user.dto';
 import { GetUsersQueryDto } from './dtos/get-user.dto';
+import { BaseResponse } from '../../common/dtos/base-response.dto';
 
 @Injectable()
 export class UserService {
@@ -44,7 +45,7 @@ export class UserService {
    * @param data The user data to be created.
    * @returns The newly created user.
    */
-  async create(data: RegisterDto): Promise<ResponseUserDto> {
+  async create(data: RegisterDto): Promise<BaseResponse<ResponseUserDto>> {
     const newUser: User = this.userRepo.create({
       email: data.email,
       password: data.password,
@@ -71,7 +72,7 @@ export class UserService {
       status: newUser.status,
     };
 
-    return responseUser;
+    return { data: responseUser };
   }
 
   /**
@@ -98,7 +99,9 @@ export class UserService {
     return this.userRepo.findOne({ id });
   }
 
-  async getAll(query: GetUsersQueryDto) {
+  async getAll(
+    query: GetUsersQueryDto,
+  ): Promise<BaseResponse<ResponseUserDto[]>> {
     const {
       page = 1,
       limit = 20,
@@ -109,6 +112,7 @@ export class UserService {
       order,
       role,
     } = query;
+    const offset = (page - 1) * limit;
 
     const where: FilterQuery<User> = {};
 
@@ -137,7 +141,7 @@ export class UserService {
 
     const [data, totalItems] = await this.userRepo.findAndCount(where, {
       limit,
-      offset: (page - 1) * limit,
+      offset,
       orderBy,
     });
 
