@@ -1,4 +1,5 @@
-import { Entity, Property, Enum, ManyToOne } from '@mikro-orm/core';
+import { Entity, Property, Enum, ManyToOne, Index } from '@mikro-orm/core';
+
 // Commons
 import { BaseEntity } from '../../../common/entities/base.entity';
 import { WorkoutStatus } from '../../../common/enums/workout/workout.enum';
@@ -6,6 +7,9 @@ import { WorkoutStatus } from '../../../common/enums/workout/workout.enum';
 // Entities
 import { User } from '../../../modules/user/entities/user.entity';
 
+@Index({ properties: ['trainer', 'isDeleted'] })
+@Index({ properties: ['trainee', 'isDeleted'] })
+@Index({ properties: ['startTime'] })
 @Entity({ tableName: 'workouts' })
 export class Workout extends BaseEntity {
   @ManyToOne(() => User)
@@ -23,12 +27,9 @@ export class Workout extends BaseEntity {
   @Property()
   endTime!: Date;
 
-  @Property({ default: 0 })
-  totalExercises!: number;
-
-  @Property({ default: 0 })
-  completedExercises!: number;
+  @Property({ default: false })
+  isDeleted?: boolean;
 
   @Property({ nullable: true })
-  progress?: string;
+  deletedAt?: Date | null;
 }
