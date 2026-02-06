@@ -12,6 +12,7 @@ export const ERROR_MESSAGES = {
     UNAUTHORIZED: 'You are not authorized to perform this action',
     FORBIDDEN: 'You do not have permission to perform this action',
   },
+
   USER: {
     NOT_FOUND: 'User not found',
     ALREADY_EXISTS: 'User already exists',
@@ -23,9 +24,21 @@ export const ERROR_MESSAGES = {
     TRAINER_NOT_AVAILABLE: 'Trainer is not available',
   },
 
+  TRAINER: {},
+  TRAINEE: {
+    NOT_FOUND: 'Trainee not found',
+  },
+
+  WORKOUT: {
+    INVALID_EXERCISES: 'Exercises are not available',
+    INVALID_TIME_RANGE: 'Start time must be before end time',
+    NOT_FOUND: 'Workout not found',
+  },
+
   EXERCISE: {
     NOT_FOUND: 'Exercise not found',
   },
+
   BOOKING: {
     INVALID_TIME_RANGE: 'Start time must be before end time',
     CANNOT_BOOK_SELF: 'You cannot book yourself',
@@ -33,6 +46,7 @@ export const ERROR_MESSAGES = {
     CANNOT_BOOK_IN_PAST: 'You cannot book in the past',
     MUST_BOOK_BEFORE_30_MINUTES: 'You must book before 30 minutes',
   },
+
   VALIDATION: {
     USERNAME_REQUIRED: 'Username is required',
     EMAIL_REQUIRED: 'User email is required',
@@ -43,6 +57,7 @@ export const ERROR_MESSAGES = {
     ROLE_REQUIRED: 'User role is required',
     TYPE_REQUIRED: 'User type is required',
   },
+
   SYSTEM: {
     INTERNAL_SERVER_ERROR: 'Internal server error',
   },
