@@ -47,7 +47,7 @@ export class ExerciseController {
 
   @Roles(UserRole.ADMIN, UserRole.TRAINER)
   @Get(':id')
-  getOne(@Param('id') id: string) {
+  getOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.exerciseService.getOne(id);
   }
 

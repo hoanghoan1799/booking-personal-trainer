@@ -47,3 +47,23 @@ export const ERROR_MESSAGES = {
     INTERNAL_SERVER_ERROR: 'Internal server error',
   },
 } as const;
+
+export const SUCCESS_MESSAGES = {
+  USER: {
+    CREATED: 'User created successfully',
+    UPDATED: 'User updated successfully',
+    DELETED: 'User deleted successfully',
+    LOGGED_IN: 'User logged in successfully',
+  },
+  EXERCISE: {
+    CREATED: 'Exercise created successfully',
+    UPDATED: 'Exercise updated successfully',
+    DELETED: 'Exercise deleted successfully',
+    RESTORED: 'Exercise restored successfully',
+  },
+  BOOKING: {
+    CREATED: 'Booking created successfully',
+    UPDATED: 'Booking updated successfully',
+    DELETED: 'Booking deleted successfully',
+  },
+} as const;
