@@ -95,10 +95,21 @@ export class UserService {
    * @param id The id of the user to find.
    * @returns The user if found, or null if not found.
    */
-  async findById(id: string): Promise<User | null> {
-    return this.userRepo.findOne({ id });
+  async findById(id: string): Promise<User> {
+    const existingUser = await this.userRepo.findOne({ id });
+
+    if (!existingUser) {
+      throw new NotFoundException(ERROR_MESSAGES.USER.NOT_FOUND);
+    }
+
+    return existingUser;
   }
 
+  /**
+   * Gets all users.
+   * @param query The query object to filter, sort and paginate the users.
+   * @returns The users filtered, sorted and paginated according to the query.
+   */
   async getAll(
     query: GetUsersQueryDto,
   ): Promise<BaseResponse<ResponseUserDto[]>> {

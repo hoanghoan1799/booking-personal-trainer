@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@mikro-orm/nestjs';
 import {
   EntityManager,
@@ -39,6 +43,11 @@ export class ExerciseService {
     private readonly em: EntityManager,
   ) {}
 
+  /**
+   * Creates a new exercise in the database.
+   * @param data The exercise data to be created.
+   * @returns A promise of a BaseResponse containing the newly created exercise.
+   */
   async create(data: CreateExerciseDto): Promise<BaseResponse<Exercise>> {
     const exercise = this.exerciseRepo.create(data);
 
@@ -47,6 +56,11 @@ export class ExerciseService {
     return { data: exercise };
   }
 
+  /**
+   * Gets all exercises filtered by muscle group and equipment.
+   * @param query The query object to filter, sort and paginate the exercises.
+   * @returns The exercises filtered, sorted and paginated according to the query.
+   */
   async getAll(
     query: ExercisesQueryDto,
   ): Promise<BaseResponse<ResponseExerciseDto[]>> {
@@ -99,6 +113,11 @@ export class ExerciseService {
     };
   }
 
+  /**
+   * Retrieves an exercise by its id.
+   * @throws NotFoundException If the exercise with the given id is not found.
+   * @returns The exercise with the given id if found.
+   */
   async getOne(id: string): Promise<Exercise> {
     const exercise = await this.exerciseRepo.findOne({ id });
 
@@ -109,6 +128,13 @@ export class ExerciseService {
     return exercise;
   }
 
+  /**
+   * Updates an exercise with the given id.
+   * @param id The id of the exercise to be updated.
+   * @param body The updated exercise data.
+   * @returns The updated exercise.
+   * @throws NotFoundException If the exercise is not found.
+   */
   async update(id: string, body: UpdateExerciseDto) {
     const exercise = await this.exerciseRepo.findOne({ id });
 
@@ -125,6 +151,13 @@ export class ExerciseService {
     return exercise;
   }
 
+  /**
+   * Soft deletes an exercise with the given id.
+   * Sets the isDeleted flag to true and the deletedAt timestamp to the current date and time.
+   * @param id The id of the exercise to be soft deleted.
+   * @returns A success message response.
+   * @throws NotFoundException If the exercise is not found.
+   */
   async remove(id: string): Promise<void> {
     const exercise = await this.exerciseRepo.findOne({ id });
 
@@ -135,6 +168,13 @@ export class ExerciseService {
     await this.em.remove(exercise).flush();
   }
 
+  /**
+   * Soft deletes an exercise with the given id.
+   * Sets the isDeleted flag to true and the deletedAt timestamp to the current date and time.
+   * @param id The id of the exercise to be soft deleted.
+   * @returns A success message response.
+   * @throws NotFoundException If the exercise is not found.
+   */
   async softDelete(id: string): Promise<SuccessMessageResponse> {
     const exercise = await this.exerciseRepo.findOne({
       id,
@@ -153,6 +193,12 @@ export class ExerciseService {
     return { message: SUCCESS_MESSAGES.EXERCISE.DELETED };
   }
 
+  /**
+   * Restore a deleted exercise
+   * @param id The id of the exercise to be restored
+   * @returns A success message response
+   * @throws NotFoundException If the exercise is not found
+   */
   async restore(id: string): Promise<SuccessMessageResponse> {
     const exercise = await this.exerciseRepo.findOne({ id, isDeleted: true });
 
@@ -166,5 +212,24 @@ export class ExerciseService {
     await this.em.flush();
 
     return { message: SUCCESS_MESSAGES.EXERCISE.RESTORED };
+  }
+
+  /**
+   * Finds exercises by their ids.
+   * @param ids The ids of the exercises to find.
+   * @returns The exercises if found, or an error if not found.
+   * @throws {BadRequestException} If the exercises are not found or if the ids contain invalid exercise ids.
+   */
+  async findByIds(ids: string[]): Promise<Exercise[]> {
+    const exercises = await this.exerciseRepo.find({
+      id: { $in: ids },
+      isDeleted: false,
+    });
+
+    if (exercises.length !== ids.length) {
+      throw new BadRequestException(ERROR_MESSAGES.WORKOUT.INVALID_EXERCISES);
+    }
+
+    return exercises;
   }
 }
