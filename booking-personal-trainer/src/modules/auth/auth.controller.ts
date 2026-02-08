@@ -17,7 +17,7 @@ import {
   TOKEN_COOKIE,
   TOKEN_MAX_AGE,
 } from '../../common/constants/token.constants';
-import { ROUTES } from '../../common/constants/route.constant';
+import { ROUTES, ROUTE_PREFIX } from '../../common/constants/route.constant';
 import { COOKIE_OPTIONS } from '../../common/constants/cookie.constant';
 import { ERROR_MESSAGES } from '../../common/constants/message.constant';
 import { Cookie } from '../../common/decorators/cookie.decorator';
@@ -71,13 +71,13 @@ export class AuthController {
 
     res.cookie(TOKEN_COOKIE.REFRESH, refreshToken, {
       ...COOKIE_OPTIONS,
+      path: `${ROUTE_PREFIX.V1}${ROUTES.TOKEN_REFRESH}`,
       maxAge: TOKEN_MAX_AGE.REFRESH,
     });
 
     return user;
   }
 
-  @Public()
   @HttpCode(HttpStatus.OK)
   @Post('token/refresh')
   /**
@@ -102,10 +102,11 @@ export class AuthController {
 
     res.cookie(TOKEN_COOKIE.REFRESH, refreshToken, {
       ...COOKIE_OPTIONS,
+      path: `${ROUTE_PREFIX.V1}${ROUTES.TOKEN_REFRESH}`,
       maxAge: TOKEN_MAX_AGE.REFRESH,
     });
 
-    res.cookie(TOKEN_COOKIE.REFRESH, accessToken, {
+    res.cookie(TOKEN_COOKIE.ACCESS, accessToken, {
       ...COOKIE_OPTIONS,
       maxAge: TOKEN_MAX_AGE.ACCESS,
     });

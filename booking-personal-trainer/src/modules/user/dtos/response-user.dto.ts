@@ -1,3 +1,6 @@
+import { Expose } from 'class-transformer';
+
+// Commons
 import {
   TrainerApprovalStatus,
   UserRole,
@@ -6,13 +9,30 @@ import {
 } from '../../../common/enums/user/user.enum';
 
 export class ResponseUserDto {
-  id?: string;
+  @Expose()
+  id: string;
+
+  @Expose()
   userName: string;
+
+  @Expose()
   email: string;
+
+  @Expose()
   firstName: string;
+
+  @Expose()
   lastName: string;
+
+  @Expose()
   role: UserRole;
+
+  @Expose()
   userType: UserType;
+
+  @Expose()
   approvalStatus: TrainerApprovalStatus;
+
+  @Expose()
   status: UserStatus;
 }

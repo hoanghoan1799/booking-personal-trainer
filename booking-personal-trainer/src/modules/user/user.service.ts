@@ -29,7 +29,10 @@ import type { JwtAuthPayload } from '../auth/types/jwt-auth.type';
 import { User } from './entities/user.entity';
 
 // DTOs
-import { UpdateUserRoleDto } from './dtos/update-user.dto';
+import {
+  UpdateUserProfileDto,
+  UpdateUserRoleDto,
+} from './dtos/update-user.dto';
 import { GetUsersQueryDto } from './dtos/get-user.dto';
 import { BaseResponse } from '../../common/dtos/base-response.dto';
 
@@ -231,5 +234,28 @@ export class UserService {
     await this.em.persist(targetUser).flush();
 
     return targetUser;
+  }
+
+  /**
+   * Updates the profile of the current user.
+   * @param data The user data to be updated.
+   * @param currentUser The current user.
+   * @returns The updated user profile.
+   * @throws NotFoundException If the user is not found.
+   */
+  async updateProfile(
+    data: UpdateUserProfileDto,
+    currentUser: JwtAuthPayload,
+  ): Promise<BaseResponse<ResponseUserDto>> {
+    const user: User = await this.findById(currentUser.id);
+
+    if (!user) {
+      throw new NotFoundException(ERROR_MESSAGES.USER.NOT_FOUND);
+    }
+
+    Object.assign(user, data);
+
+    await this.em.persist(user).flush();
+    return { data: user };
   }
 }

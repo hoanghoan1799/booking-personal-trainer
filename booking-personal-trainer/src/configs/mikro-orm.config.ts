@@ -37,6 +37,7 @@ export const mikroORMConfig: MikroOrmModuleAsyncOptions = {
     dbName: config.getOrThrow('POSTGRES_DB'),
     autoLoadEntities: true,
     registerRequestContext: true,
+    forceEntityConstructor: true,
     migrations: {
       path: 'dist/migrations',
       pathTs: 'src/migrations',

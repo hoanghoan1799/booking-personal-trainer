@@ -5,8 +5,11 @@ import { ValidationPipe, VersioningType } from '@nestjs/common';
 import cookieParser from 'cookie-parser';
 
 // Commons
-import { APP_PORT_DEFAULT } from './common/constants/app.constant';
+import { API_PREFIX, APP_PORT_DEFAULT } from './common/constants/app.constant';
 import { AllExceptionsFilter } from './common/filters/all-exception.filter';
+
+// Configs
+import { CORS_CONFIG } from './configs/cors.config';
 
 async function bootstrap() {
   // Create app
@@ -20,10 +23,10 @@ async function bootstrap() {
   app.use(cookieParser());
 
   // Enable cors
-  app.enableCors();
+  app.enableCors(CORS_CONFIG);
 
   // Global prefix for all routes
-  app.setGlobalPrefix('api');
+  app.setGlobalPrefix(API_PREFIX);
 
   // Enable versioning for all routes
   app.enableVersioning({
