@@ -52,7 +52,7 @@ export class WorkoutController {
 
   @Roles(UserRole.ADMIN, UserRole.TRAINER)
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.workoutService.remove(id);
+  remove() {
+    return this.workoutService.removeAll();
   }
 }

@@ -9,18 +9,20 @@ import { InjectRepository } from '@mikro-orm/nestjs';
 // Commons
 import { ERROR_MESSAGES } from '../../common/constants/message.constant';
 import { WorkoutStatus } from '../../common/enums/workout/workout.enum';
+import { BaseResponse } from '../../common/dtos/base-response.dto';
 
 // Entities
 import { Workout } from './entities/workout.entity';
 import { WorkoutExercise } from './entities/workout-exercise.entity';
+import { WorkoutResponseDto } from './entities/workout-response.dto';
 
 // DTOs
 import { CreateWorkoutDto } from './dtos/create-workout.dto';
+import { WorkoutsQueryDto } from './dtos/query-workout.dto';
 
 // Services
 import { UserService } from '../user/user.service';
 import { ExerciseService } from '../exercise/exercise.service';
-import { WorkoutsQueryDto } from './dtos/query-workout.dto';
 
 @Injectable()
 export class WorkoutService {
@@ -50,27 +52,29 @@ export class WorkoutService {
         throw new BadRequestException(ERROR_MESSAGES.WORKOUT.INVALID_EXERCISES);
       }
 
-      const workoutExercises = dto.exerciseIds.map((exerciseId, index) =>
-        em.create(WorkoutExercise, {
+      dto.exerciseIds.forEach((exerciseId, index) => {
+        const exercise = exercises.find((ex) => ex.id === exerciseId)!;
+
+        const workoutExercise = em.create(WorkoutExercise, {
           workout,
-          exercise: exercises.find((e) => e.id === exerciseId)!,
+          exercise,
           order: index + 1,
           isCompleted: false,
           isDeleted: false,
-        }),
-      );
+        });
 
-      const response = [workout, ...workoutExercises];
+        workout.exercises.add(workoutExercise);
+      });
 
-      em.persist(response);
+      await em.persist(workout).flush();
 
-      await em.flush();
-
-      return { data: response };
+      return { data: workout };
     });
   }
 
-  async getAll(query: WorkoutsQueryDto) {
+  async getAll(
+    query: WorkoutsQueryDto,
+  ): Promise<BaseResponse<WorkoutResponseDto[]>> {
     const { page = 1, limit = 20, trainerId, traineeId, status } = query;
 
     const offset = (page - 1) * limit;
@@ -95,11 +99,29 @@ export class WorkoutService {
       limit,
       offset,
       orderBy: { createdAt: 'desc' },
-      populate: ['trainer', 'trainee'],
+      populate: ['trainer', 'trainee', 'exercises', 'exercises.exercise'],
     });
 
+    const mappedData: WorkoutResponseDto[] = data.map((workout) => ({
+      id: workout.id,
+      startTime: workout.startTime,
+      endTime: workout.endTime,
+      status: workout.status,
+      trainer: workout.trainer,
+      trainee: workout.trainee,
+      totalExercises: workout.exercises.getItems().length,
+      completedExercises: workout.exercises
+        .getItems()
+        .filter((we) => we.isCompleted).length,
+      exercises: workout.exercises.getItems().map((we) => ({
+        order: we.order,
+        isCompleted: we.isCompleted,
+        exercise: we.exercise,
+      })),
+    }));
+
     return {
-      data,
+      data: mappedData,
       meta: {
         page,
         limit,
@@ -113,8 +135,12 @@ export class WorkoutService {
     return `This action returns a #${id} workout`;
   }
 
-  remove(id: string) {
-    return `This action removes a #${id} workout`;
+  async removeAll() {
+    await this.em.nativeDelete('WorkoutExercise', {});
+
+    const count = await this.em.nativeDelete('Workout', {});
+
+    return count;
   }
 
   async softDelete(id: string) {
