@@ -2,6 +2,8 @@ import {
   Body,
   Controller,
   Get,
+  HttpCode,
+  HttpStatus,
   Post,
   Res,
   UnauthorizedException,
@@ -16,10 +18,7 @@ import {
   TOKEN_MAX_AGE,
 } from '../../common/constants/token.constants';
 import { ROUTES } from '../../common/constants/route.constant';
-import {
-  COOKIE_OPTIONS,
-  COOKIE_SAME_SITE,
-} from '../../common/constants/cookie.constant';
+import { COOKIE_OPTIONS } from '../../common/constants/cookie.constant';
 import { ERROR_MESSAGES } from '../../common/constants/message.constant';
 import { Cookie } from '../../common/decorators/cookie.decorator';
 import { CurrentUser } from '../../common/decorators/user.decorator';
@@ -27,7 +26,6 @@ import { CurrentUser } from '../../common/decorators/user.decorator';
 // DTOs
 import { RegisterDto } from './dtos/register.dto';
 import { LoginDto } from './dtos/login.dto';
-import { TokenResponseDto } from './dtos/token.dto';
 
 // Services
 import { AuthService } from './auth.service';
@@ -52,6 +50,7 @@ export class AuthController {
   }
 
   @Public()
+  @HttpCode(HttpStatus.OK)
   @Post('login')
   /**
    * Logs in the user.
@@ -79,17 +78,18 @@ export class AuthController {
   }
 
   @Public()
+  @HttpCode(HttpStatus.OK)
   @Post('token/refresh')
   /**
    * Refreshes the access token and refresh token.
    * @throws UnauthorizedException if refresh token is not found
-   * @returns {Promise<TokenResponseDto>} with the new access token and its expiration time in seconds
+   * @returns {Promise<void>} with the new access token and its expiration time in seconds
    */
   async refresh(
     @Res({ passthrough: true })
     res: Response,
     @Cookie(TOKEN_COOKIE.REFRESH) refreshTokenFromCookie?: string,
-  ): Promise<TokenResponseDto> {
+  ): Promise<void> {
     if (!refreshTokenFromCookie) {
       throw new UnauthorizedException(
         ERROR_MESSAGES.AUTH.REFRESH_TOKEN_NOT_FOUND,
@@ -101,14 +101,16 @@ export class AuthController {
     });
 
     res.cookie(TOKEN_COOKIE.REFRESH, refreshToken, {
-      httpOnly: true,
-      secure: true,
-      sameSite: COOKIE_SAME_SITE.strict,
-      path: ROUTES.ROOT,
+      ...COOKIE_OPTIONS,
       maxAge: TOKEN_MAX_AGE.REFRESH,
     });
 
-    return { accessToken, expiresIn: TOKEN_MAX_AGE.ACCESS };
+    res.cookie(TOKEN_COOKIE.REFRESH, accessToken, {
+      ...COOKIE_OPTIONS,
+      maxAge: TOKEN_MAX_AGE.ACCESS,
+    });
+
+    return;
   }
 
   @Public()
@@ -122,7 +124,7 @@ export class AuthController {
   async logout(
     @Res({ passthrough: true }) res: Response,
     @Cookie(TOKEN_COOKIE.REFRESH) refreshTokenFromCookie?: string,
-  ) {
+  ): Promise<{ success: boolean }> {
     await this.authService.logout({
       refreshToken: refreshTokenFromCookie,
     });

@@ -15,6 +15,9 @@ import { BaseResponse } from '../../common/dtos/base-response.dto';
 // Types
 import { JwtAuthPayload } from './types/jwt-auth.type';
 
+// Entities
+import { User } from '../user/entities/user.entity';
+
 // DTOs
 import { RegisterDto } from './dtos/register.dto';
 import { ResponseUserDto } from '../user/dtos/response-user.dto';
@@ -254,7 +257,7 @@ export class AuthService {
    * @throws {NotFoundException} If the user is not found.
    * @returns {Promise<User>} The user profile if found.
    */
-  async getProfile(userId: string) {
+  async getProfile(userId: string): Promise<BaseResponse<User>> {
     const user = await this.userService.findById(userId);
 
     if (!user) {
@@ -273,9 +276,7 @@ export class AuthService {
    * @param payload The payload to be signed into the tokens.
    * @returns A promise that resolves to an object containing the access token and the refresh token.
    */
-  private async createTokens(
-    payload: JwtAuthPayload,
-  ): Promise<{ accessToken: string; refreshToken: string }> {
+  private async createTokens(payload: JwtAuthPayload): Promise<TokensDto> {
     const accessToken: string = await this.jwtService.signAsync(payload, {
       expiresIn: TOKEN_EXPIRATION.ACCESS,
     });

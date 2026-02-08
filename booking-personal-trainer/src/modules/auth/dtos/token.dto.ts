@@ -1,15 +1,5 @@
 import { IsNotEmpty, IsNumber, IsString } from 'class-validator';
 
-export class TokenResponseDto {
-  @IsString()
-  @IsNotEmpty()
-  accessToken: string;
-
-  @IsNumber()
-  @IsNotEmpty()
-  expiresIn: number;
-}
-
 export class RevokeTokenDto {
   @IsString()
   @IsNotEmpty()
@@ -42,4 +32,10 @@ export class TokensDto {
   @IsString()
   @IsNotEmpty()
   refreshToken: string;
+}
+
+export class TokenResponseDto extends TokensDto {
+  @IsNumber()
+  @IsNotEmpty()
+  expiresIn: number;
 }
