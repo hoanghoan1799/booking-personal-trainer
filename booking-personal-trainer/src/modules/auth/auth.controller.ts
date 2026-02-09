@@ -22,17 +22,20 @@ import { COOKIE_OPTIONS } from '../../common/constants/cookie.constant';
 import { ERROR_MESSAGES } from '../../common/constants/message.constant';
 import { Cookie } from '../../common/decorators/cookie.decorator';
 import { CurrentUser } from '../../common/decorators/user.decorator';
+import { Serialize } from '../../common/decorators/serialize.decorator';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { BaseResponse } from '../../common/dtos/base-response.dto';
+import { Roles } from '../../common/decorators/role.decorator';
+import { UserRole } from '../../common/enums/user/user.enum';
 
 // DTOs
 import { RegisterDto } from './dtos/register.dto';
 import { LoginDto } from './dtos/login.dto';
+import { ResponseUserDto } from '../user/dtos/response-user.dto';
 
 // Services
 import { AuthService } from './auth.service';
 import type { JwtAuthPayload } from './types/jwt-auth.type';
-
-// Guards
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 
 @Controller('auth')
 export class AuthController {
@@ -40,18 +43,22 @@ export class AuthController {
 
   @Public()
   @Post('register')
+  @Serialize(ResponseUserDto)
   /**
    * Registers a new user.
    * @param data The user data to be registered.
    * @returns The newly registered user.
    */
-  async create(@Body() data: RegisterDto) {
+  async create(
+    @Body() data: RegisterDto,
+  ): Promise<BaseResponse<ResponseUserDto>> {
     return this.authService.register(data);
   }
 
   @Public()
   @HttpCode(HttpStatus.OK)
   @Post('login')
+  @Serialize(ResponseUserDto)
   /**
    * Logs in the user.
    * @param data The user data to be logged in.
@@ -60,7 +67,7 @@ export class AuthController {
   async login(
     @Body() data: LoginDto,
     @Res({ passthrough: true }) res: Response,
-  ) {
+  ): Promise<BaseResponse<ResponseUserDto>> {
     const { accessToken, refreshToken, user } =
       await this.authService.login(data);
 
@@ -75,7 +82,7 @@ export class AuthController {
       maxAge: TOKEN_MAX_AGE.REFRESH,
     });
 
-    return user;
+    return BaseResponse.ok(user);
   }
 
   @HttpCode(HttpStatus.OK)
@@ -114,7 +121,6 @@ export class AuthController {
     return;
   }
 
-  @Public()
   @Post('logout')
   /**
    * Logs out the user.
@@ -135,14 +141,18 @@ export class AuthController {
     return { success: true };
   }
 
-  @Get('profile')
   @UseGuards(JwtAuthGuard)
+  @Roles(UserRole.ADMIN, UserRole.TRAINEE, UserRole.TRAINER)
+  @Get('profile')
+  @Serialize(ResponseUserDto)
   /**
    * Gets the profile of the current user.
    * @throws NotFoundException if user is not found
    * @returns The profile of the current user
    */
-  async getProfile(@CurrentUser() user: JwtAuthPayload) {
+  async getProfile(
+    @CurrentUser() user: JwtAuthPayload,
+  ): Promise<BaseResponse<ResponseUserDto>> {
     return this.authService.getProfile(user.id);
   }
 }

@@ -95,7 +95,7 @@ export class AuthService {
       status: UserStatus.ACTIVE,
     });
 
-    return newUser;
+    return BaseResponse.ok(newUser);
   }
 
   /**
@@ -108,7 +108,8 @@ export class AuthService {
   async login(data: LoginDto): Promise<LoginResponseDto> {
     const { email, password } = data;
 
-    const existingUser = await this.userService.findByEmailOrUserName(email);
+    const existingUser: User | null =
+      await this.userService.findByEmailOrUserName(email);
 
     if (!existingUser) {
       throw new NotFoundException(ERROR_MESSAGES.USER.NOT_FOUND);
@@ -139,19 +140,7 @@ export class AuthService {
       refreshToken,
     });
 
-    const responseUser: ResponseUserDto = {
-      id: existingUser.id,
-      userName: existingUser.userName,
-      email: existingUser.email,
-      firstName: existingUser.firstName,
-      lastName: existingUser.lastName,
-      role: existingUser.role,
-      userType: existingUser.userType,
-      approvalStatus: existingUser.approvalStatus,
-      status: existingUser.status,
-    };
-
-    return { accessToken, refreshToken, user: responseUser };
+    return { accessToken, refreshToken, user: existingUser };
   }
 
   /**
@@ -264,7 +253,7 @@ export class AuthService {
       throw new NotFoundException(ERROR_MESSAGES.USER.NOT_FOUND);
     }
 
-    return { data: user };
+    return BaseResponse.ok(user);
   }
 
   /**

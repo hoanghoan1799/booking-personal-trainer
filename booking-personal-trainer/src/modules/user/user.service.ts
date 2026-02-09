@@ -48,7 +48,7 @@ export class UserService {
    * @param data The user data to be created.
    * @returns The newly created user.
    */
-  async create(data: RegisterDto): Promise<BaseResponse<ResponseUserDto>> {
+  async create(data: RegisterDto): Promise<User> {
     const newUser: User = this.userRepo.create({
       email: data.email,
       password: data.password,
@@ -63,19 +63,7 @@ export class UserService {
 
     await this.em.persist(newUser).flush();
 
-    const responseUser: ResponseUserDto = {
-      id: newUser.id,
-      userName: newUser.userName,
-      email: newUser.email,
-      firstName: newUser.firstName,
-      lastName: newUser.lastName,
-      role: newUser.role,
-      userType: newUser.userType,
-      approvalStatus: newUser.approvalStatus,
-      status: newUser.status,
-    };
-
-    return { data: responseUser };
+    return newUser;
   }
 
   /**

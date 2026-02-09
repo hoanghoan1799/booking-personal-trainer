@@ -9,10 +9,10 @@ import { Type } from 'class-transformer';
 
 // Commons
 import { ERROR_MESSAGES } from '../../../common/constants/message.constant';
+import { User } from '../../../modules/user/entities/user.entity';
 
 // DTOs
 import { TokensDto } from './token.dto';
-import { ResponseUserDto } from '../../../modules/user/dtos/response-user.dto';
 
 export class LoginDto {
   @IsEmail()
@@ -27,6 +27,6 @@ export class LoginDto {
 export class LoginResponseDto extends TokensDto {
   @IsObject()
   @ValidateNested()
-  @Type(() => ResponseUserDto)
-  user: ResponseUserDto;
+  @Type(() => User)
+  user: User;
 }
