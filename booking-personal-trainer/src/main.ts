@@ -1,7 +1,11 @@
-import { NestFactory } from '@nestjs/core';
+import { NestFactory, Reflector } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { MikroORM } from '@mikro-orm/core';
-import { ValidationPipe, VersioningType } from '@nestjs/common';
+import {
+  ClassSerializerInterceptor,
+  ValidationPipe,
+  VersioningType,
+} from '@nestjs/common';
 import cookieParser from 'cookie-parser';
 
 // Commons
@@ -45,6 +49,9 @@ async function bootstrap() {
       },
     }),
   );
+
+  // Global interceptors
+  app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
 
   // Global filters
   app.useGlobalFilters(new AllExceptionsFilter());

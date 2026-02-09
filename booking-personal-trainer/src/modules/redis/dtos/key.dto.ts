@@ -1,3 +1,4 @@
+import { Expose } from 'class-transformer';
 import { IsNotEmpty, IsNumber, IsString } from 'class-validator';
 
 export class SetKeyDto {
@@ -14,6 +15,7 @@ export class SetKeyDto {
 }
 
 export class KeyDto {
+  @Expose()
   @IsString()
   @IsNotEmpty()
   key: string;

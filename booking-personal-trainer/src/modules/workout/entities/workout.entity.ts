@@ -15,33 +15,42 @@ import { WorkoutStatus } from '../../../common/enums/workout/workout.enum';
 // Entities
 import { User } from '../../../modules/user/entities/user.entity';
 import { WorkoutExercise } from './workout-exercise.entity';
+import { Expose } from 'class-transformer';
 
 @Index({ properties: ['trainer', 'isDeleted'] })
 @Index({ properties: ['trainee', 'isDeleted'] })
 @Index({ properties: ['startTime'] })
 @Entity({ tableName: 'workouts' })
 export class Workout extends BaseEntity {
+  @Expose()
   @ManyToOne(() => User)
   trainer!: User;
 
+  @Expose()
   @ManyToOne(() => User)
   trainee!: User;
 
+  @Expose()
   @OneToMany(() => WorkoutExercise, (we) => we.workout, { orphanRemoval: true })
   exercises = new Collection<WorkoutExercise>(this);
 
+  @Expose()
   @Enum(() => WorkoutStatus)
   status: WorkoutStatus = WorkoutStatus.PENDING;
 
+  @Expose()
   @Property()
   startTime!: Date;
 
+  @Expose()
   @Property()
   endTime!: Date;
 
+  @Expose()
   @Property({ default: false })
   isDeleted?: boolean;
 
+  @Expose()
   @Property({ nullable: true })
   deletedAt?: Date | null;
 }
