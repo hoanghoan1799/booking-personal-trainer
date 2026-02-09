@@ -1,29 +1,37 @@
 import {
+  CallHandler,
+  ExecutionContext,
   Injectable,
   NestInterceptor,
-  ExecutionContext,
-  CallHandler,
 } from '@nestjs/common';
-import { Observable } from 'rxjs';
-import { map } from 'rxjs/operators';
+import { plainToInstance } from 'class-transformer';
+import { map, Observable } from 'rxjs';
 
-export interface Response<T> {
-  data: T;
-}
+// DTOs
+import { BaseResponse } from '../dtos/base-response.dto';
+
+export type ClassConstructor<T> = new (...args: any[]) => T;
 
 @Injectable()
-export class TransformInterceptor<T> implements NestInterceptor<
-  T,
-  Response<T>
-> {
+export class SerializeInterceptor<T> implements NestInterceptor {
+  constructor(private dto: ClassConstructor<T>) {}
+
   intercept(
-    context: ExecutionContext,
-    next: CallHandler,
-  ): Observable<Response<T>> {
-    return next.handle().pipe(
-      map((data: T) => ({
-        data,
-      })),
+    _context: ExecutionContext,
+    handler: CallHandler,
+  ): Observable<BaseResponse<T | T[]>> {
+    return handler.handle().pipe(
+      map((res: BaseResponse<T | T[]>) => {
+        if (!res || !res.data) return res;
+
+        return {
+          ...res,
+          data: plainToInstance(this.dto, res.data, {
+            excludeExtraneousValues: true,
+            enableImplicitConversion: true,
+          }),
+        };
+      }),
     );
   }
 }
