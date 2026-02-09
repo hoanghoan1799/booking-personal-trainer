@@ -5,18 +5,21 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useSidebar } from "../context/SidebarContext";
 import {
+  BoltIcon,
   BoxCubeIcon,
   CalenderIcon,
   ChevronDownIcon,
   GridIcon,
+  GroupIcon,
   HorizontaLDots,
   ListIcon,
   PageIcon,
   PieChartIcon,
-  PlugInIcon,
   TableIcon,
+  TaskIcon,
   UserCircleIcon,
 } from "../icons/index";
+import { APP_ROUTES } from "@/lib/route.constants";
 import SidebarWidget from "./SidebarWidget";
 
 type NavItem = {
@@ -30,19 +33,38 @@ const navItems: NavItem[] = [
   {
     icon: <GridIcon />,
     name: "Dashboard",
-    subItems: [{ name: "Ecommerce", path: "/", pro: false }],
+    subItems: [{ name: "Ecommerce", path: APP_ROUTES.ROOT, pro: false }],
+  },
+  {
+    icon: <TaskIcon />,
+    name: "Bookings",
+    path: APP_ROUTES.BOOKINGS,
   },
   {
     icon: <CalenderIcon />,
     name: "Calendar",
-    path: "/calendar",
+    path: APP_ROUTES.CALENDAR,
+  },
+  {
+    icon: <BoltIcon />,
+    name: "Exercises",
+    path: APP_ROUTES.EXERCISES,
+  },
+  {
+    icon: <TaskIcon />,
+    name: "Workouts",
+    path: APP_ROUTES.WORKOUTS,
+  },
+  {
+    icon: <GroupIcon />,
+    name: "Users",
+    path: APP_ROUTES.USERS,
   },
   {
     icon: <UserCircleIcon />,
     name: "User Profile",
-    path: "/profile",
+    path: APP_ROUTES.PROFILE,
   },
-
   {
     name: "Forms",
     icon: <ListIcon />,
@@ -84,14 +106,8 @@ const othersItems: NavItem[] = [
       { name: "Videos", path: "/videos", pro: false },
     ],
   },
-  {
-    icon: <PlugInIcon />,
-    name: "Authentication",
-    subItems: [
-      { name: "Sign In", path: "/signin", pro: false },
-      { name: "Sign Up", path: "/signup", pro: false },
-    ],
-  },
+  // Sign In / Sign Up removed - sidebar only shown when logged in.
+  // Auth pages redirect to / when user is authenticated.
 ];
 
 const AppSidebar: React.FC = () => {

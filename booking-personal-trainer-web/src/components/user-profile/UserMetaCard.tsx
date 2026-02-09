@@ -1,15 +1,30 @@
 "use client";
+
+import Image from "next/image";
 import React from "react";
+import type { User } from "@/types/user.types";
 import { useModal } from "../../hooks/useModal";
-import { Modal } from "../ui/modal";
-import Button from "../ui/button/Button";
 import Input from "../form/input/InputField";
 import Label from "../form/Label";
-import Image from "next/image";
+import Button from "../ui/button/Button";
+import { Modal } from "../ui/modal";
 
+const getDisplayName = (user: User | null) => {
+  if (!user) return "—";
+  if (user.firstName || user.lastName) {
+    return [user.firstName, user.lastName].filter(Boolean).join(" ").trim();
+  }
+  return user.userName;
+};
 
-export default function UserMetaCard() {
+interface UserMetaCardProps {
+  user: User | null;
+}
+
+export default function UserMetaCard({ user }: UserMetaCardProps) {
   const { isOpen, openModal, closeModal } = useModal();
+  const displayName = getDisplayName(user);
+  const roleOrType = user?.role ?? user?.userType ?? "—";
   const handleSave = () => {
     // Handle save logic here
     console.log("Saving changes...");
@@ -30,16 +45,20 @@ export default function UserMetaCard() {
             </div>
             <div className="order-3 xl:order-2">
               <h4 className="mb-2 text-lg font-semibold text-center text-gray-800 dark:text-white/90 xl:text-left">
-                Musharof Chowdhury
+                {displayName}
               </h4>
               <div className="flex flex-col items-center gap-1 text-center xl:flex-row xl:gap-3 xl:text-left">
                 <p className="text-sm text-gray-500 dark:text-gray-400">
-                  Team Manager
+                  {roleOrType}
                 </p>
-                <div className="hidden h-3.5 w-px bg-gray-300 dark:bg-gray-700 xl:block"></div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  Arizona, United States
-                </p>
+                {user?.email && (
+                  <>
+                    <div className="hidden h-3.5 w-px bg-gray-300 dark:bg-gray-700 xl:block" />
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      {user.email}
+                    </p>
+                  </>
+                )}
               </div>
             </div>
             <div className="flex items-center order-2 gap-2 grow xl:order-3 xl:justify-end">
