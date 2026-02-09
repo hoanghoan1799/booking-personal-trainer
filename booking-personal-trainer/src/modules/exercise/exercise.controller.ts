@@ -15,8 +15,10 @@ import {
 import { Roles } from '../../common/decorators/role.decorator';
 import { UserRole } from '../../common/enums/user/user.enum';
 import { RolesGuard } from '../../common/guards/roles.guard';
-import { BaseResponse } from '../../common/dtos/base-response.dto';
+import { BaseResponseDto } from '../../common/dtos/base-response.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { Serialize } from '../../common/decorators/serialize.decorator';
+import { SuccessMessageResponse } from '../../common/interfaces/success-message-response.interface';
 
 // DTOs
 import { ExercisesQueryDto } from './dto/query-exercise.dto';
@@ -26,10 +28,6 @@ import { UpdateExerciseDto } from './dto/update-exercise.dto';
 // Services
 import { ExerciseService } from './exercise.service';
 import { ExerciseResponseDto } from './dto/exercise-response.dto';
-
-// Decorators
-import { Serialize } from '../../common/decorators/serialize.decorator';
-import { SuccessMessageResponse } from 'src/common/interfaces/success-message-response.interface';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('exercises')
@@ -41,7 +39,7 @@ export class ExerciseController {
   @Serialize(ExerciseResponseDto)
   create(
     @Body() body: CreateExerciseDto,
-  ): Promise<BaseResponse<ExerciseResponseDto>> {
+  ): Promise<BaseResponseDto<ExerciseResponseDto>> {
     return this.exerciseService.create(body);
   }
 
@@ -57,7 +55,7 @@ export class ExerciseController {
   @Serialize(ExerciseResponseDto)
   getOne(
     @Param('id', ParseUUIDPipe) id: string,
-  ): Promise<BaseResponse<ExerciseResponseDto>> {
+  ): Promise<BaseResponseDto<ExerciseResponseDto>> {
     return this.exerciseService.getOne(id);
   }
 
@@ -67,7 +65,7 @@ export class ExerciseController {
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() body: UpdateExerciseDto,
-  ): Promise<BaseResponse<ExerciseResponseDto>> {
+  ): Promise<BaseResponseDto<ExerciseResponseDto>> {
     return this.exerciseService.update(id, body);
   }
 

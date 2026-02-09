@@ -24,7 +24,7 @@ import { Cookie } from '../../common/decorators/cookie.decorator';
 import { CurrentUser } from '../../common/decorators/user.decorator';
 import { Serialize } from '../../common/decorators/serialize.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { BaseResponse } from '../../common/dtos/base-response.dto';
+import { BaseResponseDto } from '../../common/dtos/base-response.dto';
 import { Roles } from '../../common/decorators/role.decorator';
 import { UserRole } from '../../common/enums/user/user.enum';
 
@@ -51,7 +51,7 @@ export class AuthController {
    */
   async create(
     @Body() data: RegisterDto,
-  ): Promise<BaseResponse<ResponseUserDto>> {
+  ): Promise<BaseResponseDto<ResponseUserDto>> {
     return this.authService.register(data);
   }
 
@@ -67,7 +67,7 @@ export class AuthController {
   async login(
     @Body() data: LoginDto,
     @Res({ passthrough: true }) res: Response,
-  ): Promise<BaseResponse<ResponseUserDto>> {
+  ): Promise<BaseResponseDto<ResponseUserDto>> {
     const { accessToken, refreshToken, user } =
       await this.authService.login(data);
 
@@ -82,7 +82,7 @@ export class AuthController {
       maxAge: TOKEN_MAX_AGE.REFRESH,
     });
 
-    return BaseResponse.ok(user);
+    return BaseResponseDto.ok(user);
   }
 
   @HttpCode(HttpStatus.OK)
@@ -152,7 +152,7 @@ export class AuthController {
    */
   async getProfile(
     @CurrentUser() user: JwtAuthPayload,
-  ): Promise<BaseResponse<ResponseUserDto>> {
+  ): Promise<BaseResponseDto<ResponseUserDto>> {
     return this.authService.getProfile(user.id);
   }
 }

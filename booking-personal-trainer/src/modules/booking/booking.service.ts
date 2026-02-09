@@ -9,6 +9,8 @@ import { InjectRepository } from '@mikro-orm/nestjs';
 // Commons
 import { BookingStatus } from '../../common/enums/booking/booking.enum';
 import { ERROR_MESSAGES } from '../../common/constants/message.constant';
+import { addMinutesToDate } from '../../common/helpers/time.helper';
+import { BaseResponseDto } from '../../common/dtos/base-response.dto';
 
 // Entities
 import { Booking } from './entities/booking.entity';
@@ -20,8 +22,6 @@ import { CreateBookingDto } from './dtos/create-booking.dto';
 
 // Services
 import { UserService } from '../user/user.service';
-import { addMinutesToDate } from 'src/common/helpers/time.helper';
-import { BaseResponse } from 'src/common/dtos/base-response.dto';
 
 @Injectable()
 export class BookingService {
@@ -95,7 +95,9 @@ export class BookingService {
     return booking;
   }
 
-  async getAll(query: GetBookingsQueryDto): Promise<BaseResponse<Booking[]>> {
+  async getAll(
+    query: GetBookingsQueryDto,
+  ): Promise<BaseResponseDto<Booking[]>> {
     const { page, limit, status, traineeId, trainerId, order } = query;
 
     const where: FilterQuery<Booking> = {};
@@ -121,7 +123,11 @@ export class BookingService {
       },
     });
 
-    return BaseResponse.okWithPagination(bookings, { totalItems, page, limit });
+    return BaseResponseDto.okWithPagination(bookings, {
+      totalItems,
+      page,
+      limit,
+    });
   }
 
   getOne(id: string) {

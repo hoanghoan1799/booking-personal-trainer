@@ -10,7 +10,7 @@ import { JwtService } from '@nestjs/jwt';
 // Commons
 import { ERROR_MESSAGES } from '../../common/constants/message.constant';
 import { TOKEN_EXPIRATION } from '../../common/constants/token.constants';
-import { BaseResponse } from '../../common/dtos/base-response.dto';
+import { BaseResponseDto } from '../../common/dtos/base-response.dto';
 
 // Types
 import { JwtAuthPayload } from './types/jwt-auth.type';
@@ -58,7 +58,7 @@ export class AuthService {
    * @returns The newly registered user.
    * @throws ConflictException If the email or user name already exists.
    */
-  async register(data: RegisterDto): Promise<BaseResponse<ResponseUserDto>> {
+  async register(data: RegisterDto): Promise<BaseResponseDto<ResponseUserDto>> {
     const { email, password, userName, userType, firstName, lastName } = data;
 
     const existingUser = await this.userService.findByEmailOrUserName(
@@ -95,7 +95,7 @@ export class AuthService {
       status: UserStatus.ACTIVE,
     });
 
-    return BaseResponse.ok(newUser);
+    return BaseResponseDto.ok(newUser);
   }
 
   /**
@@ -246,14 +246,14 @@ export class AuthService {
    * @throws {NotFoundException} If the user is not found.
    * @returns {Promise<User>} The user profile if found.
    */
-  async getProfile(userId: string): Promise<BaseResponse<User>> {
+  async getProfile(userId: string): Promise<BaseResponseDto<User>> {
     const user = await this.userService.findById(userId);
 
     if (!user) {
       throw new NotFoundException(ERROR_MESSAGES.USER.NOT_FOUND);
     }
 
-    return BaseResponse.ok(user);
+    return BaseResponseDto.ok(user);
   }
 
   /**

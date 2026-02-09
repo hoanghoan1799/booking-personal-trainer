@@ -12,7 +12,7 @@ import {
 // Commons
 import type { CurrentRequestUser } from '../../common/interfaces/request.interface';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { BaseResponse } from '../../common/dtos/base-response.dto';
+import { BaseResponseDto } from '../../common/dtos/base-response.dto';
 import { Serialize } from '../../common/decorators/serialize.decorator';
 
 // DTOs
@@ -33,15 +33,15 @@ export class BookingController {
   async create(
     @Req() req: CurrentRequestUser,
     @Body() data: CreateBookingDto,
-  ): Promise<BaseResponse<BookingResponseDto>> {
-    return BaseResponse.ok(await this.bookingService.create(data, req.user));
+  ): Promise<BaseResponseDto<BookingResponseDto>> {
+    return BaseResponseDto.ok(await this.bookingService.create(data, req.user));
   }
 
   @Get()
   @Serialize(BookingResponseDto)
   getAll(
     @Query() query: GetBookingsQueryDto,
-  ): Promise<BaseResponse<BookingResponseDto[]>> {
+  ): Promise<BaseResponseDto<BookingResponseDto[]>> {
     return this.bookingService.getAll(query);
   }
 

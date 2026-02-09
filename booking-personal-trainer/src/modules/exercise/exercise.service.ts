@@ -16,7 +16,8 @@ import {
   SortBy,
   SortOrder,
 } from '../../common/enums/pagination/pagination.enum';
-import { BaseResponse } from '../../common/dtos/base-response.dto';
+import { BaseResponseDto } from '../../common/dtos/base-response.dto';
+import { SuccessMessageResponse } from '../../common/interfaces/success-message-response.interface';
 
 // Constants
 import {
@@ -32,7 +33,6 @@ import { ExercisesQueryDto } from './dto/query-exercise.dto';
 import { CreateExerciseDto } from './dto/create-exercise.dto';
 import { ResponseExerciseDto } from './dto/response-exercise.dto';
 import { UpdateExerciseDto } from './dto/update-exercise.dto';
-import { SuccessMessageResponse } from 'src/common/interfaces/success-message-response.interface';
 import { ExerciseResponseDto } from './dto/exercise-response.dto';
 
 @Injectable()
@@ -46,16 +46,16 @@ export class ExerciseService {
   /**
    * Creates a new exercise in the database.
    * @param data The exercise data to be created.
-   * @returns A promise of a BaseResponse containing the newly created exercise.
+   * @returns A promise of a BaseResponseDto containing the newly created exercise.
    */
   async create(
     data: CreateExerciseDto,
-  ): Promise<BaseResponse<ExerciseResponseDto>> {
+  ): Promise<BaseResponseDto<ExerciseResponseDto>> {
     const exercise = this.exerciseRepo.create(data);
 
     await this.em.persist(exercise).flush();
 
-    return BaseResponse.ok(exercise);
+    return BaseResponseDto.ok(exercise);
   }
 
   /**
@@ -65,7 +65,7 @@ export class ExerciseService {
    */
   async getAll(
     query: ExercisesQueryDto,
-  ): Promise<BaseResponse<ResponseExerciseDto[]>> {
+  ): Promise<BaseResponseDto<ResponseExerciseDto[]>> {
     const {
       page = 1,
       limit = 20,
@@ -102,7 +102,7 @@ export class ExerciseService {
       orderBy,
     });
 
-    return BaseResponse.okWithPagination(data, {
+    return BaseResponseDto.okWithPagination(data, {
       page,
       limit,
       totalItems,
@@ -114,14 +114,14 @@ export class ExerciseService {
    * @throws NotFoundException If the exercise with the given id is not found.
    * @returns The exercise with the given id if found.
    */
-  async getOne(id: string): Promise<BaseResponse<ExerciseResponseDto>> {
+  async getOne(id: string): Promise<BaseResponseDto<ExerciseResponseDto>> {
     const exercise = await this.exerciseRepo.findOne({ id });
 
     if (!exercise) {
       throw new NotFoundException(ERROR_MESSAGES.EXERCISE.NOT_FOUND);
     }
 
-    return BaseResponse.ok(exercise);
+    return BaseResponseDto.ok(exercise);
   }
 
   /**
@@ -134,7 +134,7 @@ export class ExerciseService {
   async update(
     id: string,
     body: UpdateExerciseDto,
-  ): Promise<BaseResponse<ExerciseResponseDto>> {
+  ): Promise<BaseResponseDto<ExerciseResponseDto>> {
     const exercise = await this.exerciseRepo.findOne({ id });
 
     if (!exercise) {
@@ -147,7 +147,7 @@ export class ExerciseService {
 
     await this.em.flush();
 
-    return BaseResponse.ok(exercise);
+    return BaseResponseDto.ok(exercise);
   }
 
   /**

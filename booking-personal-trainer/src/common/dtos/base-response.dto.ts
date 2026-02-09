@@ -5,7 +5,7 @@ interface PaginationMeta {
   totalPages?: number;
 }
 
-export class BaseResponse<T> {
+export class BaseResponseDto<T> {
   readonly data: T;
   readonly meta?: PaginationMeta;
 
@@ -14,8 +14,8 @@ export class BaseResponse<T> {
     this.meta = meta;
   }
 
-  static ok<T>(data: T): BaseResponse<T> {
-    return new BaseResponse(data);
+  static ok<T>(data: T): BaseResponseDto<T> {
+    return new BaseResponseDto(data);
   }
 
   static okWithPagination<T>(
@@ -25,10 +25,10 @@ export class BaseResponse<T> {
       page: number;
       limit: number;
     },
-  ): BaseResponse<T> {
+  ): BaseResponseDto<T> {
     const { totalItems, page, limit } = pagination;
 
-    return new BaseResponse(data, {
+    return new BaseResponseDto(data, {
       page,
       limit,
       totalItems,

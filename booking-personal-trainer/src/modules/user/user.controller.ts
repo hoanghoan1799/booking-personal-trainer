@@ -15,7 +15,7 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { CurrentUser } from '../../common/decorators/user.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { Serialize } from '../../common/decorators/serialize.decorator';
-import { BaseResponse } from '../../common/dtos/base-response.dto';
+import { BaseResponseDto } from '../../common/dtos/base-response.dto';
 
 // Types
 import type { JwtAuthPayload } from '../auth/types/jwt-auth.type';
@@ -41,7 +41,7 @@ export class UserController {
   @Serialize(ResponseUserDto)
   async getAll(
     @Query() query: GetUsersQueryDto,
-  ): Promise<BaseResponse<ResponseUserDto[]>> {
+  ): Promise<BaseResponseDto<ResponseUserDto[]>> {
     return this.userService.getAll(query);
   }
 
@@ -51,7 +51,7 @@ export class UserController {
   updateProfile(
     @Body() data: UpdateUserProfileDto,
     @CurrentUser() user: JwtAuthPayload,
-  ): Promise<BaseResponse<ResponseUserDto>> {
+  ): Promise<BaseResponseDto<ResponseUserDto>> {
     return this.userService.updateProfile(data, user);
   }
 
@@ -62,7 +62,7 @@ export class UserController {
     @Param('userId') id: string,
     @Body() data: UpdateUserRoleDto,
     @CurrentUser() user: JwtAuthPayload,
-  ): Promise<BaseResponse<ResponseUserDto>> {
+  ): Promise<BaseResponseDto<ResponseUserDto>> {
     return this.userService.updateUserRole(id, data, user);
   }
 }

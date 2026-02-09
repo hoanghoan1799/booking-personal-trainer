@@ -8,7 +8,7 @@ import { plainToInstance } from 'class-transformer';
 import { map, Observable } from 'rxjs';
 
 // DTOs
-import { BaseResponse } from '../dtos/base-response.dto';
+import { BaseResponseDto } from '../dtos/base-response.dto';
 
 export type ClassConstructor<T> = new (...args: any[]) => T;
 
@@ -25,9 +25,9 @@ export class SerializeInterceptor<T> implements NestInterceptor {
   intercept(
     _context: ExecutionContext,
     handler: CallHandler,
-  ): Observable<BaseResponse<T | T[]>> {
+  ): Observable<BaseResponseDto<T | T[]>> {
     return handler.handle().pipe(
-      map((res: BaseResponse<T | T[]>) => {
+      map((res: BaseResponseDto<T | T[]>) => {
         if (!res || !res.data) return res;
 
         return {

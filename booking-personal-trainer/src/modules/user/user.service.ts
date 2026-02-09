@@ -34,7 +34,7 @@ import {
   UpdateUserRoleDto,
 } from './dtos/update-user.dto';
 import { GetUsersQueryDto } from './dtos/get-user.dto';
-import { BaseResponse } from '../../common/dtos/base-response.dto';
+import { BaseResponseDto } from '../../common/dtos/base-response.dto';
 
 @Injectable()
 export class UserService {
@@ -103,7 +103,7 @@ export class UserService {
    */
   async getAll(
     query: GetUsersQueryDto,
-  ): Promise<BaseResponse<ResponseUserDto[]>> {
+  ): Promise<BaseResponseDto<ResponseUserDto[]>> {
     const {
       page = 1,
       limit = 20,
@@ -147,7 +147,7 @@ export class UserService {
       orderBy,
     });
 
-    return BaseResponse.okWithPagination(data, {
+    return BaseResponseDto.okWithPagination(data, {
       totalItems,
       page,
       limit,
@@ -169,7 +169,7 @@ export class UserService {
     targetUserId: string,
     data: UpdateUserRoleDto,
     currentUser: JwtAuthPayload,
-  ): Promise<BaseResponse<ResponseUserDto>> {
+  ): Promise<BaseResponseDto<ResponseUserDto>> {
     // Check if the user is trying to update their own role
     if (currentUser.id === targetUserId) {
       throw new ForbiddenException(ERROR_MESSAGES.USER.CANNOT_UPDATE_SELF_ROLE);
@@ -205,11 +205,11 @@ export class UserService {
 
       await this.em.persist(targetUser).flush();
 
-      return BaseResponse.ok(targetUser);
+      return BaseResponseDto.ok(targetUser);
     }
 
     if (targetUser.role === data.role) {
-      return BaseResponse.ok(targetUser);
+      return BaseResponseDto.ok(targetUser);
     }
 
     targetUser.role = data.role;
@@ -217,7 +217,7 @@ export class UserService {
 
     await this.em.persist(targetUser).flush();
 
-    return BaseResponse.ok(targetUser);
+    return BaseResponseDto.ok(targetUser);
   }
 
   /**
@@ -230,7 +230,7 @@ export class UserService {
   async updateProfile(
     data: UpdateUserProfileDto,
     currentUser: JwtAuthPayload,
-  ): Promise<BaseResponse<ResponseUserDto>> {
+  ): Promise<BaseResponseDto<ResponseUserDto>> {
     const user = await this.findById(currentUser.id);
 
     if (!user) {
@@ -241,6 +241,6 @@ export class UserService {
 
     await this.em.persist(user).flush();
 
-    return BaseResponse.ok(user);
+    return BaseResponseDto.ok(user);
   }
 }

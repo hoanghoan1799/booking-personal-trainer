@@ -14,7 +14,7 @@ import { CurrentUser } from '../../common/decorators/user.decorator';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/role.decorator';
 import { UserRole } from '../../common/enums/user/user.enum';
-import { BaseResponse } from '../../common/dtos/base-response.dto';
+import { BaseResponseDto } from '../../common/dtos/base-response.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { SuccessMessageResponse } from '../../common/interfaces/success-message-response.interface';
 
@@ -43,10 +43,10 @@ export class WorkoutController {
   async create(
     @CurrentUser() trainer: User,
     @Body() body: CreateWorkoutDto,
-  ): Promise<BaseResponse<WorkoutResponseDto>> {
+  ): Promise<BaseResponseDto<WorkoutResponseDto>> {
     const workout = await this.workoutService.create(trainer.id, body);
 
-    return BaseResponse.ok(workout);
+    return BaseResponseDto.ok(workout);
   }
 
   @Roles(UserRole.ADMIN, UserRole.TRAINER)
@@ -54,7 +54,7 @@ export class WorkoutController {
   @Serialize(WorkoutResponseDto)
   findAll(
     @Query() query: WorkoutsQueryDto,
-  ): Promise<BaseResponse<WorkoutResponseDto[]>> {
+  ): Promise<BaseResponseDto<WorkoutResponseDto[]>> {
     return this.workoutService.getAll(query);
   }
   @Roles(UserRole.ADMIN, UserRole.TRAINER, UserRole.TRAINEE)

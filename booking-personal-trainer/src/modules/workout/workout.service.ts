@@ -9,7 +9,8 @@ import { InjectRepository } from '@mikro-orm/nestjs';
 // Commons
 import { ERROR_MESSAGES } from '../../common/constants/message.constant';
 import { WorkoutStatus } from '../../common/enums/workout/workout.enum';
-import { BaseResponse } from '../../common/dtos/base-response.dto';
+import { BaseResponseDto } from '../../common/dtos/base-response.dto';
+import { SuccessMessageResponse } from '../../common/interfaces/success-message-response.interface';
 
 // Entities
 import { Workout } from './entities/workout.entity';
@@ -23,7 +24,6 @@ import { WorkoutsQueryDto } from './dtos/query-workout.dto';
 // Services
 import { UserService } from '../user/user.service';
 import { ExerciseService } from '../exercise/exercise.service';
-import { SuccessMessageResponse } from 'src/common/interfaces/success-message-response.interface';
 
 @Injectable()
 export class WorkoutService {
@@ -75,7 +75,7 @@ export class WorkoutService {
 
   async getAll(
     query: WorkoutsQueryDto,
-  ): Promise<BaseResponse<WorkoutResponseDto[]>> {
+  ): Promise<BaseResponseDto<WorkoutResponseDto[]>> {
     const { page = 1, limit = 20, trainerId, traineeId, status } = query;
 
     const offset = (page - 1) * limit;
@@ -121,7 +121,7 @@ export class WorkoutService {
       })),
     }));
 
-    return BaseResponse.okWithPagination(mappedData, {
+    return BaseResponseDto.okWithPagination(mappedData, {
       page,
       limit,
       totalItems,
