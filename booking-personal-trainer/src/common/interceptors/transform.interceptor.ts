@@ -16,6 +16,12 @@ export type ClassConstructor<T> = new (...args: any[]) => T;
 export class SerializeInterceptor<T> implements NestInterceptor {
   constructor(private dto: ClassConstructor<T>) {}
 
+  /**
+   * Intercepts the response from the controller and transforms it into an instance of the provided DTO.
+   * @param _context The execution context.
+   * @param handler The call handler.
+   * @returns An observable that emits a transformed response.
+   */
   intercept(
     _context: ExecutionContext,
     handler: CallHandler,
