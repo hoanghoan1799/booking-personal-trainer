@@ -13,6 +13,9 @@ import { UserRole } from '../../common/enums/user/user.enum';
 import { Roles } from '../../common/decorators/role.decorator';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { CurrentUser } from '../../common/decorators/user.decorator';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { Serialize } from '../../common/decorators/serialize.decorator';
+import { BaseResponse } from '../../common/dtos/base-response.dto';
 
 // Types
 import type { JwtAuthPayload } from '../auth/types/jwt-auth.type';
@@ -23,12 +26,10 @@ import {
   UpdateUserRoleDto,
 } from './dtos/update-user.dto';
 import { GetUsersQueryDto } from './dtos/get-user.dto';
+import { ResponseUserDto } from './dtos/response-user.dto';
 
 // Services
 import { UserService } from './user.service';
-
-// Guards
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('users')
@@ -37,26 +38,31 @@ export class UserController {
 
   @Roles(UserRole.ADMIN)
   @Get()
-  async getAll(@Query() query: GetUsersQueryDto) {
+  @Serialize(ResponseUserDto)
+  async getAll(
+    @Query() query: GetUsersQueryDto,
+  ): Promise<BaseResponse<ResponseUserDto[]>> {
     return this.userService.getAll(query);
   }
 
   @Roles(UserRole.ADMIN, UserRole.TRAINER, UserRole.TRAINEE)
   @Patch('profile')
+  @Serialize(ResponseUserDto)
   updateProfile(
     @Body() data: UpdateUserProfileDto,
     @CurrentUser() user: JwtAuthPayload,
-  ) {
+  ): Promise<BaseResponse<ResponseUserDto>> {
     return this.userService.updateProfile(data, user);
   }
 
   @Roles(UserRole.ADMIN)
   @Patch(':userId/role')
+  @Serialize(ResponseUserDto)
   async updateUserRole(
     @Param('userId') id: string,
     @Body() data: UpdateUserRoleDto,
     @CurrentUser() user: JwtAuthPayload,
-  ) {
+  ): Promise<BaseResponse<ResponseUserDto>> {
     return this.userService.updateUserRole(id, data, user);
   }
 }

@@ -109,7 +109,7 @@ export class UserService {
   }
 
   /**
-   * Gets all users.
+   * Gets all users filtered by user type, role, approval status and search.
    * @param query The query object to filter, sort and paginate the users.
    * @returns The users filtered, sorted and paginated according to the query.
    */
@@ -159,15 +159,11 @@ export class UserService {
       orderBy,
     });
 
-    return {
-      data,
-      meta: {
-        page,
-        limit,
-        totalItems,
-        totalPages: Math.ceil(totalItems / limit),
-      },
-    };
+    return BaseResponse.okWithPagination(data, {
+      totalItems,
+      page,
+      limit,
+    });
   }
 
   /**
@@ -185,7 +181,7 @@ export class UserService {
     targetUserId: string,
     data: UpdateUserRoleDto,
     currentUser: JwtAuthPayload,
-  ) {
+  ): Promise<BaseResponse<ResponseUserDto>> {
     // Check if the user is trying to update their own role
     if (currentUser.id === targetUserId) {
       throw new ForbiddenException(ERROR_MESSAGES.USER.CANNOT_UPDATE_SELF_ROLE);
@@ -221,11 +217,11 @@ export class UserService {
 
       await this.em.persist(targetUser).flush();
 
-      return targetUser;
+      return BaseResponse.ok(targetUser);
     }
 
     if (targetUser.role === data.role) {
-      return targetUser;
+      return BaseResponse.ok(targetUser);
     }
 
     targetUser.role = data.role;
@@ -233,7 +229,7 @@ export class UserService {
 
     await this.em.persist(targetUser).flush();
 
-    return targetUser;
+    return BaseResponse.ok(targetUser);
   }
 
   /**
@@ -247,7 +243,7 @@ export class UserService {
     data: UpdateUserProfileDto,
     currentUser: JwtAuthPayload,
   ): Promise<BaseResponse<ResponseUserDto>> {
-    const user: User = await this.findById(currentUser.id);
+    const user = await this.findById(currentUser.id);
 
     if (!user) {
       throw new NotFoundException(ERROR_MESSAGES.USER.NOT_FOUND);
@@ -256,6 +252,7 @@ export class UserService {
     Object.assign(user, data);
 
     await this.em.persist(user).flush();
-    return { data: user };
+
+    return BaseResponse.ok(user);
   }
 }

@@ -35,4 +35,10 @@ export class ResponseUserDto {
 
   @Expose()
   status: UserStatus;
+
+  @Expose()
+  createdAt?: Date;
+
+  @Expose()
+  updatedAt?: Date;
 }
