@@ -10,7 +10,6 @@ import {
   FilterQuery,
   wrap,
 } from '@mikro-orm/core';
-import { plainToInstance } from 'class-transformer';
 
 // Commons
 import {
@@ -34,6 +33,7 @@ import { CreateExerciseDto } from './dto/create-exercise.dto';
 import { ResponseExerciseDto } from './dto/response-exercise.dto';
 import { UpdateExerciseDto } from './dto/update-exercise.dto';
 import { SuccessMessageResponse } from 'src/common/interfaces/success-message-response.interface';
+import { ExerciseResponseDto } from './dto/exercise-response.dto';
 
 @Injectable()
 export class ExerciseService {
@@ -48,12 +48,14 @@ export class ExerciseService {
    * @param data The exercise data to be created.
    * @returns A promise of a BaseResponse containing the newly created exercise.
    */
-  async create(data: CreateExerciseDto): Promise<BaseResponse<Exercise>> {
+  async create(
+    data: CreateExerciseDto,
+  ): Promise<BaseResponse<ExerciseResponseDto>> {
     const exercise = this.exerciseRepo.create(data);
 
     await this.em.persist(exercise).flush();
 
-    return { data: exercise };
+    return BaseResponse.ok(exercise);
   }
 
   /**
@@ -100,17 +102,11 @@ export class ExerciseService {
       orderBy,
     });
 
-    return {
-      data: plainToInstance(ResponseExerciseDto, data, {
-        excludeExtraneousValues: true,
-      }),
-      meta: {
-        page,
-        limit,
-        totalItems,
-        totalPages: Math.ceil(totalItems / limit),
-      },
-    };
+    return BaseResponse.okWithPagination(data, {
+      page,
+      limit,
+      totalItems,
+    });
   }
 
   /**
@@ -118,14 +114,14 @@ export class ExerciseService {
    * @throws NotFoundException If the exercise with the given id is not found.
    * @returns The exercise with the given id if found.
    */
-  async getOne(id: string): Promise<Exercise> {
+  async getOne(id: string): Promise<BaseResponse<ExerciseResponseDto>> {
     const exercise = await this.exerciseRepo.findOne({ id });
 
     if (!exercise) {
       throw new NotFoundException(ERROR_MESSAGES.EXERCISE.NOT_FOUND);
     }
 
-    return exercise;
+    return BaseResponse.ok(exercise);
   }
 
   /**
@@ -135,7 +131,10 @@ export class ExerciseService {
    * @returns The updated exercise.
    * @throws NotFoundException If the exercise is not found.
    */
-  async update(id: string, body: UpdateExerciseDto) {
+  async update(
+    id: string,
+    body: UpdateExerciseDto,
+  ): Promise<BaseResponse<ExerciseResponseDto>> {
     const exercise = await this.exerciseRepo.findOne({ id });
 
     if (!exercise) {
@@ -148,7 +147,7 @@ export class ExerciseService {
 
     await this.em.flush();
 
-    return exercise;
+    return BaseResponse.ok(exercise);
   }
 
   /**

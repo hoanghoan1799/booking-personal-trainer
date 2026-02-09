@@ -9,4 +9,16 @@ export class ExerciseResponseDto {
 
   @Expose()
   description?: string;
+
+  @Expose()
+  thumbnailUrl?: string;
+
+  @Expose()
+  videoUrl?: string;
+
+  @Expose()
+  muscleGroup: string;
+
+  @Expose()
+  equipment: string;
 }
