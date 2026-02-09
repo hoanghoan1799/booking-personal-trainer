@@ -21,6 +21,7 @@ import { CreateBookingDto } from './dtos/create-booking.dto';
 // Services
 import { UserService } from '../user/user.service';
 import { addMinutesToDate } from 'src/common/helpers/time.helper';
+import { BaseResponse } from 'src/common/dtos/base-response.dto';
 
 @Injectable()
 export class BookingService {
@@ -94,7 +95,7 @@ export class BookingService {
     return booking;
   }
 
-  async getAll(query: GetBookingsQueryDto) {
+  async getAll(query: GetBookingsQueryDto): Promise<BaseResponse<Booking[]>> {
     const { page, limit, status, traineeId, trainerId, order } = query;
 
     const where: FilterQuery<Booking> = {};
@@ -120,15 +121,7 @@ export class BookingService {
       },
     });
 
-    return {
-      data: bookings,
-      meta: {
-        page,
-        limit,
-        totalItems,
-        totalPages: Math.ceil(totalItems / limit),
-      },
-    };
+    return BaseResponse.okWithPagination(bookings, { totalItems, page, limit });
   }
 
   getOne(id: string) {

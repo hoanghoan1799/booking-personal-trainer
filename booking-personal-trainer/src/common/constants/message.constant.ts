@@ -43,7 +43,7 @@ export const ERROR_MESSAGES = {
     INVALID_TIME_RANGE: 'Start time must be before end time',
     CANNOT_BOOK_SELF: 'You cannot book yourself',
     TIME_SLOT_NOT_AVAILABLE: 'Time slot is not available',
-    CANNOT_BOOK_IN_PAST: 'You cannot book in the past',
+    CANNOT_BOOK_IN_PAST: 'You can not book in the past',
     MUST_BOOK_BEFORE_30_MINUTES: 'You must book before 30 minutes',
   },
 

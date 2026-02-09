@@ -11,16 +11,17 @@ import {
 
 // Commons
 import type { CurrentRequestUser } from '../../common/interfaces/request.interface';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { BaseResponse } from '../../common/dtos/base-response.dto';
+import { Serialize } from '../../common/decorators/serialize.decorator';
 
 // DTOs
 import { GetBookingsQueryDto } from './dtos/get-booking.dto';
 import { CreateBookingDto } from './dtos/create-booking.dto';
+import { BookingResponseDto } from './dtos/response-booking.dto';
 
 // Services
 import { BookingService } from './booking.service';
-
-// Guards
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 
 @UseGuards(JwtAuthGuard)
 @Controller('bookings')
@@ -28,12 +29,19 @@ export class BookingController {
   constructor(private readonly bookingService: BookingService) {}
 
   @Post()
-  create(@Req() req: CurrentRequestUser, @Body() data: CreateBookingDto) {
-    return this.bookingService.create(data, req.user);
+  @Serialize(BookingResponseDto)
+  async create(
+    @Req() req: CurrentRequestUser,
+    @Body() data: CreateBookingDto,
+  ): Promise<BaseResponse<BookingResponseDto>> {
+    return BaseResponse.ok(await this.bookingService.create(data, req.user));
   }
 
   @Get()
-  getAll(@Query() query: GetBookingsQueryDto) {
+  @Serialize(BookingResponseDto)
+  getAll(
+    @Query() query: GetBookingsQueryDto,
+  ): Promise<BaseResponse<BookingResponseDto[]>> {
     return this.bookingService.getAll(query);
   }
 
