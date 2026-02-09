@@ -22,7 +22,7 @@ import { ExercisesQueryDto } from './dto/query-exercise.dto';
 import { ExerciseService } from './exercise.service';
 
 // Guards
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 
 // DTOs
 import { CreateExerciseDto } from './dto/create-exercise.dto';

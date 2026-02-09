@@ -32,7 +32,7 @@ import { AuthService } from './auth.service';
 import type { JwtAuthPayload } from './types/jwt-auth.type';
 
 // Guards
-import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 
 @Controller('auth')
 export class AuthController {

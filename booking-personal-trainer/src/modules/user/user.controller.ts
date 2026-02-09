@@ -28,7 +28,7 @@ import { GetUsersQueryDto } from './dtos/get-user.dto';
 import { UserService } from './user.service';
 
 // Guards
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('users')

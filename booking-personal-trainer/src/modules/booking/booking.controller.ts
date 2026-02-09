@@ -20,7 +20,7 @@ import { CreateBookingDto } from './dtos/create-booking.dto';
 import { BookingService } from './booking.service';
 
 // Guards
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 
 @UseGuards(JwtAuthGuard)
 @Controller('bookings')

@@ -25,7 +25,7 @@ import { CreateWorkoutDto } from './dtos/create-workout.dto';
 import { WorkoutService } from './workout.service';
 
 // Guards
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { WorkoutsQueryDto } from './dtos/query-workout.dto';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
