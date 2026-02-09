@@ -14,7 +14,7 @@ import { BaseResponse } from '../../common/dtos/base-response.dto';
 // Entities
 import { Workout } from './entities/workout.entity';
 import { WorkoutExercise } from './entities/workout-exercise.entity';
-import { WorkoutResponseDto } from './entities/workout-response.dto';
+import { WorkoutResponseDto } from './dtos/workout-response.dto';
 
 // DTOs
 import { CreateWorkoutDto } from './dtos/create-workout.dto';
@@ -23,6 +23,7 @@ import { WorkoutsQueryDto } from './dtos/query-workout.dto';
 // Services
 import { UserService } from '../user/user.service';
 import { ExerciseService } from '../exercise/exercise.service';
+import { SuccessMessageResponse } from 'src/common/interfaces/success-message-response.interface';
 
 @Injectable()
 export class WorkoutService {
@@ -33,7 +34,7 @@ export class WorkoutService {
     private readonly exerciseService: ExerciseService,
     private readonly em: EntityManager,
   ) {}
-  async create(trainerId: string, dto: CreateWorkoutDto) {
+  async create(trainerId: string, dto: CreateWorkoutDto): Promise<Workout> {
     return this.em.transactional(async (em) => {
       const trainer = await this.userService.findById(trainerId);
       const trainee = await this.userService.findById(dto.traineeId);
@@ -68,7 +69,7 @@ export class WorkoutService {
 
       await em.persist(workout).flush();
 
-      return { data: workout };
+      return workout;
     });
   }
 
@@ -120,27 +121,23 @@ export class WorkoutService {
       })),
     }));
 
-    return {
-      data: mappedData,
-      meta: {
-        page,
-        limit,
-        totalItems,
-        totalPages: Math.ceil(totalItems / limit),
-      },
-    };
+    return BaseResponse.okWithPagination(mappedData, {
+      page,
+      limit,
+      totalItems,
+    });
   }
 
   findOne(id: string) {
     return `This action returns a #${id} workout`;
   }
 
-  async removeAll() {
+  async removeAll(): Promise<SuccessMessageResponse> {
     await this.em.nativeDelete('WorkoutExercise', {});
 
     const count = await this.em.nativeDelete('Workout', {});
 
-    return count;
+    return { message: `Deleted ${count} workouts` };
   }
 
   async softDelete(id: string) {

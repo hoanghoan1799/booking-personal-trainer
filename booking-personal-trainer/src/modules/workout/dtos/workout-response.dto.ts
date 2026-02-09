@@ -1,13 +1,19 @@
-import { Expose } from 'class-transformer';
+import { Expose, Type } from 'class-transformer';
 
 // DTOs
 import { WorkoutStatus } from '../../../common/enums/workout/workout.enum';
-import { ExerciseResponseDto } from '../../../modules/exercise/dto/exercise-response.dto';
-import { ResponseUserDto } from '../../../modules/user/dtos/response-user.dto';
+import { ExerciseResponseDto } from '../../exercise/dto/exercise-response.dto';
+import { ResponseUserDto } from '../../user/dtos/response-user.dto';
+import { Collection } from '@mikro-orm/core';
 
 export class WorkoutExerciseResponseDto {
+  @Expose()
   order: number;
+
+  @Expose()
   isCompleted: boolean;
+
+  @Expose()
   exercise: ExerciseResponseDto;
 }
 
@@ -30,14 +36,16 @@ export class WorkoutResponseDto {
   @Expose()
   trainee: ResponseUserDto;
 
+  // TODO: Need to be refactor type
   @Expose()
-  exercises: WorkoutExerciseResponseDto[];
+  @Type(() => WorkoutExerciseResponseDto)
+  exercises: WorkoutExerciseResponseDto[] | Collection<any>;
 
   @Expose()
-  totalExercises: number;
+  totalExercises?: number;
 
   @Expose()
-  completedExercises: number;
+  completedExercises?: number;
 
   @Expose()
   createdAt?: Date;

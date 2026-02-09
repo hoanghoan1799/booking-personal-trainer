@@ -14,19 +14,23 @@ import { CurrentUser } from '../../common/decorators/user.decorator';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/role.decorator';
 import { UserRole } from '../../common/enums/user/user.enum';
+import { BaseResponse } from '../../common/dtos/base-response.dto';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { SuccessMessageResponse } from '../../common/interfaces/success-message-response.interface';
 
 // Entities
 import { User } from '../user/entities/user.entity';
 
 // DTOs
 import { CreateWorkoutDto } from './dtos/create-workout.dto';
+import { WorkoutsQueryDto } from './dtos/query-workout.dto';
+import { WorkoutResponseDto } from './dtos/workout-response.dto';
 
 // Services
 import { WorkoutService } from './workout.service';
 
-// Guards
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { WorkoutsQueryDto } from './dtos/query-workout.dto';
+// Decorators
+import { Serialize } from '../../common/decorators/serialize.decorator';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('workouts')
@@ -35,13 +39,22 @@ export class WorkoutController {
 
   @Roles(UserRole.ADMIN, UserRole.TRAINER)
   @Post()
-  create(@CurrentUser() trainer: User, @Body() body: CreateWorkoutDto) {
-    return this.workoutService.create(trainer.id, body);
+  @Serialize(WorkoutResponseDto)
+  async create(
+    @CurrentUser() trainer: User,
+    @Body() body: CreateWorkoutDto,
+  ): Promise<BaseResponse<WorkoutResponseDto>> {
+    const workout = await this.workoutService.create(trainer.id, body);
+
+    return BaseResponse.ok(workout);
   }
 
   @Roles(UserRole.ADMIN, UserRole.TRAINER)
   @Get()
-  findAll(@Query() query: WorkoutsQueryDto) {
+  @Serialize(WorkoutResponseDto)
+  findAll(
+    @Query() query: WorkoutsQueryDto,
+  ): Promise<BaseResponse<WorkoutResponseDto[]>> {
     return this.workoutService.getAll(query);
   }
   @Roles(UserRole.ADMIN, UserRole.TRAINER, UserRole.TRAINEE)
@@ -52,7 +65,7 @@ export class WorkoutController {
 
   @Roles(UserRole.ADMIN, UserRole.TRAINER)
   @Delete(':id')
-  remove() {
+  remove(): Promise<SuccessMessageResponse> {
     return this.workoutService.removeAll();
   }
 }
