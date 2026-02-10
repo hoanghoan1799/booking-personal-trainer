@@ -7,7 +7,7 @@ import {
   updateExercise,
   deleteExercise,
 } from "@/services/exercises/exercises.service";
-import { MUSCLE_GROUP, EQUIPMENT } from "@/enums/exercise.enum";
+import { MUSCLE_GROUP, EQUIPMENT, MuscleGroup, Equipment } from "@/enums/exercise.enum";
 import { useExercises } from "@/hooks/useExercises";
 import ExerciseCard from "./ExerciseCard";
 import ExerciseDetailModal from "./ExerciseDetailModal";
@@ -33,9 +33,9 @@ export default function ExercisesContent() {
     canView,
     canManage,
   } = useExercises({
-    muscleGroup: muscleFilter || undefined,
-    equipment: equipmentFilter || undefined,
-    search: search || undefined,
+    muscleGroup: muscleFilter as MuscleGroup,
+    equipment: equipmentFilter as Equipment,
+    search: search ,
   });
 
   const handleCreateSubmit = async (data: CreateExerciseInput) => {
@@ -175,7 +175,7 @@ export default function ExercisesContent() {
           })}
           {/* Exercises with muscle groups not in enum (e.g. from API) */}
           {exercises.filter(
-            (ex) => !Object.values(MUSCLE_GROUP).includes(ex.muscleGroup),
+            (ex) => !Object.values(MUSCLE_GROUP).includes(ex.muscleGroup as MuscleGroup),
           ).length > 0 && (
             <section className="space-y-4">
               <h4 className="text-base font-semibold text-gray-800 dark:text-white/90">
@@ -188,7 +188,7 @@ export default function ExercisesContent() {
                 {exercises
                   .filter(
                     (ex) =>
-                      !Object.values(MUSCLE_GROUP).includes(ex.muscleGroup),
+                      !Object.values(MUSCLE_GROUP).includes(ex.muscleGroup as MuscleGroup),
                   )
                   .map((ex) => (
                     <li key={ex.id}>

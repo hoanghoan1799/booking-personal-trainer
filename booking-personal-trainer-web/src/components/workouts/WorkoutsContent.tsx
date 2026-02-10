@@ -36,7 +36,7 @@ export default function WorkoutsContent() {
     canView,
     canCreate,
   } = useWorkouts({
-    status: statusFilter || undefined,
+    status: statusFilter as "PENDING" | "IN_PROGRESS" | "DONE",
   });
 
   const canUpdateWorkout = (workout: Workout) => {
@@ -94,6 +94,7 @@ export default function WorkoutsContent() {
         })
         .catch(() => setTrainees([]));
     } else {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setTrainees([]);
     }
 

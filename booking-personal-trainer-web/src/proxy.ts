@@ -12,7 +12,7 @@ function isPublicRoute(pathname: string): boolean {
   );
 }
 
-export function middleware(req: NextRequest) {
+export function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   // Allow Next.js internal assets and static files

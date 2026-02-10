@@ -52,7 +52,6 @@ export default function UserCard({
             <Badge
               color="warning"
               size="sm"
-              className="shrink-0"
             >
               Waiting for approve
             </Badge>

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import type { Exercise, CreateExerciseInput } from "@/services/exercises/exercises.service";
-import { MUSCLE_GROUP, EQUIPMENT } from "@/enums/exercise.enum";
+import { MUSCLE_GROUP, EQUIPMENT, MuscleGroup, Equipment } from "@/enums/exercise.enum";
 import { getErrorMessage } from "@/lib/error.utils";
 import { useToast } from "@/context/ToastContext";
 import { Modal } from "@/components/ui/modal";
@@ -74,8 +74,8 @@ export default function ExerciseFormModal({
       await onSubmit({
         name: name.trim(),
         description: description.trim() || undefined,
-        muscleGroup,
-        equipment,
+        muscleGroup: muscleGroup as MuscleGroup,
+        equipment: equipment as Equipment,
         thumbnailUrl: thumbnailUrl.trim() || undefined,
         videoUrl: videoUrl.trim() || undefined,
       });

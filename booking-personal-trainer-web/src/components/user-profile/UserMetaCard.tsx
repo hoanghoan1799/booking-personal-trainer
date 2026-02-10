@@ -29,7 +29,7 @@ export default function UserMetaCard({ user }: UserMetaCardProps) {
               <Image
                 width={80}
                 height={80}
-                src="/images/user/owner.jpg"
+                src="/images/user/user.jpg"
                 alt="user"
               />
             </div>
