@@ -76,6 +76,20 @@ export async function getProfile(): Promise<User> {
   return res.data;
 }
 
+export interface UpdateProfileBody {
+  age?: number;
+  height?: number;
+  weight?: number;
+}
+
+export async function updateProfile(data: UpdateProfileBody): Promise<User> {
+  const res = await apiFetch<ApiResponse<User>>("/api/v1/users/profile", {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
+  return res.data;
+}
+
 export async function logout() {
   try {
     await apiFetch("/api/v1/auth/logout", {

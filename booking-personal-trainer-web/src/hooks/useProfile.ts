@@ -27,5 +27,9 @@ export function useProfile() {
     fetchProfile();
   }, [fetchProfile]);
 
-  return { user, isLoading, error, refetch: fetchProfile };
+  const updateUser = useCallback((updates: Partial<User>) => {
+    setUser((prev) => (prev ? { ...prev, ...updates } : null));
+  }, []);
+
+  return { user, isLoading, error, refetch: fetchProfile, updateUser };
 }

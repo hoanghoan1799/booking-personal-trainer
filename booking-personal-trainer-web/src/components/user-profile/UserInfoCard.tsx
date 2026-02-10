@@ -1,8 +1,16 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import type { User } from "@/types/user.types";
 import { useModal } from "../../hooks/useModal";
+import {
+  updateProfileSchema,
+  type UpdateProfileFormData,
+  type UpdateProfileFormInput,
+} from "@/schemas/update-profile.schema";
+import { updateProfile } from "@/services/auth/auth.service";
 import Input from "../form/input/InputField";
 import Label from "../form/Label";
 import Button from "../ui/button/Button";
@@ -10,15 +18,59 @@ import { Modal } from "../ui/modal";
 
 interface UserInfoCardProps {
   user: User | null;
+  onProfileUpdated?: (updatedUser: User) => void;
 }
 
-export default function UserInfoCard({ user }: UserInfoCardProps) {
+export default function UserInfoCard({ user, onProfileUpdated }: UserInfoCardProps) {
   const { isOpen, openModal, closeModal } = useModal();
-  const handleSave = () => {
-    // Handle save logic here
-    console.log("Saving changes...");
-    closeModal();
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+    reset,
+  } = useForm<UpdateProfileFormInput>({
+    resolver: zodResolver(updateProfileSchema),
+    defaultValues: {
+      age: user?.age,
+      height: user?.height,
+      weight: user?.weight,
+    },
+  });
+
+  const handleOpenModal = () => {
+    setSubmitError(null);
+    reset({
+      age: user?.age,
+      height: user?.height,
+      weight: user?.weight,
+    });
+    openModal();
   };
+
+  const handleSave = async (data: UpdateProfileFormInput) => {
+    setSubmitError(null);
+    try {
+      const toNum = (v: string | number | undefined) =>
+        v === "" || v === undefined ? undefined : Number(v);
+      const age = toNum(data.age);
+      const height = toNum(data.height);
+      const weight = toNum(data.weight);
+      const payload: { age?: number; height?: number; weight?: number } = {};
+      if (age != null && !Number.isNaN(age) && age >= 1 && age <= 150) payload.age = age;
+      if (height != null && !Number.isNaN(height) && height > 0 && height <= 300) payload.height = height;
+      if (weight != null && !Number.isNaN(weight) && weight > 0 && weight <= 500) payload.weight = weight;
+      const updatedUser = await updateProfile(payload);
+      closeModal();
+      onProfileUpdated?.(updatedUser);
+    } catch (error) {
+      setSubmitError(
+        error instanceof Error ? error.message : "Failed to update profile",
+      );
+    }
+  };
+
   return (
     <div className="p-5 border border-gray-200 rounded-2xl dark:border-gray-800 lg:p-6">
       <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
@@ -66,6 +118,33 @@ export default function UserInfoCard({ user }: UserInfoCardProps) {
 
             <div>
               <p className="mb-2 text-xs leading-normal text-gray-500 dark:text-gray-400">
+                Age
+              </p>
+              <p className="text-sm font-medium text-gray-800 dark:text-white/90">
+                {user?.age != null ? user.age : "—"}
+              </p>
+            </div>
+
+            <div>
+              <p className="mb-2 text-xs leading-normal text-gray-500 dark:text-gray-400">
+                Height (cm)
+              </p>
+              <p className="text-sm font-medium text-gray-800 dark:text-white/90">
+                {user?.height != null ? `${user.height} cm` : "—"}
+              </p>
+            </div>
+
+            <div>
+              <p className="mb-2 text-xs leading-normal text-gray-500 dark:text-gray-400">
+                Weight (kg)
+              </p>
+              <p className="text-sm font-medium text-gray-800 dark:text-white/90">
+                {user?.weight != null ? `${user.weight} kg` : "—"}
+              </p>
+            </div>
+
+            <div>
+              <p className="mb-2 text-xs leading-normal text-gray-500 dark:text-gray-400">
                 Role
               </p>
               <p className="text-sm font-medium text-gray-800 dark:text-white/90">
@@ -85,7 +164,8 @@ export default function UserInfoCard({ user }: UserInfoCardProps) {
         </div>
 
         <button
-          onClick={openModal}
+          type="button"
+          onClick={handleOpenModal}
           className="flex w-full items-center justify-center gap-2 rounded-full border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-theme-xs hover:bg-gray-50 hover:text-gray-800 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-white/[0.03] dark:hover:text-gray-200 lg:inline-flex lg:w-auto"
         >
           <svg
@@ -95,6 +175,7 @@ export default function UserInfoCard({ user }: UserInfoCardProps) {
             viewBox="0 0 18 18"
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
+            aria-hidden
           >
             <path
               fillRule="evenodd"
@@ -114,81 +195,89 @@ export default function UserInfoCard({ user }: UserInfoCardProps) {
               Edit Personal Information
             </h4>
             <p className="mb-6 text-sm text-gray-500 dark:text-gray-400 lg:mb-7">
-              Update your details to keep your profile up-to-date.
+              Update your profile details. All fields are optional.
             </p>
           </div>
-          <form className="flex flex-col">
-            <div className="custom-scrollbar h-[450px] overflow-y-auto px-2 pb-3">
-              <div>
-                <h5 className="mb-5 text-lg font-medium text-gray-800 dark:text-white/90 lg:mb-6">
-                  Social Links
-                </h5>
+          <form
+            onSubmit={handleSubmit(handleSave, (err) => console.error("Validation errors:", err))}
+            className="flex flex-col"
+          >
+            <div className="px-2 pb-3">
+              <div className="grid grid-cols-1 gap-x-6 gap-y-5 lg:grid-cols-2">
+                <div>
+                  <Label htmlFor="age">Age</Label>
+                  <Input
+                    id="age"
+                    type="number"
+                    placeholder="Enter your age"
+                    min={1}
+                    max={150}
+                    {...register("age")}
+                  />
+                  {errors.age && (
+                    <p className="mt-1 text-sm text-error-500">
+                      {errors.age.message}
+                    </p>
+                  )}
+                </div>
 
-                <div className="grid grid-cols-1 gap-x-6 gap-y-5 lg:grid-cols-2">
-                  <div>
-                    <Label>Facebook</Label>
-                    <Input
-                      type="text"
-                      defaultValue="https://www.facebook.com/PimjoHQ"
-                    />
-                  </div>
+                <div>
+                  <Label htmlFor="height">Height (cm)</Label>
+                  <Input
+                    id="height"
+                    type="number"
+                    placeholder="Enter height in cm"
+                    min={1}
+                    max={300}
+                    step={0.1}
+                    {...register("height")}
+                  />
+                  {errors.height && (
+                    <p className="mt-1 text-sm text-error-500">
+                      {errors.height.message}
+                    </p>
+                  )}
+                </div>
 
-                  <div>
-                    <Label>X.com</Label>
-                    <Input type="text" defaultValue="https://x.com/PimjoHQ" />
-                  </div>
-
-                  <div>
-                    <Label>Linkedin</Label>
-                    <Input
-                      type="text"
-                      defaultValue="https://www.linkedin.com/company/pimjo"
-                    />
-                  </div>
-
-                  <div>
-                    <Label>Instagram</Label>
-                    <Input
-                      type="text"
-                      defaultValue="https://instagram.com/PimjoHQ"
-                    />
-                  </div>
+                <div>
+                  <Label htmlFor="weight">Weight (kg)</Label>
+                  <Input
+                    id="weight"
+                    type="number"
+                    placeholder="Enter weight in kg"
+                    min={1}
+                    max={500}
+                    step={0.1}
+                    {...register("weight")}
+                  />
+                  {errors.weight && (
+                    <p className="mt-1 text-sm text-error-500">
+                      {errors.weight.message}
+                    </p>
+                  )}
                 </div>
               </div>
-              <div className="mt-7">
-                <h5 className="mb-5 text-lg font-medium text-gray-800 dark:text-white/90 lg:mb-6">
-                  Personal Information
-                </h5>
 
-                <div className="grid grid-cols-1 gap-x-6 gap-y-5 lg:grid-cols-2">
-                  <div className="col-span-2 lg:col-span-1">
-                    <Label>First Name</Label>
-                    <Input type="text" defaultValue={user?.firstName ?? ""} />
-                  </div>
-
-                  <div className="col-span-2 lg:col-span-1">
-                    <Label>Last Name</Label>
-                    <Input type="text" defaultValue={user?.lastName ?? ""} />
-                  </div>
-
-                  <div className="col-span-2 lg:col-span-1">
-                    <Label>Username</Label>
-                    <Input type="text" defaultValue={user?.userName ?? ""} />
-                  </div>
-
-                  <div className="col-span-2 lg:col-span-1">
-                    <Label>Email Address</Label>
-                    <Input type="text" defaultValue={user?.email ?? ""} />
-                  </div>
-                </div>
-              </div>
+              {submitError && (
+                <p className="mt-4 text-sm text-error-500">{submitError}</p>
+              )}
             </div>
             <div className="flex items-center gap-3 px-2 mt-6 lg:justify-end">
-              <Button size="sm" variant="outline" onClick={closeModal}>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={closeModal}
+              >
                 Close
               </Button>
-              <Button size="sm" onClick={handleSave}>
-                Save Changes
+              <Button
+                type="button"
+                size="sm"
+                disabled={isSubmitting}
+                onClick={handleSubmit(handleSave)}
+              >
+                {isSubmitting ? "Saving..." : "Save Changes"}
               </Button>
             </div>
           </form>

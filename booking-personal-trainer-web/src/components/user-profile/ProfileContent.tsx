@@ -8,7 +8,7 @@ import UserInfoCard from "./UserInfoCard";
 import UserMetaCard from "./UserMetaCard";
 
 export default function ProfileContent() {
-  const { user, isLoading, error } = useProfile();
+  const { user, isLoading, error, refetch, updateUser } = useProfile();
 
   if (isLoading) {
     return (
@@ -43,7 +43,12 @@ export default function ProfileContent() {
         </h3>
         <div className="space-y-6">
           <UserMetaCard user={user} />
-          <UserInfoCard user={user} />
+          <UserInfoCard
+            user={user}
+            onProfileUpdated={(updatedUser) => {
+              updateUser(updatedUser);
+            }}
+          />
           <UserAddressCard />
         </div>
       </div>

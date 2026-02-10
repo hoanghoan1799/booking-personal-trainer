@@ -8,6 +8,9 @@ export interface User {
   userType: string;
   approvalStatus: string;
   status: string;
+  age?: number;
+  height?: number;
+  weight?: number;
   createdAt?: string;
   updatedAt?: string;
 }
