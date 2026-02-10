@@ -81,7 +81,7 @@ export class AuthController {
 
     res.cookie(TOKEN_COOKIE.REFRESH, refreshToken, {
       ...COOKIE_OPTIONS,
-      path: `${ROUTE_PREFIX.V1}${ROUTES.TOKEN_REFRESH}`,
+      path: `${ROUTE_PREFIX.V1}${ROUTES.AUTH}${ROUTES.TOKEN_REFRESH}`,
       maxAge: TOKEN_MAX_AGE.REFRESH,
     });
 
@@ -112,7 +112,7 @@ export class AuthController {
 
     res.cookie(TOKEN_COOKIE.REFRESH, refreshToken, {
       ...COOKIE_OPTIONS,
-      path: `${ROUTE_PREFIX.V1}${ROUTES.TOKEN_REFRESH}`,
+      path: `${ROUTE_PREFIX.V1}${ROUTES.AUTH}${ROUTES.TOKEN_REFRESH}`,
       maxAge: TOKEN_MAX_AGE.REFRESH,
     });
 
@@ -121,7 +121,7 @@ export class AuthController {
       maxAge: TOKEN_MAX_AGE.ACCESS,
     });
 
-    return;
+    res.json({ accessToken });
   }
 
   @Post('logout')

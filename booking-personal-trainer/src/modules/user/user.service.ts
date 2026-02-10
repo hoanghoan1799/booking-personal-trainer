@@ -27,6 +27,7 @@ import type { JwtAuthPayload } from '../auth/types/jwt-auth.type';
 
 // Entities
 import { User } from './entities/user.entity';
+import { Booking } from '../booking/entities/booking.entity';
 
 // DTOs
 import {
@@ -128,7 +129,27 @@ export class UserService {
       case UserRole.ADMIN:
         break;
       case UserRole.TRAINER:
-        where.role = UserRole.TRAINEE;
+        if (
+          role === UserRole.TRAINER &&
+          approvalStatus === TrainerApprovalStatus.APPROVED
+        ) {
+          where.role = UserRole.TRAINER;
+          where.approvalStatus = TrainerApprovalStatus.APPROVED;
+          where.id = { $ne: currentUser.id };
+        } else {
+          where.role = UserRole.TRAINEE;
+          const bookings = await this.em.find(
+            Booking,
+            { trainer: currentUser.id },
+            { fields: ['trainee'], populate: ['trainee'] },
+          );
+          const traineeIds = [...new Set(bookings.map((b) => b.trainee.id))];
+          if (traineeIds.length > 0) {
+            where.id = { $in: traineeIds };
+          } else {
+            where.id = { $in: [] };
+          }
+        }
         break;
       case UserRole.TRAINEE:
         where.role = UserRole.TRAINER;
