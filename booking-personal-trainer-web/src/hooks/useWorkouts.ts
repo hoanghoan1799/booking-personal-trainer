@@ -25,19 +25,14 @@ export function useWorkouts(query: GetWorkoutsQuery = {}) {
     }
 
     const role = currentUser.role as string;
-    if (role !== "ADMIN" && role !== "TRAINER") {
-      setWorkouts([]);
-      setMeta(null);
-      setIsLoading(false);
-      return;
-    }
-
     setIsLoading(true);
     setError(null);
 
     const finalQuery = { ...query };
     if (role === "TRAINER") {
       finalQuery.trainerId = currentUser.id;
+    } else if (role === "TRAINEE") {
+      finalQuery.traineeId = currentUser.id;
     }
 
     try {
@@ -72,7 +67,10 @@ export function useWorkouts(query: GetWorkoutsQuery = {}) {
     isLoading: isProfileLoading || isLoading,
     error,
     refetch: fetchWorkouts,
-    canView: currentUser?.role === "ADMIN" || currentUser?.role === "TRAINER",
+    canView:
+      currentUser?.role === "ADMIN" ||
+      currentUser?.role === "TRAINER" ||
+      currentUser?.role === "TRAINEE",
     canCreate: currentUser?.role === "ADMIN" || currentUser?.role === "TRAINER",
   };
 }

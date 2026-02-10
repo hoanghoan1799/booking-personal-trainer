@@ -25,26 +25,45 @@ function getStatusColor(status: string): "primary" | "success" | "error" | "warn
     case "PENDING":
       return "warning";
     default:
-      return "light";
+      return "primary";
   }
 }
 
 interface WorkoutCardProps {
   workout: Workout;
+  onClick?: (workout: Workout) => void;
 }
 
-export default function WorkoutCard({ workout }: WorkoutCardProps) {
+export default function WorkoutCard({
+  workout,
+  onClick,
+}: WorkoutCardProps) {
   const trainerName = workout.trainer ? getDisplayName(workout.trainer) : "—";
   const traineeName = workout.trainee ? getDisplayName(workout.trainee) : "—";
   const completed = workout.completedExercises ?? 0;
   const total = workout.totalExercises ?? workout.exercises?.length ?? 0;
 
+  const handleCardClick = () => {
+    onClick?.(workout);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      onClick?.(workout);
+    }
+  };
+
   return (
     <div
-      className="flex flex-col gap-3 rounded-xl border border-gray-200 p-4 dark:border-gray-800"
-      role="listitem"
+      className={`flex flex-col gap-3 rounded-xl border border-gray-200 p-4 dark:border-gray-800 ${onClick ? "cursor-pointer transition-colors hover:border-gray-300 hover:bg-gray-50/50 dark:hover:border-gray-700 dark:hover:bg-gray-800/50" : ""}`}
+      role={onClick ? "button" : "listitem"}
+      tabIndex={onClick ? 0 : undefined}
+      onClick={onClick ? handleCardClick : undefined}
+      onKeyDown={onClick ? handleKeyDown : undefined}
+      aria-label={onClick ? `View workout details for ${traineeName}` : undefined}
     >
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <Badge color={getStatusColor(workout.status)} size="sm">
           {workout.status}
         </Badge>

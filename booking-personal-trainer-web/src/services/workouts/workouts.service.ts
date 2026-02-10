@@ -4,6 +4,7 @@ import { apiFetch } from "@/lib/api";
 import { API_ENDPOINTS } from "@/lib/route.constants";
 
 export interface WorkoutExercise {
+  id: string;
   order: number;
   isCompleted: boolean;
   exercise: Exercise;
@@ -101,6 +102,27 @@ export async function createWorkout(
     API_ENDPOINTS.WORKOUTS,
     {
       method: "POST",
+      body: JSON.stringify(input),
+    },
+  );
+  return res.data;
+}
+
+export type WorkoutStatus = "PENDING" | "IN_PROGRESS" | "DONE";
+
+export interface UpdateWorkoutDetailInput {
+  status?: WorkoutStatus;
+  exerciseCompletions?: { workoutExerciseId: string; isCompleted: boolean }[];
+}
+
+export async function updateWorkoutDetail(
+  workoutId: string,
+  input: UpdateWorkoutDetailInput,
+): Promise<Workout> {
+  const res = await apiFetch<{ data: Workout }>(
+    `${API_ENDPOINTS.WORKOUTS}/${workoutId}`,
+    {
+      method: "PATCH",
       body: JSON.stringify(input),
     },
   );

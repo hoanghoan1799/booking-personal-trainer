@@ -3,22 +3,31 @@
 import { useState, useEffect } from "react";
 import { useWorkouts } from "@/hooks/useWorkouts";
 import { useProfile } from "@/hooks/useProfile";
+import { useToast } from "@/context/ToastContext";
 import { getUsers } from "@/services/users/users.service";
 import { getBookings } from "@/services/bookings/bookings.service";
 import { getExercises } from "@/services/exercises/exercises.service";
+import {
+  updateWorkoutDetail,
+  type Workout,
+} from "@/services/workouts/workouts.service";
 import type { User } from "@/types/user.types";
 import type { Exercise } from "@/services/exercises/exercises.service";
 import WorkoutCard from "./WorkoutCard";
+import WorkoutDetailModal from "./WorkoutDetailModal";
 import CreateWorkoutModal from "./CreateWorkoutModal";
 import Button from "@/components/ui/button/Button";
 
 export default function WorkoutsContent() {
   const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [selectedWorkout, setSelectedWorkout] = useState<Workout | null>(null);
   const [trainees, setTrainees] = useState<User[]>([]);
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [statusFilter, setStatusFilter] = useState<string>("");
 
   const { user: currentUser } = useProfile();
+  const toast = useToast();
   const {
     workouts,
     isLoading,
@@ -29,6 +38,34 @@ export default function WorkoutsContent() {
   } = useWorkouts({
     status: statusFilter || undefined,
   });
+
+  const canUpdateWorkout = (workout: Workout) => {
+    if (!currentUser) return false;
+    if (currentUser.role === "ADMIN") return true;
+    if (currentUser.role === "TRAINER" && workout.trainer?.id === currentUser.id)
+      return true;
+    return false;
+  };
+
+  const handleSaveWorkout = async (
+    workoutId: string,
+    payload: {
+      status?: "PENDING" | "IN_PROGRESS" | "DONE";
+      exerciseCompletions: { workoutExerciseId: string; isCompleted: boolean }[];
+    },
+  ) => {
+    try {
+      const updated = await updateWorkoutDetail(workoutId, payload);
+      toast.success("Workout saved");
+      setSelectedWorkout(updated);
+      refetch();
+      return updated;
+    } catch (err) {
+      const msg =
+        err instanceof Error ? err.message : "Failed to save workout";
+      toast.error(msg);
+    }
+  };
 
   useEffect(() => {
     if (!canCreate || !createModalOpen || !currentUser) return;
@@ -66,6 +103,16 @@ export default function WorkoutsContent() {
 
   const handleCreateSuccess = () => {
     refetch();
+  };
+
+  const handleWorkoutClick = (workout: Workout) => {
+    setSelectedWorkout(workout);
+    setDetailModalOpen(true);
+  };
+
+  const handleCloseDetailModal = () => {
+    setDetailModalOpen(false);
+    setSelectedWorkout(null);
   };
 
   if (!canView) {
@@ -128,12 +175,22 @@ export default function WorkoutsContent() {
         <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3" role="list">
           {workouts.map((w) => (
             <li key={w.id}>
-              <WorkoutCard workout={w} />
+              <WorkoutCard
+                workout={w}
+                onClick={handleWorkoutClick}
+              />
             </li>
           ))}
         </ul>
       )}
 
+      <WorkoutDetailModal
+        isOpen={detailModalOpen}
+        onClose={handleCloseDetailModal}
+        workout={selectedWorkout}
+        canUpdate={selectedWorkout ? canUpdateWorkout(selectedWorkout) : false}
+        onSave={handleSaveWorkout}
+      />
       <CreateWorkoutModal
         isOpen={createModalOpen}
         onClose={() => setCreateModalOpen(false)}
