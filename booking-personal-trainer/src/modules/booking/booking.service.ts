@@ -7,6 +7,7 @@ import { EntityManager, EntityRepository, FilterQuery } from '@mikro-orm/core';
 import { InjectRepository } from '@mikro-orm/nestjs';
 
 // Commons
+import { UserRole } from '../../common/enums/user/user.enum';
 import { BookingStatus } from '../../common/enums/booking/booking.enum';
 import { ERROR_MESSAGES } from '../../common/constants/message.constant';
 import { addMinutesToDate } from '../../common/helpers/time.helper';
@@ -97,21 +98,36 @@ export class BookingService {
 
   async getAll(
     query: GetBookingsQueryDto,
+    currentUser: User,
   ): Promise<BaseResponseDto<Booking[]>> {
     const { page, limit, status, traineeId, trainerId, order } = query;
 
     const where: FilterQuery<Booking> = {};
 
+    switch (currentUser.role) {
+      case UserRole.ADMIN:
+        break;
+      case UserRole.TRAINER:
+        where.trainer = currentUser.id;
+        break;
+      case UserRole.TRAINEE:
+        where.trainee = currentUser.id;
+        break;
+      default:
+        where.trainee = currentUser.id;
+    }
+
+    if (currentUser.role === UserRole.ADMIN) {
+      if (traineeId) {
+        where.trainee = traineeId;
+      }
+      if (trainerId) {
+        where.trainer = trainerId;
+      }
+    }
+
     if (status) {
       where.status = status;
-    }
-
-    if (traineeId) {
-      where.trainee = traineeId;
-    }
-
-    if (trainerId) {
-      where.trainer = trainerId;
     }
 
     const [bookings, totalItems] = await this.bookingRepo.findAndCount(where, {
@@ -132,5 +148,34 @@ export class BookingService {
 
   getOne(id: string) {
     return `This action returns a #${id} booking`;
+  }
+
+  async updateStatus(
+    id: string,
+    status: BookingStatus,
+    currentUser: User,
+  ): Promise<Booking> {
+    const booking = await this.bookingRepo.findOne(
+      { id },
+      { populate: ['trainer', 'trainee'] },
+    );
+
+    if (!booking) {
+      throw new NotFoundException(ERROR_MESSAGES.BOOKING.NOT_FOUND);
+    }
+
+    const isAdmin = currentUser.role === UserRole.ADMIN;
+    const isTrainerOfBooking = booking.trainer.id === currentUser.id;
+
+    if (!isAdmin && !isTrainerOfBooking) {
+      throw new BadRequestException(
+        ERROR_MESSAGES.BOOKING.CANNOT_UPDATE_STATUS,
+      );
+    }
+
+    booking.status = status;
+    await this.em.flush();
+
+    return booking;
   }
 }

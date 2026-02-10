@@ -45,6 +45,8 @@ export const ERROR_MESSAGES = {
     TIME_SLOT_NOT_AVAILABLE: 'Time slot is not available',
     CANNOT_BOOK_IN_PAST: 'You can not book in the past',
     MUST_BOOK_BEFORE_30_MINUTES: 'You must book before 30 minutes',
+    NOT_FOUND: 'Booking not found',
+    CANNOT_UPDATE_STATUS: 'You cannot update this booking status',
   },
 
   VALIDATION: {
