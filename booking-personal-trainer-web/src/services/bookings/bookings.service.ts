@@ -88,3 +88,19 @@ export async function createBooking(
     },
   );
 }
+
+export type BookingStatus = "PENDING" | "CONFIRMED" | "REJECTED" | "CANCELLED";
+
+export async function updateBookingStatus(
+  bookingId: string,
+  status: BookingStatus,
+): Promise<Booking> {
+  const res = await apiFetch<ApiResponse<Booking>>(
+    `${API_ENDPOINTS.BOOKINGS}/${bookingId}/status`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({ status }),
+    },
+  );
+  return res.data;
+}
