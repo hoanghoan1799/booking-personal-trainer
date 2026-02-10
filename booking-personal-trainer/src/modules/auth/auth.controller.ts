@@ -31,7 +31,10 @@ import { UserRole } from '../../common/enums/user/user.enum';
 // DTOs
 import { RegisterDto } from './dtos/register.dto';
 import { LoginDto } from './dtos/login.dto';
-import { ResponseUserDto } from '../user/dtos/response-user.dto';
+import {
+  ResponseFullUserDto,
+  ResponseUserDto,
+} from '../user/dtos/response-user.dto';
 
 // Services
 import { AuthService } from './auth.service';
@@ -144,7 +147,7 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @Roles(UserRole.ADMIN, UserRole.TRAINEE, UserRole.TRAINER)
   @Get('profile')
-  @Serialize(ResponseUserDto)
+  @Serialize(ResponseFullUserDto)
   /**
    * Gets the profile of the current user.
    * @throws NotFoundException if user is not found
@@ -152,7 +155,7 @@ export class AuthController {
    */
   async getProfile(
     @CurrentUser() user: JwtAuthPayload,
-  ): Promise<BaseResponseDto<ResponseUserDto>> {
+  ): Promise<BaseResponseDto<ResponseFullUserDto>> {
     return this.authService.getProfile(user.id);
   }
 }

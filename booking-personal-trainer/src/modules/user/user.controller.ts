@@ -26,7 +26,7 @@ import {
   UpdateUserRoleDto,
 } from './dtos/update-user.dto';
 import { GetUsersQueryDto } from './dtos/get-user.dto';
-import { ResponseUserDto } from './dtos/response-user.dto';
+import { ResponseFullUserDto, ResponseUserDto } from './dtos/response-user.dto';
 
 // Services
 import { UserService } from './user.service';
@@ -47,11 +47,11 @@ export class UserController {
 
   @Roles(UserRole.ADMIN, UserRole.TRAINER, UserRole.TRAINEE)
   @Patch('profile')
-  @Serialize(ResponseUserDto)
+  @Serialize(ResponseFullUserDto)
   updateProfile(
     @Body() data: UpdateUserProfileDto,
     @CurrentUser() user: JwtAuthPayload,
-  ): Promise<BaseResponseDto<ResponseUserDto>> {
+  ): Promise<BaseResponseDto<ResponseFullUserDto>> {
     return this.userService.updateProfile(data, user);
   }
 

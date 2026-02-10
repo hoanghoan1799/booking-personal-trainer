@@ -42,3 +42,14 @@ export class ResponseUserDto {
   @Expose()
   updatedAt?: Date;
 }
+
+export class ResponseFullUserDto extends ResponseUserDto {
+  @Expose()
+  age?: number;
+
+  @Expose()
+  height?: number;
+
+  @Expose()
+  weight?: number;
+}

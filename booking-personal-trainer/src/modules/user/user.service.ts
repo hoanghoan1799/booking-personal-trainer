@@ -8,7 +8,7 @@ import { EntityManager, EntityRepository, FilterQuery } from '@mikro-orm/core';
 
 // DTOs
 import { RegisterDto } from '../auth/dtos/register.dto';
-import { ResponseUserDto } from './dtos/response-user.dto';
+import { ResponseFullUserDto, ResponseUserDto } from './dtos/response-user.dto';
 
 // Commons
 import { ERROR_MESSAGES } from '../../common/constants/message.constant';
@@ -230,7 +230,7 @@ export class UserService {
   async updateProfile(
     data: UpdateUserProfileDto,
     currentUser: JwtAuthPayload,
-  ): Promise<BaseResponseDto<ResponseUserDto>> {
+  ): Promise<BaseResponseDto<ResponseFullUserDto>> {
     const user = await this.findById(currentUser.id);
 
     if (!user) {
