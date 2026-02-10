@@ -11,6 +11,8 @@ import {
   type UpdateProfileFormInput,
 } from "@/schemas/update-profile.schema";
 import { updateProfile } from "@/services/auth/auth.service";
+import { getErrorMessage } from "@/lib/error.utils";
+import { useToast } from "@/context/ToastContext";
 import Input from "../form/input/InputField";
 import Label from "../form/Label";
 import Button from "../ui/button/Button";
@@ -24,6 +26,7 @@ interface UserInfoCardProps {
 export default function UserInfoCard({ user, onProfileUpdated }: UserInfoCardProps) {
   const { isOpen, openModal, closeModal } = useModal();
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const toast = useToast();
 
   const {
     register,
@@ -62,12 +65,13 @@ export default function UserInfoCard({ user, onProfileUpdated }: UserInfoCardPro
       if (height != null && !Number.isNaN(height) && height > 0 && height <= 300) payload.height = height;
       if (weight != null && !Number.isNaN(weight) && weight > 0 && weight <= 500) payload.weight = weight;
       const updatedUser = await updateProfile(payload);
+      toast.success("Profile updated successfully");
       closeModal();
       onProfileUpdated?.(updatedUser);
     } catch (error) {
-      setSubmitError(
-        error instanceof Error ? error.message : "Failed to update profile",
-      );
+      const msg = getErrorMessage(error, "Failed to update profile");
+      setSubmitError(msg);
+      toast.error(msg);
     }
   };
 

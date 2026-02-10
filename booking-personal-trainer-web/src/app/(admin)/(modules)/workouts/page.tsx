@@ -1,4 +1,5 @@
 import PageBreadcrumb from "@/components/common/PageBreadCrumb";
+import WorkoutsContent from "@/components/workouts/WorkoutsContent";
 import type { Metadata } from "next";
 import React from "react";
 
@@ -15,9 +16,7 @@ export default function WorkoutsPage() {
         <h3 className="mb-5 text-lg font-semibold text-gray-800 dark:text-white/90 lg:mb-7">
           Workouts
         </h3>
-        <p className="text-sm text-gray-500 dark:text-gray-400">
-          Your workouts will appear here.
-        </p>
+        <WorkoutsContent />
       </div>
     </div>
   );

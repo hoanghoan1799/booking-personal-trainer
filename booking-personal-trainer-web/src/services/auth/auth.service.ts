@@ -1,5 +1,6 @@
 import type { User } from "@/types/user.types";
 import { apiFetch } from "@/lib/api";
+import { getApiErrorMessage } from "@/lib/error.utils";
 import { clearAccessToken, setAccessToken } from "@/lib/token";
 
 interface ApiResponse<T> {
@@ -43,7 +44,9 @@ export async function login(data: LoginBody) {
   });
 
   if (!res.ok) {
-    throw new Error('Login failed');
+    const body = await res.json().catch(() => null);
+    const message = getApiErrorMessage(body) || "Login failed";
+    throw new Error(message);
   }
   
   const result = await res.json();
@@ -64,8 +67,9 @@ export async function register(data: RegisterBody) {
   });
 
   if (!res.ok) {
-    const error = await res.json().catch(() => ({}));
-    throw new Error(error?.message || "Registration failed");
+    const body = await res.json().catch(() => null);
+    const message = getApiErrorMessage(body) || "Registration failed";
+    throw new Error(message);
   }
 
   return res.json();

@@ -7,6 +7,8 @@ import React, { useState } from "react";
 import { useProfile } from "@/hooks/useProfile";
 import { APP_ROUTES } from "@/lib/route.constants";
 import { logout } from "@/services/auth/auth.service";
+import { getErrorMessage } from "@/lib/error.utils";
+import { useToast } from "@/context/ToastContext";
 import { Dropdown } from "../ui/dropdown/Dropdown";
 import { DropdownItem } from "../ui/dropdown/DropdownItem";
 
@@ -21,6 +23,7 @@ const getDisplayName = (user: { firstName: string; lastName: string; userName: s
 export default function UserDropdown() {
   const router = useRouter();
   const { user } = useProfile();
+  const toast = useToast();
   const [isOpen, setIsOpen] = useState(false);
 
   const displayName = getDisplayName(user);
@@ -37,8 +40,13 @@ export default function UserDropdown() {
 
   const handleSignOut = async () => {
     closeDropdown();
-    await logout();
-    router.push(APP_ROUTES.SIGNIN);
+    try {
+      await logout();
+      toast.success("Signed out successfully");
+      router.push(APP_ROUTES.SIGNIN);
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Sign out failed"));
+    }
   };
   return (
     <div className="relative">

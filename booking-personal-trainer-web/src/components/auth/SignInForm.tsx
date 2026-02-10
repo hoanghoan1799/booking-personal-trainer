@@ -16,10 +16,12 @@ import {
   type LoginBody,
 } from '@/schemas/login.schema';
 import { login } from "@/services/auth/auth.service";
+import { getErrorMessage } from "@/lib/error.utils";
+import { useToast } from "@/context/ToastContext";
 
 export default function SignInForm() {
   const router = useRouter();
-
+  const toast = useToast();
   const [showPassword, setShowPassword] = useState(false);
 
 
@@ -34,9 +36,10 @@ export default function SignInForm() {
   const onSubmit = async (data: LoginBody) => {
     try {
       await login(data);
+      toast.success("Signed in successfully");
       router.push('/');
     } catch (error) {
-      console.log('error',error);
+      toast.error(getErrorMessage(error, "Sign in failed"));
     }
   };
 

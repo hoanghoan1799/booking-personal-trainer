@@ -1,4 +1,5 @@
 import PageBreadcrumb from "@/components/common/PageBreadCrumb";
+import ExercisesContent from "@/components/exercises/ExercisesContent";
 import type { Metadata } from "next";
 import React from "react";
 
@@ -15,9 +16,7 @@ export default function ExercisesPage() {
         <h3 className="mb-5 text-lg font-semibold text-gray-800 dark:text-white/90 lg:mb-7">
           Exercises
         </h3>
-        <p className="text-sm text-gray-500 dark:text-gray-400">
-          Exercise library will appear here.
-        </p>
+        <ExercisesContent />
       </div>
     </div>
   );

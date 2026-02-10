@@ -1,4 +1,5 @@
 import { getAccessToken } from "./token";
+import { getApiErrorMessage } from "./error.utils";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -29,8 +30,9 @@ export async function apiFetch<T>(
   });
 
   if (!res.ok) {
-    const error = await res.json().catch(() => null);
-    throw new Error(error?.message || "Something went wrong");
+    const body = await res.json().catch(() => null);
+    const message = getApiErrorMessage(body) || "Something went wrong";
+    throw new Error(message);
   }
 
   return res.json();

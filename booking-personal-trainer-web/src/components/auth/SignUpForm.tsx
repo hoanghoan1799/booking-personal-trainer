@@ -19,9 +19,12 @@ import {
   register as registerUser,
 } from "@/services/auth/auth.service";
 import { APP_ROUTES } from "@/lib/route.constants";
+import { getErrorMessage } from "@/lib/error.utils";
+import { useToast } from "@/context/ToastContext";
 
 export default function SignUpForm() {
   const router = useRouter();
+  const toast = useToast();
   const [showPassword, setShowPassword] = useState(false);
 
   const {
@@ -37,9 +40,10 @@ export default function SignUpForm() {
     try {
       await registerUser(data);
       await login({ email: data.email, password: data.password });
+      toast.success("Account created successfully");
       router.push(APP_ROUTES.ROOT);
     } catch (error) {
-      console.error("Registration error:", error);
+      toast.error(getErrorMessage(error, "Registration failed"));
     }
   };
 
