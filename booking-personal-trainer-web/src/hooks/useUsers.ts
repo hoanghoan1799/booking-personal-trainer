@@ -29,6 +29,8 @@ export function useUsers() {
     trainees: [],
   });
   const [ptList, setPtList] = useState<User[]>([]);
+  const [approvedTrainers, setApprovedTrainers] = useState<User[]>([]);
+  const [assignedTrainees, setAssignedTrainees] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
@@ -57,6 +59,22 @@ export function useUsers() {
           trainees: traineesRes.users,
         });
         setPtList([]);
+      } else if (role === "TRAINER") {
+        const [trainersRes, traineesRes] = await Promise.all([
+          getUsers({
+            role: "TRAINER",
+            approvalStatus: "APPROVED",
+            limit: 100,
+          }),
+          getUsers({
+            role: "TRAINEE",
+            limit: 100,
+          }),
+        ]);
+        setApprovedTrainers(trainersRes.users);
+        setAssignedTrainees(traineesRes.users);
+        setPtList([]);
+        setGroupedUsers({ admins: [], trainers: [], trainees: [] });
       } else {
         const res = await getUsers({
           role: "TRAINER",
@@ -64,12 +82,16 @@ export function useUsers() {
           limit: 100,
         });
         setPtList(res.users);
+        setApprovedTrainers([]);
+        setAssignedTrainees([]);
         setGroupedUsers({ admins: [], trainers: [], trainees: [] });
       }
     } catch (err) {
       setError(err instanceof Error ? err : new Error("Failed to load users"));
       setGroupedUsers({ admins: [], trainers: [], trainees: [] });
       setPtList([]);
+      setApprovedTrainers([]);
+      setAssignedTrainees([]);
     } finally {
       setIsLoading(false);
     }
@@ -85,10 +107,13 @@ export function useUsers() {
   return {
     groupedUsers,
     ptList,
+    approvedTrainers,
+    assignedTrainees,
     isLoading: isLoadingUsers,
     error,
     refetch: fetchUsers,
     isAdmin: currentUser?.role === "ADMIN",
+    isTrainer: currentUser?.role === "TRAINER",
     isWaitingForApproval,
   };
 }

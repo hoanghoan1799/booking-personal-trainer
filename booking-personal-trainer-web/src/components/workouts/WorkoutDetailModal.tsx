@@ -87,9 +87,11 @@ export default function WorkoutDetailModal({
     { id: string; order: number; isCompleted: boolean; exercise: WorkoutExercise["exercise"] }[]
   >([]);
   const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!workout) return;
+    setSaveError(null);
     setLocalStatus((workout.status as WorkoutStatus) ?? "PENDING");
     const arr = toExercisesArray(workout.exercises);
     setLocalExercises(
@@ -117,11 +119,10 @@ export default function WorkoutDetailModal({
   const statusChanged = localStatus !== (workout.status as WorkoutStatus);
   const exercisesChanged =
     localExercises.length !== initialExercises.length ||
-    localExercises.some(
-      (le) =>
-        initialExercises.find((ie) => ie.id === le.id)?.isCompleted !==
-        le.isCompleted,
-    );
+    localExercises.some((le) => {
+      const initial = initialExercises.find((ie) => ie.id === le.id);
+      return initial ? initial.isCompleted !== le.isCompleted : false;
+    });
   const hasChanges = statusChanged || exercisesChanged;
 
   const handleToggleExercise = (id: string) => {
@@ -141,6 +142,7 @@ export default function WorkoutDetailModal({
   const handleSave = async () => {
     if (!hasChanges || !onSave || isSaving) return;
     setIsSaving(true);
+    setSaveError(null);
     try {
       const exerciseCompletions = localExercises.map((e) => ({
         workoutExerciseId: e.id,
@@ -152,6 +154,11 @@ export default function WorkoutDetailModal({
       } = { exerciseCompletions };
       if (statusChanged) payload.status = localStatus;
       await onSave(workout.id, payload);
+    } catch (err) {
+      setSaveError(
+        err instanceof Error ? err.message : "Failed to save workout",
+      );
+      throw err;
     } finally {
       setIsSaving(false);
     }
@@ -230,6 +237,14 @@ export default function WorkoutDetailModal({
             </span>
           </div>
         </div>
+        {saveError && (
+          <div
+            role="alert"
+            className="rounded-lg border border-error-500/30 bg-error-50 p-3 text-sm text-error-600 dark:border-error-500/20 dark:bg-error-500/10 dark:text-error-500"
+          >
+            {saveError}
+          </div>
+        )}
         {localExercises.length > 0 && (
           <div>
             <div className="mb-2 flex items-center justify-between">
@@ -291,12 +306,12 @@ export default function WorkoutDetailModal({
           </div>
         )}
         <div className="flex justify-end gap-2">
-          {canUpdate && hasChanges && (
+          {canUpdate && onSave && (
             <button
               type="button"
               onClick={handleSave}
-              disabled={isSaving}
-              className="rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50"
+              disabled={!hasChanges || isSaving}
+              className="rounded-lg bg-blue-light-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-light-700 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500 dark:disabled:bg-gray-700 dark:disabled:text-gray-400"
             >
               {isSaving ? "Saving…" : "Save changes"}
             </button>

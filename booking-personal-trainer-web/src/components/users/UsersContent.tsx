@@ -55,21 +55,27 @@ function UserGroupSection({
   );
 }
 
-function PtListSection({
+function UserListSection({
+  title,
+  emptyMessage,
   users,
+  showWaitingBadge = false,
   onUserClick,
 }: {
+  title: string;
+  emptyMessage: string;
   users: User[];
-  onUserClick: (u: User) => void;
+  showWaitingBadge?: boolean;
+  onUserClick?: (u: User) => void;
 }) {
   return (
     <section className="space-y-4">
       <h4 className="text-base font-semibold text-gray-800 dark:text-white/90">
-        Approved Personal Trainers
+        {title}
       </h4>
       {users.length === 0 ? (
         <p className="text-sm text-gray-500 dark:text-gray-400">
-          No approved personal trainers yet.
+          {emptyMessage}
         </p>
       ) : (
         <ul
@@ -80,8 +86,8 @@ function PtListSection({
             <li key={u.id}>
               <UserCard
                 user={u}
-                showWaitingBadge={false}
-                onClick={() => onUserClick(u)}
+                showWaitingBadge={showWaitingBadge}
+                onClick={onUserClick ? () => onUserClick(u) : undefined}
               />
             </li>
           ))}
@@ -95,9 +101,12 @@ export default function UsersContent() {
   const {
     groupedUsers,
     ptList,
+    approvedTrainers,
+    assignedTrainees,
     isLoading,
     error,
     isAdmin,
+    isTrainer,
     isWaitingForApproval,
     refetch,
   } = useUsers();
@@ -177,10 +186,41 @@ export default function UsersContent() {
     );
   }
 
+  if (isTrainer) {
+    return (
+      <>
+        <div className="space-y-10">
+          <UserListSection
+            title="Approved Personal Trainers"
+            emptyMessage="No approved personal trainers yet."
+            users={approvedTrainers}
+            onUserClick={handlePtClick}
+          />
+          <UserListSection
+            title="Assigned Trainees"
+            emptyMessage="No assigned trainees yet."
+            users={assignedTrainees}
+          />
+        </div>
+        <CreateBookingModal
+          isOpen={createBookingModalOpen}
+          onClose={() => setCreateBookingModalOpen(false)}
+          trainer={selectedUser}
+          onSuccess={handleCreateBookingSuccess}
+        />
+      </>
+    );
+  }
+
   return (
     <>
       <div>
-        <PtListSection users={ptList} onUserClick={handlePtClick} />
+        <UserListSection
+          title="Approved Personal Trainers"
+          emptyMessage="No approved personal trainers yet."
+          users={ptList}
+          onUserClick={handlePtClick}
+        />
       </div>
       <CreateBookingModal
         isOpen={createBookingModalOpen}

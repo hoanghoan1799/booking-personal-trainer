@@ -55,15 +55,16 @@ export default function WorkoutsContent() {
     },
   ) => {
     try {
-      const updated = await updateWorkoutDetail(workoutId, payload);
+      await updateWorkoutDetail(workoutId, payload);
       toast.success("Workout saved");
-      setSelectedWorkout(updated);
+      handleCloseDetailModal();
       refetch();
-      return updated;
+      return undefined;
     } catch (err) {
       const msg =
         err instanceof Error ? err.message : "Failed to save workout";
       toast.error(msg);
+      throw err;
     }
   };
 
