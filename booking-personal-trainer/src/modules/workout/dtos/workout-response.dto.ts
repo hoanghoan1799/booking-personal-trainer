@@ -8,6 +8,9 @@ import { Collection } from '@mikro-orm/core';
 
 export class WorkoutExerciseResponseDto {
   @Expose()
+  id: string;
+
+  @Expose()
   order: number;
 
   @Expose()

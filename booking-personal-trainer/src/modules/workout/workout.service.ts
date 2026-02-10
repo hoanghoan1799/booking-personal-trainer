@@ -8,17 +8,20 @@ import { InjectRepository } from '@mikro-orm/nestjs';
 
 // Commons
 import { ERROR_MESSAGES } from '../../common/constants/message.constant';
+import { UserRole } from '../../common/enums/user/user.enum';
 import { WorkoutStatus } from '../../common/enums/workout/workout.enum';
 import { BaseResponseDto } from '../../common/dtos/base-response.dto';
 import { SuccessMessageResponse } from '../../common/interfaces/success-message-response.interface';
 
 // Entities
+import { User } from '../user/entities/user.entity';
 import { Workout } from './entities/workout.entity';
 import { WorkoutExercise } from './entities/workout-exercise.entity';
 import { WorkoutResponseDto } from './dtos/workout-response.dto';
 
 // DTOs
 import { CreateWorkoutDto } from './dtos/create-workout.dto';
+import { UpdateWorkoutDetailDto } from './dtos/update-workout-detail.dto';
 import { WorkoutsQueryDto } from './dtos/query-workout.dto';
 
 // Services
@@ -75,6 +78,7 @@ export class WorkoutService {
 
   async getAll(
     query: WorkoutsQueryDto,
+    currentUser: User,
   ): Promise<BaseResponseDto<WorkoutResponseDto[]>> {
     const { page = 1, limit = 20, trainerId, traineeId, status } = query;
 
@@ -84,12 +88,20 @@ export class WorkoutService {
       isDeleted: false,
     };
 
-    if (trainerId) {
-      where.trainer = trainerId;
-    }
-
-    if (traineeId) {
-      where.trainee = traineeId;
+    switch (currentUser.role) {
+      case UserRole.ADMIN:
+        if (trainerId) where.trainer = trainerId;
+        if (traineeId) where.trainee = traineeId;
+        break;
+      case UserRole.TRAINER:
+        where.trainer = currentUser.id;
+        if (traineeId) where.trainee = traineeId;
+        break;
+      case UserRole.TRAINEE:
+        where.trainee = currentUser.id;
+        break;
+      default:
+        where.trainee = currentUser.id;
     }
 
     if (status) {
@@ -115,6 +127,7 @@ export class WorkoutService {
         .getItems()
         .filter((we) => we.isCompleted).length,
       exercises: workout.exercises.getItems().map((we) => ({
+        id: we.id,
         order: we.order,
         isCompleted: we.isCompleted,
         exercise: we.exercise,
@@ -130,6 +143,49 @@ export class WorkoutService {
 
   findOne(id: string) {
     return `This action returns a #${id} workout`;
+  }
+
+  async updateDetail(
+    id: string,
+    dto: UpdateWorkoutDetailDto,
+    currentUser: User,
+  ): Promise<Workout> {
+    const workout = await this.workoutRepo.findOne(
+      { id, isDeleted: false },
+      { populate: ['trainer', 'trainee', 'exercises', 'exercises.exercise'] },
+    );
+
+    if (!workout) {
+      throw new NotFoundException(ERROR_MESSAGES.WORKOUT.NOT_FOUND);
+    }
+
+    const isAdmin = currentUser.role === UserRole.ADMIN;
+    const isTrainerOfWorkout = workout.trainer.id === currentUser.id;
+
+    if (!isAdmin && !isTrainerOfWorkout) {
+      throw new BadRequestException(
+        ERROR_MESSAGES.WORKOUT.CANNOT_UPDATE_EXERCISES,
+      );
+    }
+
+    if (dto.status != null) {
+      workout.status = dto.status;
+    }
+
+    if (dto.exerciseCompletions?.length) {
+      const items = workout.exercises.getItems();
+      dto.exerciseCompletions.forEach(({ workoutExerciseId, isCompleted }) => {
+        const we = items.find((e) => e.id === workoutExerciseId);
+        if (we) {
+          we.isCompleted = isCompleted;
+          we.completedAt = isCompleted ? new Date() : undefined;
+        }
+      });
+    }
+
+    await this.em.flush();
+
+    return workout;
   }
 
   async removeAll(): Promise<SuccessMessageResponse> {

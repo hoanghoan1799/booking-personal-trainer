@@ -4,12 +4,15 @@ import {
   Post,
   Body,
   Param,
+  Patch,
   Delete,
+  Req,
   UseGuards,
   Query,
 } from '@nestjs/common';
 
 // Commons
+import type { CurrentRequestUser } from '../../common/interfaces/request.interface';
 import { CurrentUser } from '../../common/decorators/user.decorator';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/role.decorator';
@@ -23,6 +26,7 @@ import { User } from '../user/entities/user.entity';
 
 // DTOs
 import { CreateWorkoutDto } from './dtos/create-workout.dto';
+import { UpdateWorkoutDetailDto } from './dtos/update-workout-detail.dto';
 import { WorkoutsQueryDto } from './dtos/query-workout.dto';
 import { WorkoutResponseDto } from './dtos/workout-response.dto';
 
@@ -45,22 +49,35 @@ export class WorkoutController {
     @Body() body: CreateWorkoutDto,
   ): Promise<BaseResponseDto<WorkoutResponseDto>> {
     const workout = await this.workoutService.create(trainer.id, body);
-
     return BaseResponseDto.ok(workout);
   }
 
-  @Roles(UserRole.ADMIN, UserRole.TRAINER)
+  @Roles(UserRole.ADMIN, UserRole.TRAINER, UserRole.TRAINEE)
   @Get()
   @Serialize(WorkoutResponseDto)
   findAll(
     @Query() query: WorkoutsQueryDto,
+    @Req() req: CurrentRequestUser,
   ): Promise<BaseResponseDto<WorkoutResponseDto[]>> {
-    return this.workoutService.getAll(query);
+    return this.workoutService.getAll(query, req.user);
   }
+
   @Roles(UserRole.ADMIN, UserRole.TRAINER, UserRole.TRAINEE)
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.workoutService.findOne(id);
+  }
+
+  @Roles(UserRole.ADMIN, UserRole.TRAINER)
+  @Patch(':id')
+  @Serialize(WorkoutResponseDto)
+  async update(
+    @Param('id') id: string,
+    @Body() body: UpdateWorkoutDetailDto,
+    @Req() req: CurrentRequestUser,
+  ): Promise<BaseResponseDto<WorkoutResponseDto>> {
+    const workout = await this.workoutService.updateDetail(id, body, req.user);
+    return BaseResponseDto.ok(workout);
   }
 
   @Roles(UserRole.ADMIN, UserRole.TRAINER)

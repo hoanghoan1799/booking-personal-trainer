@@ -33,6 +33,10 @@ export const ERROR_MESSAGES = {
     INVALID_EXERCISES: 'Exercises are not available',
     INVALID_TIME_RANGE: 'Start time must be before end time',
     NOT_FOUND: 'Workout not found',
+    CANNOT_UPDATE_STATUS: 'You cannot update this workout status',
+    CANNOT_UPDATE_EXERCISES:
+      'You cannot update exercise completion for this workout',
+    EXERCISE_NOT_FOUND: 'Workout exercise not found',
   },
 
   EXERCISE: {
