@@ -98,11 +98,17 @@ export class UserService {
 
   /**
    * Gets all users filtered by user type, role, approval status and search.
+   * Role-based restrictions:
+   * - ADMIN: can see all users
+   * - TRAINER: can only see TRAINEE role users
+   * - TRAINEE: can only see TRAINER role users with approvalStatus=APPROVED
    * @param query The query object to filter, sort and paginate the users.
+   * @param currentUser The user performing the request.
    * @returns The users filtered, sorted and paginated according to the query.
    */
   async getAll(
     query: GetUsersQueryDto,
+    currentUser: JwtAuthPayload,
   ): Promise<BaseResponseDto<ResponseUserDto[]>> {
     const {
       page = 1,
@@ -118,16 +124,33 @@ export class UserService {
 
     const where: FilterQuery<User> = {};
 
-    if (userType) {
-      where.userType = userType;
+    switch (currentUser.role) {
+      case UserRole.ADMIN:
+        break;
+      case UserRole.TRAINER:
+        where.role = UserRole.TRAINEE;
+        break;
+      case UserRole.TRAINEE:
+        where.role = UserRole.TRAINER;
+        where.approvalStatus = TrainerApprovalStatus.APPROVED;
+        break;
+      default:
+        where.role = UserRole.TRAINER;
+        where.approvalStatus = TrainerApprovalStatus.APPROVED;
     }
 
-    if (role) {
-      where.role = role;
-    }
+    if (currentUser.role === UserRole.ADMIN) {
+      if (userType) {
+        where.userType = userType;
+      }
 
-    if (approvalStatus) {
-      where.approvalStatus = approvalStatus;
+      if (role) {
+        where.role = role;
+      }
+
+      if (approvalStatus) {
+        where.approvalStatus = approvalStatus;
+      }
     }
 
     if (search) {

@@ -36,13 +36,14 @@ import { UserService } from './user.service';
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.TRAINER, UserRole.TRAINEE)
   @Get()
   @Serialize(ResponseUserDto)
   async getAll(
     @Query() query: GetUsersQueryDto,
+    @CurrentUser() currentUser: JwtAuthPayload,
   ): Promise<BaseResponseDto<ResponseUserDto[]>> {
-    return this.userService.getAll(query);
+    return this.userService.getAll(query, currentUser);
   }
 
   @Roles(UserRole.ADMIN, UserRole.TRAINER, UserRole.TRAINEE)
