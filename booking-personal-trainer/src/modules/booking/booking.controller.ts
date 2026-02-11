@@ -132,6 +132,7 @@ export class BookingController {
   }
 
   @Get(':id')
+  @Serialize(BookingResponseDto)
   @ApiOperation({
     summary: API_DESCRIPTIONS.BOOKING.GET_ONE_SUMMARY,
     description: API_DESCRIPTIONS.BOOKING.GET_ONE_DESCRIPTION,
@@ -144,6 +145,12 @@ export class BookingController {
   @ApiResponse({
     status: HttpStatus.OK,
     description: SUCCESS_MESSAGES.BOOKING.RETRIEVED,
+    schema: {
+      required: ['data'],
+      properties: {
+        data: { $ref: getSchemaPath(BookingResponseDto) },
+      },
+    },
   })
   @ApiResponse({
     status: HttpStatus.UNAUTHORIZED,

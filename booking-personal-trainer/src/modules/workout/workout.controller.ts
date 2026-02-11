@@ -165,6 +165,7 @@ export class WorkoutController {
 
   @Roles(UserRole.ADMIN, UserRole.TRAINER, UserRole.TRAINEE)
   @Get(':id')
+  @Serialize(WorkoutResponseDto)
   @ApiOperation({
     summary: API_DESCRIPTIONS.WORKOUT.GET_ONE_SUMMARY,
     description: API_DESCRIPTIONS.WORKOUT.GET_ONE_DESCRIPTION,
@@ -177,6 +178,12 @@ export class WorkoutController {
   @ApiResponse({
     status: HttpStatus.OK,
     description: SUCCESS_MESSAGES.WORKOUT.RETRIEVED,
+    schema: {
+      required: ['data'],
+      properties: {
+        data: { $ref: getSchemaPath(WorkoutResponseDto) },
+      },
+    },
   })
   @ApiResponse({
     status: HttpStatus.UNAUTHORIZED,

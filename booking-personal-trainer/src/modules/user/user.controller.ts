@@ -15,6 +15,7 @@ import {
   ApiBody,
   ApiBearerAuth,
   ApiExtraModels,
+  ApiParam,
   getSchemaPath,
 } from '@nestjs/swagger';
 
@@ -28,8 +29,10 @@ import { Serialize } from '../../common/decorators/serialize.decorator';
 import { BaseResponseDto } from '../../common/dtos/base-response.dto';
 import {
   API_DESCRIPTIONS,
+  API_PARAM_NAMES,
   ERROR_MESSAGES,
   SUCCESS_MESSAGES,
+  FIELD_DESCRIPTIONS,
 } from '../../common/constants/message.constant';
 import { SWAGGER_ACCESS_TOKEN } from '../../common/constants/api-document.constants';
 
@@ -138,6 +141,11 @@ export class UserController {
   @ApiOperation({
     summary: API_DESCRIPTIONS.USER.UPDATE_ROLE_SUMMARY,
     description: API_DESCRIPTIONS.USER.UPDATE_ROLE_DESCRIPTION,
+  })
+  @ApiParam({
+    name: API_PARAM_NAMES.USER_ID,
+    description: FIELD_DESCRIPTIONS.USER.ID,
+    type: String,
   })
   @ApiBody({ type: UpdateUserRoleDto })
   @ApiResponse({

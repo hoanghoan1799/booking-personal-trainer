@@ -145,6 +145,7 @@ export class AuthController {
     return BaseResponseDto.ok(user);
   }
 
+  @Public()
   @HttpCode(HttpStatus.OK)
   @Post('token/refresh')
   @ApiOperation({
@@ -189,6 +190,7 @@ export class AuthController {
     res.json({ accessToken });
   }
 
+  @Public()
   @Post('logout')
   @ApiOperation({
     summary: API_DESCRIPTIONS.AUTH.LOGOUT_SUMMARY,

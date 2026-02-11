@@ -211,6 +211,7 @@ export class ExerciseController {
     return this.exerciseService.update(id, body);
   }
 
+  @Roles(UserRole.ADMIN)
   @Patch(':id/restore')
   @ApiOperation({
     summary: API_DESCRIPTIONS.EXERCISE.RESTORE_SUMMARY,
@@ -233,6 +234,10 @@ export class ExerciseController {
   @ApiResponse({
     status: HttpStatus.UNAUTHORIZED,
     description: ERROR_MESSAGES.AUTH.ACCESS_TOKEN_INVALID,
+  })
+  @ApiResponse({
+    status: HttpStatus.FORBIDDEN,
+    description: ERROR_MESSAGES.AUTH.FORBIDDEN,
   })
   @ApiResponse({
     status: HttpStatus.NOT_FOUND,
