@@ -124,8 +124,24 @@ export class AuthController {
   })
   async create(
     @Body() data: RegisterDto,
+    @Res({ passthrough: true }) res: Response,
   ): Promise<BaseResponseDto<ResponseUserDto>> {
-    return this.authService.register(data);
+    const { accessToken, refreshToken, user } =
+      await this.authService.register(data);
+
+    // Set authentication cookies
+    res.cookie(TOKEN_COOKIE.ACCESS, accessToken, {
+      ...COOKIE_OPTIONS,
+      maxAge: TOKEN_MAX_AGE.ACCESS,
+    });
+
+    res.cookie(TOKEN_COOKIE.REFRESH, refreshToken, {
+      ...COOKIE_OPTIONS,
+      path: `${ROUTE_PREFIX.V1}${ROUTES.AUTH}${ROUTES.TOKEN_REFRESH}`,
+      maxAge: TOKEN_MAX_AGE.REFRESH,
+    });
+
+    return BaseResponseDto.ok(user);
   }
 
   @Public()

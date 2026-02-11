@@ -20,7 +20,6 @@ import { User } from '../user/entities/user.entity';
 
 // DTOs
 import { RegisterDto } from './dtos/register.dto';
-import { ResponseUserDto } from '../user/dtos/response-user.dto';
 import { LoginDto, LoginResponseDto } from './dtos/login.dto';
 import { RefreshTokenRequestDto, TokensDto } from './dtos/token.dto';
 import { LogoutDto } from './dtos/logout.dto';
@@ -53,12 +52,12 @@ export class AuthService {
   ) {}
 
   /**
-   * Registers a new user.
+   * Registers a new user and automatically authenticates them.
    * @param data The user data to be registered.
-   * @returns The newly registered user.
+   * @returns The authentication tokens and newly registered user.
    * @throws ConflictException If the email or user name already exists.
    */
-  async register(data: RegisterDto): Promise<BaseResponseDto<ResponseUserDto>> {
+  async register(data: RegisterDto): Promise<LoginResponseDto> {
     const { email, password, userName, userType, firstName, lastName } = data;
 
     const existingUser = await this.userService.findByEmailOrUserName(
@@ -95,7 +94,22 @@ export class AuthService {
       status: UserStatus.ACTIVE,
     });
 
-    return BaseResponseDto.ok(newUser);
+    // Automatically authenticate the newly registered user
+    const payload: JwtAuthPayload = {
+      id: newUser.id,
+      email: newUser.email,
+      userName: newUser.userName,
+      role: newUser.role,
+    };
+
+    const { accessToken, refreshToken } = await this.createTokens(payload);
+
+    await this.refreshTokenService.saveRefreshToken({
+      userId: newUser.id,
+      refreshToken,
+    });
+
+    return { accessToken, refreshToken, user: newUser };
   }
 
   /**
