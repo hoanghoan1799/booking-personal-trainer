@@ -3,6 +3,7 @@ import { apiFetch } from "@/lib/api";
 import { getApiErrorMessage } from "@/lib/error.utils";
 import { clearAccessToken, setAccessToken } from "@/lib/token";
 import { refreshAccessToken } from "@/lib/auth";
+import { Router } from "next/router";
 
 interface ApiResponse<T> {
   data: T;
@@ -65,13 +66,6 @@ export async function login(data: LoginBody) {
   }
   
   const result = await res.json();
-  
-  // Backend sets httpOnly cookies (access_token and refresh_token)
-  // Get access token via refresh endpoint to store in localStorage for API calls
-  const accessToken = await getTokenFromCookies();
-  if (accessToken) {
-    setAccessToken(accessToken);
-  }
 
   return result;
 }
@@ -93,13 +87,6 @@ export async function register(data: RegisterBody) {
   }
 
   const result = await res.json();
-  
-  // Backend now sets httpOnly cookies (access_token and refresh_token) on registration
-  // Get access token via refresh endpoint to store in localStorage for API calls
-  const accessToken = await getTokenFromCookies();
-  if (accessToken) {
-    setAccessToken(accessToken);
-  }
 
   return result;
 }

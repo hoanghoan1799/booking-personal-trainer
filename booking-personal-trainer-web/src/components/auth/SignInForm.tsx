@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useRouter } from 'next/navigation'
 
 import Input from '@/components/form/input/InputField';
 import Label from '@/components/form/Label';
@@ -21,7 +22,7 @@ import { useToast } from "@/context/ToastContext";
 export default function SignInForm() {
   const toast = useToast();
   const [showPassword, setShowPassword] = useState(false);
-
+  const router = useRouter()
 
   const {
     register,
@@ -35,11 +36,9 @@ export default function SignInForm() {
     try {
       await login(data);
       toast.success("Signed in successfully");
+
+      router.push('/')
       
-      // Use window.location.replace for full page reload to ensure middleware sees cookies
-      if (typeof window !== 'undefined') {
-        window.location.replace('/');
-      }
     } catch (error) {
       toast.error(getErrorMessage(error, "Sign in failed"));
     }

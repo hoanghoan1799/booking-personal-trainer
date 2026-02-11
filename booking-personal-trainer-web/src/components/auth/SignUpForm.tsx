@@ -17,10 +17,12 @@ import { register as registerUser } from "@/services/auth/auth.service";
 import { APP_ROUTES } from "@/lib/route.constants";
 import { getErrorMessage } from "@/lib/error.utils";
 import { useToast } from "@/context/ToastContext";
+import { useRouter } from "next/navigation";
 
 export default function SignUpForm() {
   const toast = useToast();
   const [showPassword, setShowPassword] = useState(false);
+  const router = useRouter()
 
   const {
     register,
@@ -36,10 +38,8 @@ export default function SignUpForm() {
       await registerUser(data);
       toast.success("Account created successfully");
       
-      // Use window.location.replace for full page reload to ensure middleware sees cookies
-      if (typeof window !== 'undefined') {
-        window.location.replace(APP_ROUTES.ROOT);
-      }
+      router.push('/')
+
     } catch (error) {
       toast.error(getErrorMessage(error, "Registration failed"));
     }
