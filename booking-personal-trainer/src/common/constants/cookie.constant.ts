@@ -20,7 +20,7 @@ export const COOKIE_SAME_SITE = {
  */
 export const COOKIE_OPTIONS = {
   httpOnly: true,
-  sameSite: COOKIE_SAME_SITE.lax,
+  sameSite: COOKIE_SAME_SITE.none,
   secure: true,
   path: ROUTES.ROOT,
 } as const;
