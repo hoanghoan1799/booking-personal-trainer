@@ -96,6 +96,9 @@ export const SUCCESS_MESSAGES = {
     CREATED: 'Booking created successfully',
     UPDATED: 'Booking updated successfully',
     DELETED: 'Booking deleted successfully',
+    LIST_RETRIEVED: 'Bookings listed successfully',
+    RETRIEVED: 'Booking retrieved successfully',
+    STATUS_UPDATED: 'Booking status updated successfully',
   },
 } as const;
 
@@ -149,12 +152,26 @@ export const API_DESCRIPTIONS = {
     RESTORE_DESCRIPTION:
       'Restores a soft-deleted exercise by ID. Sets isDeleted flag to false.',
   },
+  BOOKING: {
+    CREATE_SUMMARY: 'Create booking',
+    CREATE_DESCRIPTION:
+      'Creates a new booking with a trainer. Start time must be at least 30 minutes in the future. Cannot book yourself or overlapping time slots.',
+    GET_ALL_SUMMARY: 'List bookings',
+    GET_ALL_DESCRIPTION:
+      'Returns bookings with optional filters (status, traineeId, trainerId) and pagination. ADMIN: all bookings; TRAINER: own bookings; TRAINEE: own bookings.',
+    GET_ONE_SUMMARY: 'Get booking by ID',
+    GET_ONE_DESCRIPTION: 'Returns a single booking by ID.',
+    UPDATE_STATUS_SUMMARY: 'Update booking status',
+    UPDATE_STATUS_DESCRIPTION:
+      'Updates booking status (admin or trainer of the booking only). Status can be PENDING, CONFIRMED, REJECTED, or CANCELLED.',
+  },
 } as const;
 
 /** OpenAPI/Swagger string formats for ApiProperty (e.g. format: 'email'). */
 export const API_FORMATS = {
   EMAIL: 'email',
   URI: 'uri',
+  DATE_TIME: 'date-time',
 } as const;
 
 /** Field descriptions and examples for DTOs and OpenAPI/Swagger ApiProperty. */
@@ -216,6 +233,9 @@ export const FIELD_DESCRIPTIONS = {
     MUSCLE_GROUP_FILTER: 'Filter by muscle group',
     EQUIPMENT_FILTER: 'Filter by equipment',
     EXERCISE_SEARCH: 'Search by exercise name',
+    BOOKING_STATUS_FILTER: 'Filter by booking status',
+    TRAINEE_ID_FILTER: 'Filter by trainee ID (admin only)',
+    TRAINER_ID_FILTER: 'Filter by trainer ID (admin only)',
   },
   EXERCISE: {
     ID: 'Unique exercise identifier',
@@ -226,5 +246,17 @@ export const FIELD_DESCRIPTIONS = {
     THUMBNAIL_URL: 'Thumbnail image URL',
     VIDEO_URL: 'Video demonstration URL',
     IS_DELETED: 'Whether exercise is soft deleted',
+  },
+  BOOKING: {
+    ID: 'Unique booking identifier',
+    TRAINER_ID: 'Trainer user ID',
+    TRAINEE_ID: 'Trainee user ID',
+    START_TIME: 'Booking start time (ISO 8601 date string)',
+    END_TIME: 'Booking end time (ISO 8601 date string)',
+    STATUS: 'Booking status',
+    TRAINER: 'Trainer user details',
+    TRAINEE: 'Trainee user details',
+    CREATED_AT: 'Creation timestamp',
+    UPDATED_AT: 'Last update timestamp',
   },
 } as const;
