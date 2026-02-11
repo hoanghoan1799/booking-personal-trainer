@@ -37,7 +37,14 @@ export default function SignInForm() {
     try {
       await login(data);
       toast.success("Signed in successfully");
-      router.push('/');
+      
+      // Wait a bit more to ensure cookies are available to middleware
+      // before navigating
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      // Use window.location instead of router.push to ensure a full page reload
+      // This ensures middleware sees the cookies
+      window.location.href = '/';
     } catch (error) {
       toast.error(getErrorMessage(error, "Sign in failed"));
     }

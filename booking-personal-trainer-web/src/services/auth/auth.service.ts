@@ -44,20 +44,33 @@ const wait = (ms: number): Promise<void> => {
 /**
  * Gets the access token from cookies by calling the refresh endpoint.
  * This works because the backend sets httpOnly cookies after login/register.
+ * 
+ * Retries multiple times with increasing delays to handle cookie propagation delays.
  */
-async function getTokenFromCookies(): Promise<string | null> {
-  try {
-    // Wait a bit for cookies to be set by the browser
-    await wait(100);
-    
-    // Call refresh endpoint which reads refresh token from cookies
-    // and returns a new access token
-    const accessToken = await refreshAccessToken();
-    return accessToken;
-  } catch (error) {
-    console.error("Failed to get token from cookies:", error);
-    return null;
+async function getTokenFromCookies(maxRetries = 3): Promise<string | null> {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      // Wait progressively longer for cookies to be set by the browser
+      // First attempt: 200ms, second: 500ms, third: 1000ms
+      const delay = attempt === 1 ? 200 : attempt === 2 ? 500 : 1000;
+      await wait(delay);
+      
+      // Call refresh endpoint which reads refresh token from cookies
+      // and returns a new access token
+      const accessToken = await refreshAccessToken();
+      if (accessToken) {
+        return accessToken;
+      }
+    } catch (error) {
+      // If this is the last attempt, log the error
+      if (attempt === maxRetries) {
+        console.error("Failed to get token from cookies after retries:", error);
+        return null;
+      }
+      // Otherwise, continue to next retry
+    }
   }
+  return null;
 }
 
 export async function login(data: LoginBody) {

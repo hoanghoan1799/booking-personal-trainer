@@ -12,7 +12,7 @@ function isPublicRoute(pathname: string): boolean {
   );
 }
 
-export function proxy(req: NextRequest) {
+function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   // Allow Next.js internal assets and static files
@@ -52,6 +52,10 @@ export function proxy(req: NextRequest) {
   }
 
   return NextResponse.next();
+}
+
+export function middleware(req: NextRequest) {
+  return proxy(req);
 }
 
 /**

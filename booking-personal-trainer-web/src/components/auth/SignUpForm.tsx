@@ -41,7 +41,14 @@ export default function SignUpForm() {
       await registerUser(data);
       await login({ email: data.email, password: data.password });
       toast.success("Account created successfully");
-      router.push(APP_ROUTES.ROOT);
+      
+      // Wait a bit more to ensure cookies are available to middleware
+      // before navigating
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      // Use window.location instead of router.push to ensure a full page reload
+      // This ensures middleware sees the cookies
+      window.location.href = APP_ROUTES.ROOT;
     } catch (error) {
       toast.error(getErrorMessage(error, "Registration failed"));
     }
