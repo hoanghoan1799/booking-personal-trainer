@@ -70,11 +70,16 @@ export const ERROR_MESSAGES = {
 } as const;
 
 export const SUCCESS_MESSAGES = {
+  AUTH: {
+    TOKEN_REFRESHED: 'Access token refreshed successfully',
+    LOGGED_OUT: 'Logged out successfully',
+  },
   USER: {
     CREATED: 'User created successfully',
     UPDATED: 'User updated successfully',
     DELETED: 'User deleted successfully',
     LOGGED_IN: 'User logged in successfully',
+    PROFILE_RETRIEVED: 'User profile retrieved successfully',
   },
   EXERCISE: {
     CREATED: 'Exercise created successfully',
@@ -86,5 +91,80 @@ export const SUCCESS_MESSAGES = {
     CREATED: 'Booking created successfully',
     UPDATED: 'Booking updated successfully',
     DELETED: 'Booking deleted successfully',
+  },
+} as const;
+
+/** API operation summaries and descriptions for OpenAPI/Swagger documentation. */
+export const API_DESCRIPTIONS = {
+  AUTH: {
+    REGISTER_SUMMARY: 'Register a new user',
+    REGISTER_DESCRIPTION:
+      'Creates a new user account. Returns the created user (no tokens). Use login to obtain access and refresh tokens.',
+    LOGIN_SUMMARY: 'Authenticate user (login)',
+    LOGIN_DESCRIPTION:
+      'Authenticates with email and password. On success, sets access and refresh tokens in HTTP-only cookies and returns the user in the response body.',
+    REFRESH_TOKEN_SUMMARY: 'Refresh access token',
+    REFRESH_TOKEN_DESCRIPTION:
+      'Issues a new access token using the refresh token from HTTP-only cookie. New tokens are set in cookies; response body contains the new access token.',
+    LOGOUT_SUMMARY: 'Log out',
+    LOGOUT_DESCRIPTION:
+      'Invalidates the current session by clearing token cookies. Optional refresh token from cookie is revoked if present.',
+    PROFILE_SUMMARY: 'Get current user profile',
+    PROFILE_DESCRIPTION:
+      'Returns the authenticated user profile. Requires a valid JWT in Authorization header or cookie.',
+  },
+} as const;
+
+/** OpenAPI/Swagger string formats for ApiProperty (e.g. format: 'email'). */
+export const API_FORMATS = {
+  EMAIL: 'email',
+} as const;
+
+/** Field descriptions and examples for DTOs and OpenAPI/Swagger ApiProperty. */
+export const FIELD_DESCRIPTIONS = {
+  COMMON: {
+    EMAIL: 'User email address',
+    EMAIL_EXAMPLE: 'user@example.com',
+    PASSWORD: 'User password',
+    PASSWORD_EXAMPLE: 'password123',
+    USERNAME: 'Unique username',
+    USERNAME_EXAMPLE: 'johndoe',
+    FIRST_NAME: 'User first name',
+    FIRST_NAME_EXAMPLE: 'John',
+    LAST_NAME: 'User last name',
+    LAST_NAME_EXAMPLE: 'Doe',
+  },
+  USER: {
+    ID: 'Unique user identifier',
+    ID_EXAMPLE: 'uuid',
+    USERNAME: 'Username',
+    EMAIL: 'User email',
+    FIRST_NAME: 'First name',
+    LAST_NAME: 'Last name',
+    ROLE: 'User role',
+    USER_TYPE: 'User type',
+    USER_TYPE_LONG: 'User type (trainer or trainee)',
+    APPROVAL_STATUS: 'Trainer approval status',
+    APPROVAL_STATUS_DEFAULT:
+      'Trainer approval status. Defaults to NONE for trainee, PENDING for trainer.',
+    ACCOUNT_STATUS: 'Account status',
+    ACCOUNT_STATUS_DEFAULT: 'User account status. Defaults to ACTIVE.',
+    ROLE_DEFAULT: 'User role. Defaults to TRAINEE.',
+    CREATED_AT: 'Creation timestamp',
+    UPDATED_AT: 'Last update timestamp',
+    AGE: 'User age in years',
+    HEIGHT: 'User height in cm',
+    WEIGHT: 'User weight in kg',
+  },
+  AUTH: {
+    AUTHENTICATED_USER: 'Authenticated user',
+    ACCESS_TOKEN: 'JWT access token',
+    ACCESS_TOKEN_EXAMPLE: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+    ACCESS_TOKEN_SWAGGER_HINT:
+      'JWT access token. Copy this value and paste it in Authorize (Bearer) above to test protected endpoints.',
+    REFRESH_TOKEN_RESPONSE:
+      'New JWT access token. Refresh token is returned in HTTP-only cookie.',
+    LOGOUT_SUCCESS: 'Whether logout was successful',
+    RESPONSE_DATA: 'Response data',
   },
 } as const;

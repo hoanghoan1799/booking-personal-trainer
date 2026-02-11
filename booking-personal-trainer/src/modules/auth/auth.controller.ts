@@ -9,7 +9,16 @@ import {
   UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
-import type { Response, Request } from 'express';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBody,
+  ApiBearerAuth,
+  ApiExtraModels,
+  getSchemaPath,
+} from '@nestjs/swagger';
+import type { Response } from 'express';
 
 // Commons
 import { Public } from '../../common/decorators/public.decorator';
@@ -19,7 +28,11 @@ import {
 } from '../../common/constants/token.constants';
 import { ROUTES, ROUTE_PREFIX } from '../../common/constants/route.constant';
 import { COOKIE_OPTIONS } from '../../common/constants/cookie.constant';
-import { ERROR_MESSAGES } from '../../common/constants/message.constant';
+import {
+  API_DESCRIPTIONS,
+  ERROR_MESSAGES,
+  SUCCESS_MESSAGES,
+} from '../../common/constants/message.constant';
 import { Cookie } from '../../common/decorators/cookie.decorator';
 import { CurrentUser } from '../../common/decorators/user.decorator';
 import { Serialize } from '../../common/decorators/serialize.decorator';
@@ -27,10 +40,12 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { BaseResponseDto } from '../../common/dtos/base-response.dto';
 import { Roles } from '../../common/decorators/role.decorator';
 import { UserRole } from '../../common/enums/user/user.enum';
+import { SWAGGER_ACCESS_TOKEN } from '../../common/constants/api-document.constants';
 
 // DTOs
 import { RegisterDto } from './dtos/register.dto';
 import { LoginDto } from './dtos/login.dto';
+import { RefreshTokenResponseDto, LogoutResponseDto } from './dtos/token.dto';
 import {
   ResponseFullUserDto,
   ResponseUserDto,
@@ -40,6 +55,8 @@ import {
 import { AuthService } from './auth.service';
 import type { JwtAuthPayload } from './types/jwt-auth.type';
 
+@ApiTags('Auth')
+@ApiExtraModels(ResponseUserDto, ResponseFullUserDto)
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
@@ -47,11 +64,29 @@ export class AuthController {
   @Public()
   @Post('register')
   @Serialize(ResponseUserDto)
-  /**
-   * Registers a new user.
-   * @param data The user data to be registered.
-   * @returns The newly registered user.
-   */
+  @ApiOperation({
+    summary: API_DESCRIPTIONS.AUTH.REGISTER_SUMMARY,
+    description: API_DESCRIPTIONS.AUTH.REGISTER_DESCRIPTION,
+  })
+  @ApiBody({ type: RegisterDto })
+  @ApiResponse({
+    status: HttpStatus.CREATED,
+    description: SUCCESS_MESSAGES.USER.CREATED,
+    schema: {
+      required: ['data'],
+      properties: {
+        data: { $ref: getSchemaPath(ResponseUserDto) },
+      },
+    },
+  })
+  @ApiResponse({
+    status: HttpStatus.CONFLICT,
+    description: `${ERROR_MESSAGES.USER.EMAIL_TAKEN} or ${ERROR_MESSAGES.USER.USERNAME_TAKEN}`,
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: ERROR_MESSAGES.AUTH.MISSING_REQUIRED_FIELDS,
+  })
   async create(
     @Body() data: RegisterDto,
   ): Promise<BaseResponseDto<ResponseUserDto>> {
@@ -62,11 +97,33 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @Post('login')
   @Serialize(ResponseUserDto)
-  /**
-   * Logs in the user.
-   * @param data The user data to be logged in.
-   * @returns The logged in user.
-   */
+  @ApiOperation({
+    summary: API_DESCRIPTIONS.AUTH.LOGIN_SUMMARY,
+    description: API_DESCRIPTIONS.AUTH.LOGIN_DESCRIPTION,
+  })
+  @ApiBody({ type: LoginDto })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: SUCCESS_MESSAGES.USER.LOGGED_IN,
+    schema: {
+      required: ['data'],
+      properties: {
+        data: { $ref: getSchemaPath(ResponseUserDto) },
+      },
+    },
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: ERROR_MESSAGES.USER.NOT_FOUND,
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: ERROR_MESSAGES.VALIDATION.PASSWORD_NOT_MATCH,
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: ERROR_MESSAGES.AUTH.MISSING_REQUIRED_FIELDS,
+  })
   async login(
     @Body() data: LoginDto,
     @Res({ passthrough: true }) res: Response,
@@ -90,11 +147,19 @@ export class AuthController {
 
   @HttpCode(HttpStatus.OK)
   @Post('token/refresh')
-  /**
-   * Refreshes the access token and refresh token.
-   * @throws UnauthorizedException if refresh token is not found
-   * @returns {Promise<void>} with the new access token and its expiration time in seconds
-   */
+  @ApiOperation({
+    summary: API_DESCRIPTIONS.AUTH.REFRESH_TOKEN_SUMMARY,
+    description: API_DESCRIPTIONS.AUTH.REFRESH_TOKEN_DESCRIPTION,
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: SUCCESS_MESSAGES.AUTH.TOKEN_REFRESHED,
+    type: RefreshTokenResponseDto,
+  })
+  @ApiResponse({
+    status: HttpStatus.UNAUTHORIZED,
+    description: `${ERROR_MESSAGES.AUTH.REFRESH_TOKEN_NOT_FOUND} or ${ERROR_MESSAGES.AUTH.INVALID_REFRESH_TOKEN}`,
+  })
   async refresh(
     @Res({ passthrough: true })
     res: Response,
@@ -125,12 +190,15 @@ export class AuthController {
   }
 
   @Post('logout')
-  /**
-   * Logs out the user.
-   * @param req The request object
-   * @param res The response object
-   * @returns A promise that resolves to a JSON object with a success property set to true
-   */
+  @ApiOperation({
+    summary: API_DESCRIPTIONS.AUTH.LOGOUT_SUMMARY,
+    description: API_DESCRIPTIONS.AUTH.LOGOUT_DESCRIPTION,
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: SUCCESS_MESSAGES.AUTH.LOGGED_OUT,
+    type: LogoutResponseDto,
+  })
   async logout(
     @Res({ passthrough: true }) res: Response,
     @Cookie(TOKEN_COOKIE.REFRESH) refreshTokenFromCookie?: string,
@@ -148,11 +216,29 @@ export class AuthController {
   @Roles(UserRole.ADMIN, UserRole.TRAINEE, UserRole.TRAINER)
   @Get('profile')
   @Serialize(ResponseFullUserDto)
-  /**
-   * Gets the profile of the current user.
-   * @throws NotFoundException if user is not found
-   * @returns The profile of the current user
-   */
+  @ApiBearerAuth(SWAGGER_ACCESS_TOKEN)
+  @ApiOperation({
+    summary: API_DESCRIPTIONS.AUTH.PROFILE_SUMMARY,
+    description: API_DESCRIPTIONS.AUTH.PROFILE_DESCRIPTION,
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: SUCCESS_MESSAGES.USER.PROFILE_RETRIEVED,
+    schema: {
+      required: ['data'],
+      properties: {
+        data: { $ref: getSchemaPath(ResponseFullUserDto) },
+      },
+    },
+  })
+  @ApiResponse({
+    status: HttpStatus.UNAUTHORIZED,
+    description: ERROR_MESSAGES.AUTH.ACCESS_TOKEN_INVALID,
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: ERROR_MESSAGES.USER.NOT_FOUND,
+  })
   async getProfile(
     @CurrentUser() user: JwtAuthPayload,
   ): Promise<BaseResponseDto<ResponseFullUserDto>> {
