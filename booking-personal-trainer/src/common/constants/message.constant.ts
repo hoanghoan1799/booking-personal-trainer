@@ -89,6 +89,8 @@ export const SUCCESS_MESSAGES = {
     UPDATED: 'Exercise updated successfully',
     DELETED: 'Exercise deleted successfully',
     RESTORED: 'Exercise restored successfully',
+    LIST_RETRIEVED: 'Exercises listed successfully',
+    RETRIEVED: 'Exercise retrieved successfully',
   },
   BOOKING: {
     CREATED: 'Booking created successfully',
@@ -127,11 +129,32 @@ export const API_DESCRIPTIONS = {
     UPDATE_ROLE_DESCRIPTION:
       'Updates a user role (admin only). Cannot update own role, assign admin, or update another admin.',
   },
+  EXERCISE: {
+    CREATE_SUMMARY: 'Create exercise',
+    CREATE_DESCRIPTION:
+      'Creates a new exercise. Admin only. Requires name, muscleGroup, and equipment.',
+    GET_ALL_SUMMARY: 'List exercises',
+    GET_ALL_DESCRIPTION:
+      'Returns exercises with optional filters (muscleGroup, equipment, search) and pagination. Admin and Trainer can access.',
+    GET_ONE_SUMMARY: 'Get exercise by ID',
+    GET_ONE_DESCRIPTION:
+      'Returns a single exercise by ID. All authenticated users can access.',
+    UPDATE_SUMMARY: 'Update exercise',
+    UPDATE_DESCRIPTION:
+      'Updates an exercise by ID. Admin only. All fields are optional.',
+    DELETE_SUMMARY: 'Delete exercise',
+    DELETE_DESCRIPTION:
+      'Soft deletes an exercise by ID. Admin only. Sets isDeleted flag to true.',
+    RESTORE_SUMMARY: 'Restore deleted exercise',
+    RESTORE_DESCRIPTION:
+      'Restores a soft-deleted exercise by ID. Sets isDeleted flag to false.',
+  },
 } as const;
 
 /** OpenAPI/Swagger string formats for ApiProperty (e.g. format: 'email'). */
 export const API_FORMATS = {
   EMAIL: 'email',
+  URI: 'uri',
 } as const;
 
 /** Field descriptions and examples for DTOs and OpenAPI/Swagger ApiProperty. */
@@ -190,5 +213,18 @@ export const FIELD_DESCRIPTIONS = {
     USER_TYPE_FILTER: 'Filter by user type',
     ROLE_FILTER: 'Filter by role',
     APPROVAL_STATUS_FILTER: 'Filter by trainer approval status',
+    MUSCLE_GROUP_FILTER: 'Filter by muscle group',
+    EQUIPMENT_FILTER: 'Filter by equipment',
+    EXERCISE_SEARCH: 'Search by exercise name',
+  },
+  EXERCISE: {
+    ID: 'Unique exercise identifier',
+    NAME: 'Exercise name',
+    DESCRIPTION: 'Exercise description',
+    MUSCLE_GROUP: 'Muscle group targeted',
+    EQUIPMENT: 'Equipment required',
+    THUMBNAIL_URL: 'Thumbnail image URL',
+    VIDEO_URL: 'Video demonstration URL',
+    IS_DELETED: 'Whether exercise is soft deleted',
   },
 } as const;
