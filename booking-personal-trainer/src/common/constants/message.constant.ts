@@ -65,7 +65,7 @@ export const ERROR_MESSAGES = {
   },
 
   SYSTEM: {
-    INTERNAL_SERVER_ERROR: 'Internal server error',
+    INTERNAL_SERVER_ERROR: 'Internal Server Error',
   },
 } as const;
 
