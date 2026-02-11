@@ -11,6 +11,7 @@ import {
   ParseUUIDPipe,
   HttpStatus,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import {
   ApiTags,
   ApiOperation,
@@ -48,6 +49,12 @@ import { UpdateExerciseDto } from './dto/update-exercise.dto';
 import { ExerciseService } from './exercise.service';
 import { ExerciseResponseDto } from './dto/exercise-response.dto';
 
+// Rate limiting
+import {
+  createRateLimitByIdentityResolver,
+  RATE_LIMIT_WINDOW_TTL_MILLISECONDS,
+} from '../../common/helpers/rate-limit-override.helper';
+
 @ApiTags('Exercise')
 @ApiBearerAuth(SWAGGER_ACCESS_TOKEN)
 @ApiExtraModels(ExerciseResponseDto)
@@ -58,6 +65,35 @@ export class ExerciseController {
 
   @Roles(UserRole.ADMIN)
   @Post()
+  /**
+   * Rate-limit override (stricter than global baseline).
+   *
+   * Why:
+   * - Creating exercises is an admin-only write endpoint that can still be abused
+   *   (either by automation or a compromised admin account) to generate DB load.
+   */
+  @Throttle({
+    burst: {
+      ttl: RATE_LIMIT_WINDOW_TTL_MILLISECONDS.BURST,
+      limit: createRateLimitByIdentityResolver({ ip: 10, token: 15, user: 20 }),
+    },
+    minute: {
+      ttl: RATE_LIMIT_WINDOW_TTL_MILLISECONDS.MINUTE,
+      limit: createRateLimitByIdentityResolver({
+        ip: 60,
+        token: 90,
+        user: 120,
+      }),
+    },
+    hour: {
+      ttl: RATE_LIMIT_WINDOW_TTL_MILLISECONDS.HOUR,
+      limit: createRateLimitByIdentityResolver({
+        ip: 500,
+        token: 800,
+        user: 1200,
+      }),
+    },
+  })
   @Serialize(ExerciseResponseDto)
   @ApiOperation({
     summary: API_DESCRIPTIONS.EXERCISE.CREATE_SUMMARY,
@@ -171,6 +207,35 @@ export class ExerciseController {
 
   @Roles(UserRole.ADMIN)
   @Patch(':id')
+  /**
+   * Rate-limit override (stricter than global baseline).
+   *
+   * Why:
+   * - Repeated updates can create write amplification and degrade DB performance.
+   * - Tight shaping protects the system from rapid edit loops / abuse.
+   */
+  @Throttle({
+    burst: {
+      ttl: RATE_LIMIT_WINDOW_TTL_MILLISECONDS.BURST,
+      limit: createRateLimitByIdentityResolver({ ip: 10, token: 15, user: 20 }),
+    },
+    minute: {
+      ttl: RATE_LIMIT_WINDOW_TTL_MILLISECONDS.MINUTE,
+      limit: createRateLimitByIdentityResolver({
+        ip: 60,
+        token: 90,
+        user: 120,
+      }),
+    },
+    hour: {
+      ttl: RATE_LIMIT_WINDOW_TTL_MILLISECONDS.HOUR,
+      limit: createRateLimitByIdentityResolver({
+        ip: 500,
+        token: 800,
+        user: 1200,
+      }),
+    },
+  })
   @Serialize(ExerciseResponseDto)
   @ApiOperation({
     summary: API_DESCRIPTIONS.EXERCISE.UPDATE_SUMMARY,
@@ -213,6 +278,27 @@ export class ExerciseController {
 
   @Roles(UserRole.ADMIN)
   @Patch(':id/restore')
+  /**
+   * Rate-limit override (moderate).
+   *
+   * Why:
+   * - Restore operations are administrative state changes.
+   * - Slightly stricter than baseline to prevent rapid repeated restores.
+   */
+  @Throttle({
+    burst: {
+      ttl: RATE_LIMIT_WINDOW_TTL_MILLISECONDS.BURST,
+      limit: createRateLimitByIdentityResolver({ ip: 10, token: 15, user: 20 }),
+    },
+    minute: {
+      ttl: RATE_LIMIT_WINDOW_TTL_MILLISECONDS.MINUTE,
+      limit: createRateLimitByIdentityResolver({
+        ip: 60,
+        token: 90,
+        user: 120,
+      }),
+    },
+  })
   @ApiOperation({
     summary: API_DESCRIPTIONS.EXERCISE.RESTORE_SUMMARY,
     description: API_DESCRIPTIONS.EXERCISE.RESTORE_DESCRIPTION,
@@ -249,6 +335,31 @@ export class ExerciseController {
 
   @Roles(UserRole.ADMIN)
   @Delete(':id')
+  /**
+   * Rate-limit override (strict).
+   *
+   * Why:
+   * - Delete is destructive; stricter limits reduce the speed at which data can be removed.
+   * - Helps limit damage from accidental scripts or compromised admin credentials.
+   */
+  @Throttle({
+    burst: {
+      ttl: RATE_LIMIT_WINDOW_TTL_MILLISECONDS.BURST,
+      limit: createRateLimitByIdentityResolver({ ip: 5, token: 8, user: 10 }),
+    },
+    minute: {
+      ttl: RATE_LIMIT_WINDOW_TTL_MILLISECONDS.MINUTE,
+      limit: createRateLimitByIdentityResolver({ ip: 20, token: 30, user: 40 }),
+    },
+    hour: {
+      ttl: RATE_LIMIT_WINDOW_TTL_MILLISECONDS.HOUR,
+      limit: createRateLimitByIdentityResolver({
+        ip: 100,
+        token: 160,
+        user: 250,
+      }),
+    },
+  })
   @ApiOperation({
     summary: API_DESCRIPTIONS.EXERCISE.DELETE_SUMMARY,
     description: API_DESCRIPTIONS.EXERCISE.DELETE_DESCRIPTION,

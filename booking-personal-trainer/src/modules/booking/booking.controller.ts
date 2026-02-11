@@ -10,6 +10,7 @@ import {
   Req,
   HttpStatus,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import {
   ApiTags,
   ApiOperation,
@@ -48,6 +49,12 @@ import { ResponseUserDto } from '../user/dtos/response-user.dto';
 // Services
 import { BookingService } from './booking.service';
 
+// Rate limiting
+import {
+  createRateLimitByIdentityResolver,
+  RATE_LIMIT_WINDOW_TTL_MILLISECONDS,
+} from '../../common/helpers/rate-limit-override.helper';
+
 @ApiTags('Booking')
 @ApiBearerAuth(SWAGGER_ACCESS_TOKEN)
 @ApiExtraModels(BookingResponseDto, ResponseUserDto)
@@ -57,6 +64,31 @@ export class BookingController {
   constructor(private readonly bookingService: BookingService) {}
 
   @Post()
+  /**
+   * Rate-limit override (stricter than global baseline).
+   *
+   * Why:
+   * - Creating bookings is a write operation and can be abused for spam / resource exhaustion.
+   * - This also protects trainer availability checks and DB writes from high-frequency abuse.
+   */
+  @Throttle({
+    burst: {
+      ttl: RATE_LIMIT_WINDOW_TTL_MILLISECONDS.BURST,
+      limit: createRateLimitByIdentityResolver({ ip: 8, token: 12, user: 15 }),
+    },
+    minute: {
+      ttl: RATE_LIMIT_WINDOW_TTL_MILLISECONDS.MINUTE,
+      limit: createRateLimitByIdentityResolver({ ip: 40, token: 60, user: 80 }),
+    },
+    hour: {
+      ttl: RATE_LIMIT_WINDOW_TTL_MILLISECONDS.HOUR,
+      limit: createRateLimitByIdentityResolver({
+        ip: 300,
+        token: 500,
+        user: 700,
+      }),
+    },
+  })
   @Serialize(BookingResponseDto)
   @ApiOperation({
     summary: API_DESCRIPTIONS.BOOKING.CREATE_SUMMARY,
@@ -167,6 +199,35 @@ export class BookingController {
   @Roles(UserRole.ADMIN, UserRole.TRAINER)
   @UseGuards(RolesGuard)
   @Patch(':id/status')
+  /**
+   * Rate-limit override (stricter than global baseline).
+   *
+   * Why:
+   * - Status updates are state-changing operations that can trigger business workflows/notifications.
+   * - Tightening limits reduces the impact of abusive clients repeatedly toggling status.
+   */
+  @Throttle({
+    burst: {
+      ttl: RATE_LIMIT_WINDOW_TTL_MILLISECONDS.BURST,
+      limit: createRateLimitByIdentityResolver({ ip: 10, token: 15, user: 20 }),
+    },
+    minute: {
+      ttl: RATE_LIMIT_WINDOW_TTL_MILLISECONDS.MINUTE,
+      limit: createRateLimitByIdentityResolver({
+        ip: 60,
+        token: 90,
+        user: 120,
+      }),
+    },
+    hour: {
+      ttl: RATE_LIMIT_WINDOW_TTL_MILLISECONDS.HOUR,
+      limit: createRateLimitByIdentityResolver({
+        ip: 500,
+        token: 800,
+        user: 1200,
+      }),
+    },
+  })
   @Serialize(BookingResponseDto)
   @ApiOperation({
     summary: API_DESCRIPTIONS.BOOKING.UPDATE_STATUS_SUMMARY,

@@ -11,6 +11,7 @@ import {
   Query,
   HttpStatus,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import {
   ApiTags,
   ApiOperation,
@@ -63,6 +64,12 @@ import { WorkoutService } from './workout.service';
 // Decorators
 import { Serialize } from '../../common/decorators/serialize.decorator';
 
+// Rate limiting
+import {
+  createRateLimitByIdentityResolver,
+  RATE_LIMIT_WINDOW_TTL_MILLISECONDS,
+} from '../../common/helpers/rate-limit-override.helper';
+
 @ApiTags('Workout')
 @ApiBearerAuth(SWAGGER_ACCESS_TOKEN)
 @ApiExtraModels(
@@ -79,6 +86,31 @@ export class WorkoutController {
 
   @Roles(UserRole.ADMIN, UserRole.TRAINER)
   @Post()
+  /**
+   * Rate-limit override (stricter than global baseline).
+   *
+   * Why:
+   * - Workout creation is a write-heavy endpoint and can cause significant DB load.
+   * - Tight limits prevent spam creation and reduce blast radius from compromised accounts.
+   */
+  @Throttle({
+    burst: {
+      ttl: RATE_LIMIT_WINDOW_TTL_MILLISECONDS.BURST,
+      limit: createRateLimitByIdentityResolver({ ip: 8, token: 12, user: 15 }),
+    },
+    minute: {
+      ttl: RATE_LIMIT_WINDOW_TTL_MILLISECONDS.MINUTE,
+      limit: createRateLimitByIdentityResolver({ ip: 40, token: 60, user: 90 }),
+    },
+    hour: {
+      ttl: RATE_LIMIT_WINDOW_TTL_MILLISECONDS.HOUR,
+      limit: createRateLimitByIdentityResolver({
+        ip: 300,
+        token: 500,
+        user: 900,
+      }),
+    },
+  })
   @Serialize(WorkoutResponseDto)
   @ApiOperation({
     summary: API_DESCRIPTIONS.WORKOUT.CREATE_SUMMARY,
@@ -199,6 +231,35 @@ export class WorkoutController {
 
   @Roles(UserRole.ADMIN, UserRole.TRAINER)
   @Patch(':id')
+  /**
+   * Rate-limit override (stricter than global baseline).
+   *
+   * Why:
+   * - Updates can be repeatedly called to generate write amplification and contention.
+   * - Stricter shaping helps protect database performance and prevents noisy clients from spamming updates.
+   */
+  @Throttle({
+    burst: {
+      ttl: RATE_LIMIT_WINDOW_TTL_MILLISECONDS.BURST,
+      limit: createRateLimitByIdentityResolver({ ip: 10, token: 15, user: 20 }),
+    },
+    minute: {
+      ttl: RATE_LIMIT_WINDOW_TTL_MILLISECONDS.MINUTE,
+      limit: createRateLimitByIdentityResolver({
+        ip: 60,
+        token: 90,
+        user: 120,
+      }),
+    },
+    hour: {
+      ttl: RATE_LIMIT_WINDOW_TTL_MILLISECONDS.HOUR,
+      limit: createRateLimitByIdentityResolver({
+        ip: 500,
+        token: 800,
+        user: 1200,
+      }),
+    },
+  })
   @Serialize(WorkoutResponseDto)
   @ApiOperation({
     summary: API_DESCRIPTIONS.WORKOUT.UPDATE_DETAIL_SUMMARY,
@@ -247,6 +308,31 @@ export class WorkoutController {
 
   @Roles(UserRole.ADMIN, UserRole.TRAINER)
   @Delete(':id')
+  /**
+   * Rate-limit override (strict).
+   *
+   * Why:
+   * - Delete operations are destructive and can be abused to wipe data quickly.
+   * - Stricter limits reduce the speed of destructive actions (even by authorized roles).
+   */
+  @Throttle({
+    burst: {
+      ttl: RATE_LIMIT_WINDOW_TTL_MILLISECONDS.BURST,
+      limit: createRateLimitByIdentityResolver({ ip: 5, token: 8, user: 10 }),
+    },
+    minute: {
+      ttl: RATE_LIMIT_WINDOW_TTL_MILLISECONDS.MINUTE,
+      limit: createRateLimitByIdentityResolver({ ip: 20, token: 30, user: 40 }),
+    },
+    hour: {
+      ttl: RATE_LIMIT_WINDOW_TTL_MILLISECONDS.HOUR,
+      limit: createRateLimitByIdentityResolver({
+        ip: 100,
+        token: 160,
+        user: 250,
+      }),
+    },
+  })
   @ApiOperation({
     summary: API_DESCRIPTIONS.WORKOUT.DELETE_SUMMARY,
     description: API_DESCRIPTIONS.WORKOUT.DELETE_DESCRIPTION,

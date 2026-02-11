@@ -5,34 +5,15 @@ import type {
 } from '@nestjs/throttler';
 import type { Request } from 'express';
 
-// Constants
-import { RATE_LIMIT } from '../common/constants/rate-limit.constant';
-
 // Helpers
-import { getRateLimitTracker } from '../common/helpers/rate-limit.helper';
-
-type RateLimitGroup = Readonly<{
-  ip: number;
-  token: number;
-  user: number;
-}>;
-
-const SECOND_IN_MILLISECONDS = 1000 as const;
-const MINUTE_IN_MILLISECONDS = 60 * SECOND_IN_MILLISECONDS;
-const HOUR_IN_MILLISECONDS = 60 * MINUTE_IN_MILLISECONDS;
+import {
+  createRateLimitByIdentityResolver,
+  RATE_LIMIT_WINDOW_TTL_MILLISECONDS,
+  type RateLimitGroup,
+} from '../common/helpers/rate-limit-override.helper';
 
 const getRequestFromContext = (context: ExecutionContext): Request =>
   context.switchToHttp().getRequest<Request>();
-
-const resolveLimitByIdentity =
-  (limits: RateLimitGroup) =>
-  (context: ExecutionContext): number => {
-    const request = getRequestFromContext(context);
-    const { kind } = getRateLimitTracker(request);
-    if (kind === RATE_LIMIT.TRACKER_KIND.USER) return limits.user;
-    if (kind === RATE_LIMIT.TRACKER_KIND.TOKEN) return limits.token;
-    return limits.ip;
-  };
 
 const createThrottler = (params: {
   readonly name: string;
@@ -41,7 +22,7 @@ const createThrottler = (params: {
 }): ThrottlerOptions => ({
   name: params.name,
   ttl: params.ttlMilliseconds,
-  limit: resolveLimitByIdentity(params.limits),
+  limit: createRateLimitByIdentityResolver(params.limits),
   blockDuration: params.ttlMilliseconds,
   setHeaders: true,
 });
@@ -75,17 +56,17 @@ export const RATE_LIMIT_OPTIONS: ThrottlerModuleOptions = {
   throttlers: [
     createThrottler({
       name: 'burst',
-      ttlMilliseconds: 10 * SECOND_IN_MILLISECONDS,
+      ttlMilliseconds: RATE_LIMIT_WINDOW_TTL_MILLISECONDS.BURST,
       limits: { ip: 20, token: 40, user: 60 },
     }),
     createThrottler({
       name: 'minute',
-      ttlMilliseconds: 1 * MINUTE_IN_MILLISECONDS,
+      ttlMilliseconds: RATE_LIMIT_WINDOW_TTL_MILLISECONDS.MINUTE,
       limits: { ip: 120, token: 240, user: 300 },
     }),
     createThrottler({
       name: 'hour',
-      ttlMilliseconds: 1 * HOUR_IN_MILLISECONDS,
+      ttlMilliseconds: RATE_LIMIT_WINDOW_TTL_MILLISECONDS.HOUR,
       limits: { ip: 2000, token: 4000, user: 6000 },
     }),
   ],

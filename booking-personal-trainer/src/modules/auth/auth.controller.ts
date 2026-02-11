@@ -9,6 +9,7 @@ import {
   UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import {
   ApiTags,
   ApiOperation,
@@ -55,6 +56,12 @@ import {
 import { AuthService } from './auth.service';
 import type { JwtAuthPayload } from './types/jwt-auth.type';
 
+// Rate limiting
+import {
+  createRateLimitByIdentityResolver,
+  RATE_LIMIT_WINDOW_TTL_MILLISECONDS,
+} from '../../common/helpers/rate-limit-override.helper';
+
 @ApiTags('Auth')
 @ApiExtraModels(ResponseUserDto, ResponseFullUserDto)
 @Controller('auth')
@@ -63,6 +70,34 @@ export class AuthController {
 
   @Public()
   @Post('register')
+  /**
+   * Rate-limit override (stricter than global baseline).
+   *
+   * Why:
+   * - `register` is a common abuse target (bot signups, email/username probing, DB spam).
+   * - Stricter limits reduce load and slow down automated account creation attempts.
+   *
+   * How it applies:
+   * - Still keyed by user/token/ip (via `createRateLimitByIdentityResolver`), but with lower limits.
+   */
+  @Throttle({
+    burst: {
+      ttl: RATE_LIMIT_WINDOW_TTL_MILLISECONDS.BURST,
+      limit: createRateLimitByIdentityResolver({ ip: 3, token: 5, user: 5 }),
+    },
+    minute: {
+      ttl: RATE_LIMIT_WINDOW_TTL_MILLISECONDS.MINUTE,
+      limit: createRateLimitByIdentityResolver({ ip: 10, token: 20, user: 20 }),
+    },
+    hour: {
+      ttl: RATE_LIMIT_WINDOW_TTL_MILLISECONDS.HOUR,
+      limit: createRateLimitByIdentityResolver({
+        ip: 60,
+        token: 120,
+        user: 120,
+      }),
+    },
+  })
   @Serialize(ResponseUserDto)
   @ApiOperation({
     summary: API_DESCRIPTIONS.AUTH.REGISTER_SUMMARY,
@@ -96,6 +131,34 @@ export class AuthController {
   @Public()
   @HttpCode(HttpStatus.OK)
   @Post('login')
+  /**
+   * Rate-limit override (stricter than global baseline).
+   *
+   * Why:
+   * - `login` is the primary brute-force / credential-stuffing target.
+   * - Stricter limits reduce password-guessing rate and protect downstream dependencies (DB/Redis).
+   *
+   * Notes:
+   * - This is complementary to strong password policy + lockouts; rate limiting is your first line of defense.
+   */
+  @Throttle({
+    burst: {
+      ttl: RATE_LIMIT_WINDOW_TTL_MILLISECONDS.BURST,
+      limit: createRateLimitByIdentityResolver({ ip: 5, token: 8, user: 8 }),
+    },
+    minute: {
+      ttl: RATE_LIMIT_WINDOW_TTL_MILLISECONDS.MINUTE,
+      limit: createRateLimitByIdentityResolver({ ip: 15, token: 30, user: 30 }),
+    },
+    hour: {
+      ttl: RATE_LIMIT_WINDOW_TTL_MILLISECONDS.HOUR,
+      limit: createRateLimitByIdentityResolver({
+        ip: 120,
+        token: 240,
+        user: 240,
+      }),
+    },
+  })
   @Serialize(ResponseUserDto)
   @ApiOperation({
     summary: API_DESCRIPTIONS.AUTH.LOGIN_SUMMARY,
@@ -148,6 +211,31 @@ export class AuthController {
   @Public()
   @HttpCode(HttpStatus.OK)
   @Post('token/refresh')
+  /**
+   * Rate-limit override (moderate).
+   *
+   * Why:
+   * - Refresh endpoints can be hammered by buggy clients or attackers to generate load.
+   * - We keep it more permissive than `login`, but still below global defaults to protect auth storage.
+   */
+  @Throttle({
+    burst: {
+      ttl: RATE_LIMIT_WINDOW_TTL_MILLISECONDS.BURST,
+      limit: createRateLimitByIdentityResolver({ ip: 10, token: 15, user: 15 }),
+    },
+    minute: {
+      ttl: RATE_LIMIT_WINDOW_TTL_MILLISECONDS.MINUTE,
+      limit: createRateLimitByIdentityResolver({ ip: 60, token: 90, user: 90 }),
+    },
+    hour: {
+      ttl: RATE_LIMIT_WINDOW_TTL_MILLISECONDS.HOUR,
+      limit: createRateLimitByIdentityResolver({
+        ip: 500,
+        token: 800,
+        user: 800,
+      }),
+    },
+  })
   @ApiOperation({
     summary: API_DESCRIPTIONS.AUTH.REFRESH_TOKEN_SUMMARY,
     description: API_DESCRIPTIONS.AUTH.REFRESH_TOKEN_DESCRIPTION,
@@ -192,6 +280,27 @@ export class AuthController {
 
   @Public()
   @Post('logout')
+  /**
+   * Rate-limit override (moderate).
+   *
+   * Why:
+   * - Logout can be spammed to cause unnecessary storage/cookie churn.
+   * - Keeping a moderate limit prevents rapid repeated calls while remaining user-friendly.
+   */
+  @Throttle({
+    burst: {
+      ttl: RATE_LIMIT_WINDOW_TTL_MILLISECONDS.BURST,
+      limit: createRateLimitByIdentityResolver({ ip: 20, token: 40, user: 40 }),
+    },
+    minute: {
+      ttl: RATE_LIMIT_WINDOW_TTL_MILLISECONDS.MINUTE,
+      limit: createRateLimitByIdentityResolver({
+        ip: 120,
+        token: 240,
+        user: 240,
+      }),
+    },
+  })
   @ApiOperation({
     summary: API_DESCRIPTIONS.AUTH.LOGOUT_SUMMARY,
     description: API_DESCRIPTIONS.AUTH.LOGOUT_DESCRIPTION,

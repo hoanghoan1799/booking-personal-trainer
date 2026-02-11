@@ -8,6 +8,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import {
   ApiTags,
   ApiOperation,
@@ -49,6 +50,12 @@ import { ResponseFullUserDto, ResponseUserDto } from './dtos/response-user.dto';
 
 // Services
 import { UserService } from './user.service';
+
+// Rate limiting
+import {
+  createRateLimitByIdentityResolver,
+  RATE_LIMIT_WINDOW_TTL_MILLISECONDS,
+} from '../../common/helpers/rate-limit-override.helper';
 
 @ApiTags('User')
 @ApiBearerAuth(SWAGGER_ACCESS_TOKEN)
@@ -104,6 +111,35 @@ export class UserController {
 
   @Roles(UserRole.ADMIN, UserRole.TRAINER, UserRole.TRAINEE)
   @Patch('profile')
+  /**
+   * Rate-limit override (stricter than global baseline).
+   *
+   * Why:
+   * - Profile updates are write operations and can be abused (spam edits) or accidentally looped by clients.
+   * - Tight limits reduce write pressure and prevent noisy clients from degrading performance.
+   */
+  @Throttle({
+    burst: {
+      ttl: RATE_LIMIT_WINDOW_TTL_MILLISECONDS.BURST,
+      limit: createRateLimitByIdentityResolver({ ip: 10, token: 15, user: 20 }),
+    },
+    minute: {
+      ttl: RATE_LIMIT_WINDOW_TTL_MILLISECONDS.MINUTE,
+      limit: createRateLimitByIdentityResolver({
+        ip: 80,
+        token: 120,
+        user: 180,
+      }),
+    },
+    hour: {
+      ttl: RATE_LIMIT_WINDOW_TTL_MILLISECONDS.HOUR,
+      limit: createRateLimitByIdentityResolver({
+        ip: 800,
+        token: 1200,
+        user: 1800,
+      }),
+    },
+  })
   @Serialize(ResponseFullUserDto)
   @ApiOperation({
     summary: API_DESCRIPTIONS.USER.UPDATE_PROFILE_SUMMARY,
@@ -137,6 +173,31 @@ export class UserController {
 
   @Roles(UserRole.ADMIN)
   @Patch(':userId/role')
+  /**
+   * Rate-limit override (strict).
+   *
+   * Why:
+   * - Role changes are privilege-impacting operations (security sensitive).
+   * - Stricter limits reduce the impact of automation or misuse by administrators.
+   */
+  @Throttle({
+    burst: {
+      ttl: RATE_LIMIT_WINDOW_TTL_MILLISECONDS.BURST,
+      limit: createRateLimitByIdentityResolver({ ip: 5, token: 8, user: 10 }),
+    },
+    minute: {
+      ttl: RATE_LIMIT_WINDOW_TTL_MILLISECONDS.MINUTE,
+      limit: createRateLimitByIdentityResolver({ ip: 30, token: 45, user: 60 }),
+    },
+    hour: {
+      ttl: RATE_LIMIT_WINDOW_TTL_MILLISECONDS.HOUR,
+      limit: createRateLimitByIdentityResolver({
+        ip: 200,
+        token: 300,
+        user: 500,
+      }),
+    },
+  })
   @Serialize(ResponseUserDto)
   @ApiOperation({
     summary: API_DESCRIPTIONS.USER.UPDATE_ROLE_SUMMARY,
