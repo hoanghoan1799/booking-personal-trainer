@@ -44,7 +44,6 @@ const wait = (ms: number): Promise<void> => {
 /**
  * Gets the access token from cookies by calling the refresh endpoint.
  * This works because the backend sets httpOnly cookies after login/register.
- * 
  * Retries multiple times with increasing delays to handle cookie propagation delays.
  */
 async function getTokenFromCookies(maxRetries = 3): Promise<string | null> {
@@ -97,7 +96,7 @@ export async function login(data: LoginBody) {
   if (accessToken) {
     setAccessToken(accessToken);
   }
-  
+
   return result;
 }
 
@@ -120,13 +119,13 @@ export async function register(data: RegisterBody) {
   const result = await res.json();
   
   // Note: Registration typically doesn't set auth cookies.
-  // User will need to login after registration to get tokens.
+  // SignUpForm calls login() after register, so we get token there.
   // If backend does set cookies on register, we try to get the token here.
   const accessToken = await getTokenFromCookies();
   if (accessToken) {
     setAccessToken(accessToken);
   }
-  
+
   return result;
 }
 

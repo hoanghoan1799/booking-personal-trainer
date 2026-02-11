@@ -30,15 +30,11 @@ function proxy(req: NextRequest) {
   const accessToken = req.cookies.get('access_token')?.value;
   const isAuthenticated = Boolean(accessToken);
 
+
   /**
-   * Case 1: User is NOT logged in and trying to access protected route
-   * → redirect to /signin with redirect param
+   * Case 1 (disabled on Vercel): Backend cookies aren't visible when
+   * frontend/backend are different domains. Auth redirect is client-side on 401.
    */
-  if (!isAuthenticated && !isPublicRoute(pathname)) {
-    const loginUrl = new URL('/signin', req.url);
-    loginUrl.searchParams.set('redirect', pathname);
-    return NextResponse.redirect(loginUrl);
-  }
 
   /**
    * Case 2: User IS logged in but trying to access auth pages (signin/signup)
