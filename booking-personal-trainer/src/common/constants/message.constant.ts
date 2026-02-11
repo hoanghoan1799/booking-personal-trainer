@@ -80,6 +80,9 @@ export const SUCCESS_MESSAGES = {
     DELETED: 'User deleted successfully',
     LOGGED_IN: 'User logged in successfully',
     PROFILE_RETRIEVED: 'User profile retrieved successfully',
+    PROFILE_UPDATED: 'User profile updated successfully',
+    LIST_RETRIEVED: 'Users listed successfully',
+    ROLE_UPDATED: 'User role updated successfully',
   },
   EXERCISE: {
     CREATED: 'Exercise created successfully',
@@ -112,6 +115,17 @@ export const API_DESCRIPTIONS = {
     PROFILE_SUMMARY: 'Get current user profile',
     PROFILE_DESCRIPTION:
       'Returns the authenticated user profile. Requires a valid JWT in Authorization header or cookie.',
+  },
+  USER: {
+    GET_ALL_SUMMARY: 'List users',
+    GET_ALL_DESCRIPTION:
+      'Returns users with optional filters (userType, role, approvalStatus, search) and pagination. ADMIN: all users; TRAINER: trainees or approved trainers; TRAINEE: approved trainers only.',
+    UPDATE_PROFILE_SUMMARY: 'Update current user profile',
+    UPDATE_PROFILE_DESCRIPTION:
+      'Updates the authenticated user profile (age, height, weight).',
+    UPDATE_ROLE_SUMMARY: 'Update user role',
+    UPDATE_ROLE_DESCRIPTION:
+      'Updates a user role (admin only). Cannot update own role, assign admin, or update another admin.',
   },
 } as const;
 
@@ -166,5 +180,15 @@ export const FIELD_DESCRIPTIONS = {
       'New JWT access token. Refresh token is returned in HTTP-only cookie.',
     LOGOUT_SUCCESS: 'Whether logout was successful',
     RESPONSE_DATA: 'Response data',
+  },
+  QUERY: {
+    PAGE: 'Page number (1-based)',
+    LIMIT: 'Number of items per page',
+    ORDER: 'Sort order (ASC or DESC)',
+    SEARCH: 'Search by email or username',
+    SORT_BY: 'Sort field (createdAt, email, name)',
+    USER_TYPE_FILTER: 'Filter by user type',
+    ROLE_FILTER: 'Filter by role',
+    APPROVAL_STATUS_FILTER: 'Filter by trainer approval status',
   },
 } as const;
