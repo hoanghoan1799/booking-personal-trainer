@@ -35,41 +35,17 @@ interface AuthResponse {
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 /**
- * Waits for a specified number of milliseconds.
- */
-const wait = (ms: number): Promise<void> => {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-};
-
-/**
  * Gets the access token from cookies by calling the refresh endpoint.
- * This works because the backend sets httpOnly cookies after login/register.
- * Retries multiple times with increasing delays to handle cookie propagation delays.
+ * Backend sets httpOnly cookies after login, and refresh endpoint returns the access token.
  */
-async function getTokenFromCookies(maxRetries = 3): Promise<string | null> {
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      // Wait progressively longer for cookies to be set by the browser
-      // First attempt: 200ms, second: 500ms, third: 1000ms
-      const delay = attempt === 1 ? 200 : attempt === 2 ? 500 : 1000;
-      await wait(delay);
-      
-      // Call refresh endpoint which reads refresh token from cookies
-      // and returns a new access token
-      const accessToken = await refreshAccessToken();
-      if (accessToken) {
-        return accessToken;
-      }
-    } catch (error) {
-      // If this is the last attempt, log the error
-      if (attempt === maxRetries) {
-        console.error("Failed to get token from cookies after retries:", error);
-        return null;
-      }
-      // Otherwise, continue to next retry
-    }
+async function getTokenFromCookies(): Promise<string | null> {
+  try {
+    const accessToken = await refreshAccessToken();
+    return accessToken;
+  } catch (error) {
+    console.error("Failed to get token from cookies:", error);
+    return null;
   }
-  return null;
 }
 
 export async function login(data: LoginBody) {
@@ -90,8 +66,8 @@ export async function login(data: LoginBody) {
   
   const result = await res.json();
   
-  // Try to get token from cookies (backend sets httpOnly cookies)
-  // Wait a bit and then fetch token via refresh endpoint
+  // Backend sets httpOnly cookies (access_token and refresh_token)
+  // Get access token via refresh endpoint to store in localStorage for API calls
   const accessToken = await getTokenFromCookies();
   if (accessToken) {
     setAccessToken(accessToken);
@@ -118,9 +94,8 @@ export async function register(data: RegisterBody) {
 
   const result = await res.json();
   
-  // Note: Registration typically doesn't set auth cookies.
-  // SignUpForm calls login() after register, so we get token there.
-  // If backend does set cookies on register, we try to get the token here.
+  // Backend now sets httpOnly cookies (access_token and refresh_token) on registration
+  // Get access token via refresh endpoint to store in localStorage for API calls
   const accessToken = await getTokenFromCookies();
   if (accessToken) {
     setAccessToken(accessToken);

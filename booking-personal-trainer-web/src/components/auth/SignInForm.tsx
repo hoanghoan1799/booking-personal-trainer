@@ -4,7 +4,6 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useRouter } from 'next/navigation';
 
 import Input from '@/components/form/input/InputField';
 import Label from '@/components/form/Label';
@@ -20,7 +19,6 @@ import { getErrorMessage } from "@/lib/error.utils";
 import { useToast } from "@/context/ToastContext";
 
 export default function SignInForm() {
-  const router = useRouter();
   const toast = useToast();
   const [showPassword, setShowPassword] = useState(false);
 
@@ -38,13 +36,10 @@ export default function SignInForm() {
       await login(data);
       toast.success("Signed in successfully");
       
-      // Wait a bit more to ensure cookies are available to middleware
-      // before navigating
-      await new Promise(resolve => setTimeout(resolve, 300));
-      
-      // Use window.location instead of router.push to ensure a full page reload
-      // This ensures middleware sees the cookies
-      window.location.href = '/';
+      // Use window.location.replace for full page reload to ensure middleware sees cookies
+      if (typeof window !== 'undefined') {
+        window.location.replace('/');
+      }
     } catch (error) {
       toast.error(getErrorMessage(error, "Sign in failed"));
     }

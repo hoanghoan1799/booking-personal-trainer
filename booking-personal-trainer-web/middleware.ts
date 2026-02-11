@@ -25,26 +25,28 @@ function proxy(req: NextRequest) {
     return NextResponse.next();
   }
 
-  // access_token has path=/ and is sent with page requests; refresh_token
-  // has path=/api/v1/token/refresh and is only sent to that API
+  // access_token cookie is set by backend on login
   const accessToken = req.cookies.get('access_token')?.value;
   const isAuthenticated = Boolean(accessToken);
-
-
-  /**
-   * Case 1 (disabled on Vercel): Backend cookies aren't visible when
-   * frontend/backend are different domains. Auth redirect is client-side on 401.
-   */
+  const isPublic = isPublicRoute(pathname);
 
   /**
-   * Case 2: User IS logged in but trying to access auth pages (signin/signup)
-   * → block and redirect to dashboard (root). User must logout first.
+   * Case 1: User IS logged in but trying to access auth pages (signin/signup)
+   * → redirect to dashboard (root). User must logout first.
    */
   if (
     isAuthenticated &&
     (pathname === "/signin" || pathname === "/signup" || pathname === "/register")
   ) {
     return NextResponse.redirect(new URL('/', req.url));
+  }
+
+  /**
+   * Case 2: User is NOT logged in and trying to access protected routes
+   * → redirect to signin page
+   */
+  if (!isAuthenticated && !isPublic) {
+    return NextResponse.redirect(new URL('/signin', req.url));
   }
 
   return NextResponse.next();
