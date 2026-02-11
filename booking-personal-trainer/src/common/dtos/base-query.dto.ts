@@ -4,18 +4,26 @@ import { Type } from 'class-transformer';
 
 // Commons
 import { DEFAULT_LIMIT, DEFAULT_PAGE } from '../constants/pagination.constant';
-import { FIELD_DESCRIPTIONS } from '../constants/message.constant';
+import { API_FORMATS, FIELD_DESCRIPTIONS } from '../constants/message.constant';
 
 // Enums
 import { SortOrder } from '../enums/pagination/pagination.enum';
 
 export class BaseQueryDto {
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({
+    description: FIELD_DESCRIPTIONS.QUERY.TRAINEE_ID_FILTER,
+    format: API_FORMATS.UUID,
+    example: FIELD_DESCRIPTIONS.USER.ID_EXAMPLE,
+  })
   @IsOptional()
   @IsString()
   traineeId?: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({
+    description: FIELD_DESCRIPTIONS.QUERY.TRAINER_ID_FILTER,
+    format: API_FORMATS.UUID,
+    example: FIELD_DESCRIPTIONS.USER.ID_EXAMPLE,
+  })
   @IsOptional()
   @IsString()
   trainerId?: string;

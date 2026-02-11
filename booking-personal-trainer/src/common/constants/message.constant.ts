@@ -100,6 +100,14 @@ export const SUCCESS_MESSAGES = {
     RETRIEVED: 'Booking retrieved successfully',
     STATUS_UPDATED: 'Booking status updated successfully',
   },
+  WORKOUT: {
+    CREATED: 'Workout created successfully',
+    UPDATED: 'Workout updated successfully',
+    DELETED: 'Workout deleted successfully',
+    LIST_RETRIEVED: 'Workouts listed successfully',
+    RETRIEVED: 'Workout retrieved successfully',
+    DETAIL_UPDATED: 'Workout detail updated successfully',
+  },
 } as const;
 
 /** API operation summaries and descriptions for OpenAPI/Swagger documentation. */
@@ -165,6 +173,21 @@ export const API_DESCRIPTIONS = {
     UPDATE_STATUS_DESCRIPTION:
       'Updates booking status (admin or trainer of the booking only). Status can be PENDING, CONFIRMED, REJECTED, or CANCELLED.',
   },
+  WORKOUT: {
+    CREATE_SUMMARY: 'Create workout',
+    CREATE_DESCRIPTION:
+      'Creates a new workout for a trainee with exercises. Admin and Trainer can create workouts. Start time must be before end time.',
+    GET_ALL_SUMMARY: 'List workouts',
+    GET_ALL_DESCRIPTION:
+      'Returns workouts with optional filters (trainerId, traineeId, status) and pagination. ADMIN: all workouts; TRAINER: own workouts; TRAINEE: own workouts.',
+    GET_ONE_SUMMARY: 'Get workout by ID',
+    GET_ONE_DESCRIPTION: 'Returns a single workout by ID with exercises.',
+    UPDATE_DETAIL_SUMMARY: 'Update workout detail',
+    UPDATE_DETAIL_DESCRIPTION:
+      'Updates workout status and/or exercise completion status. Admin or trainer of the workout can update.',
+    DELETE_SUMMARY: 'Delete all workouts',
+    DELETE_DESCRIPTION: 'Deletes all workouts (admin/trainer only).',
+  },
 } as const;
 
 /** OpenAPI/Swagger string formats for ApiProperty (e.g. format: 'email'). */
@@ -172,6 +195,13 @@ export const API_FORMATS = {
   EMAIL: 'email',
   URI: 'uri',
   DATE_TIME: 'date-time',
+  UUID: 'uuid',
+} as const;
+
+/** API parameter names for @ApiParam decorator. */
+export const API_PARAM_NAMES = {
+  ID: 'id',
+  USER_ID: 'userId',
 } as const;
 
 /** Field descriptions and examples for DTOs and OpenAPI/Swagger ApiProperty. */
@@ -187,10 +217,12 @@ export const FIELD_DESCRIPTIONS = {
     FIRST_NAME_EXAMPLE: 'John',
     LAST_NAME: 'User last name',
     LAST_NAME_EXAMPLE: 'Doe',
+    DATE_TIME_START_EXAMPLE: '2024-12-25T10:00:00Z',
+    DATE_TIME_END_EXAMPLE: '2024-12-25T11:00:00Z',
   },
   USER: {
     ID: 'Unique user identifier',
-    ID_EXAMPLE: 'uuid',
+    ID_EXAMPLE: '550e8400-e29b-41d4-a716-446655440000',
     USERNAME: 'Username',
     EMAIL: 'User email',
     FIRST_NAME: 'First name',
@@ -236,6 +268,7 @@ export const FIELD_DESCRIPTIONS = {
     BOOKING_STATUS_FILTER: 'Filter by booking status',
     TRAINEE_ID_FILTER: 'Filter by trainee ID (admin only)',
     TRAINER_ID_FILTER: 'Filter by trainer ID (admin only)',
+    WORKOUT_STATUS_FILTER: 'Filter by workout status',
   },
   EXERCISE: {
     ID: 'Unique exercise identifier',
@@ -256,6 +289,27 @@ export const FIELD_DESCRIPTIONS = {
     STATUS: 'Booking status',
     TRAINER: 'Trainer user details',
     TRAINEE: 'Trainee user details',
+    CREATED_AT: 'Creation timestamp',
+    UPDATED_AT: 'Last update timestamp',
+  },
+  WORKOUT: {
+    ID: 'Unique workout identifier',
+    TRAINER_ID: 'Trainer user ID',
+    TRAINEE_ID: 'Trainee user ID',
+    START_TIME: 'Workout start time (ISO 8601 date string)',
+    END_TIME: 'Workout end time (ISO 8601 date string)',
+    STATUS: 'Workout status',
+    TRAINER: 'Trainer user details',
+    TRAINEE: 'Trainee user details',
+    EXERCISE_IDS: 'Array of exercise IDs',
+    EXERCISES: 'Workout exercises with completion status',
+    EXERCISE_COMPLETIONS: 'Array of exercise completion updates',
+    WORKOUT_EXERCISE_ID: 'Workout exercise identifier',
+    IS_COMPLETED: 'Whether exercise is completed',
+    ORDER: 'Exercise order in workout',
+    TOTAL_EXERCISES: 'Total number of exercises',
+    COMPLETED_EXERCISES: 'Number of completed exercises',
+    PROGRESS: 'Workout progress percentage',
     CREATED_AT: 'Creation timestamp',
     UPDATED_AT: 'Last update timestamp',
   },

@@ -31,6 +31,7 @@ import { BaseResponseDto } from '../../common/dtos/base-response.dto';
 import { Serialize } from '../../common/decorators/serialize.decorator';
 import {
   API_DESCRIPTIONS,
+  API_PARAM_NAMES,
   ERROR_MESSAGES,
   SUCCESS_MESSAGES,
   FIELD_DESCRIPTIONS,
@@ -136,7 +137,7 @@ export class BookingController {
     description: API_DESCRIPTIONS.BOOKING.GET_ONE_DESCRIPTION,
   })
   @ApiParam({
-    name: 'id',
+    name: API_PARAM_NAMES.ID,
     description: FIELD_DESCRIPTIONS.BOOKING.ID,
     type: String,
   })
@@ -165,7 +166,7 @@ export class BookingController {
     description: API_DESCRIPTIONS.BOOKING.UPDATE_STATUS_DESCRIPTION,
   })
   @ApiParam({
-    name: 'id',
+    name: API_PARAM_NAMES.ID,
     description: FIELD_DESCRIPTIONS.BOOKING.ID,
     type: String,
   })

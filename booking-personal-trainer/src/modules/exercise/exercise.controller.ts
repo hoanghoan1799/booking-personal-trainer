@@ -32,6 +32,7 @@ import { Serialize } from '../../common/decorators/serialize.decorator';
 import { SuccessMessageResponse } from '../../common/interfaces/success-message-response.interface';
 import {
   API_DESCRIPTIONS,
+  API_PARAM_NAMES,
   ERROR_MESSAGES,
   FIELD_DESCRIPTIONS,
   SUCCESS_MESSAGES,
@@ -140,7 +141,7 @@ export class ExerciseController {
     description: API_DESCRIPTIONS.EXERCISE.GET_ONE_DESCRIPTION,
   })
   @ApiParam({
-    name: 'id',
+    name: API_PARAM_NAMES.ID,
     description: FIELD_DESCRIPTIONS.EXERCISE.ID,
     type: String,
   })
@@ -176,7 +177,7 @@ export class ExerciseController {
     description: API_DESCRIPTIONS.EXERCISE.UPDATE_DESCRIPTION,
   })
   @ApiParam({
-    name: 'id',
+    name: API_PARAM_NAMES.ID,
     description: FIELD_DESCRIPTIONS.EXERCISE.ID,
     type: String,
   })
@@ -216,7 +217,7 @@ export class ExerciseController {
     description: API_DESCRIPTIONS.EXERCISE.RESTORE_DESCRIPTION,
   })
   @ApiParam({
-    name: 'id',
+    name: API_PARAM_NAMES.ID,
     description: FIELD_DESCRIPTIONS.EXERCISE.ID,
     type: String,
   })
@@ -248,7 +249,7 @@ export class ExerciseController {
     description: API_DESCRIPTIONS.EXERCISE.DELETE_DESCRIPTION,
   })
   @ApiParam({
-    name: 'id',
+    name: API_PARAM_NAMES.ID,
     description: FIELD_DESCRIPTIONS.EXERCISE.ID,
     type: String,
   })

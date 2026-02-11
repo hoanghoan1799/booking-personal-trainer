@@ -8,11 +8,15 @@ import {
   UserStatus,
   UserType,
 } from '../../../common/enums/user/user.enum';
-import { FIELD_DESCRIPTIONS } from '../../../common/constants/message.constant';
+import {
+  API_FORMATS,
+  FIELD_DESCRIPTIONS,
+} from '../../../common/constants/message.constant';
 
 export class ResponseUserDto {
   @ApiProperty({
     description: FIELD_DESCRIPTIONS.USER.ID,
+    format: API_FORMATS.UUID,
     example: FIELD_DESCRIPTIONS.USER.ID_EXAMPLE,
   })
   @Expose()

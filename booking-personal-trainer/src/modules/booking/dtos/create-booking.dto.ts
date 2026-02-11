@@ -8,7 +8,8 @@ import {
 export class CreateBookingDto {
   @ApiProperty({
     description: FIELD_DESCRIPTIONS.BOOKING.TRAINER_ID,
-    format: 'uuid',
+    format: API_FORMATS.UUID,
+    example: FIELD_DESCRIPTIONS.USER.ID_EXAMPLE,
   })
   @IsUUID()
   trainerId: string;
@@ -16,7 +17,7 @@ export class CreateBookingDto {
   @ApiProperty({
     description: FIELD_DESCRIPTIONS.BOOKING.START_TIME,
     format: API_FORMATS.DATE_TIME,
-    example: '2024-12-25T10:00:00Z',
+    example: FIELD_DESCRIPTIONS.COMMON.DATE_TIME_START_EXAMPLE,
   })
   @IsDateString()
   startTime: string;
@@ -24,7 +25,7 @@ export class CreateBookingDto {
   @ApiProperty({
     description: FIELD_DESCRIPTIONS.BOOKING.END_TIME,
     format: API_FORMATS.DATE_TIME,
-    example: '2024-12-25T11:00:00Z',
+    example: FIELD_DESCRIPTIONS.COMMON.DATE_TIME_END_EXAMPLE,
   })
   @IsDateString()
   endTime: string;

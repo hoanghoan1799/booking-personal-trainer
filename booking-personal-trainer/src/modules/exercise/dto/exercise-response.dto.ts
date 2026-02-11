@@ -8,6 +8,7 @@ import {
 export class ExerciseResponseDto {
   @ApiProperty({
     description: FIELD_DESCRIPTIONS.EXERCISE.ID,
+    format: API_FORMATS.UUID,
     example: FIELD_DESCRIPTIONS.USER.ID_EXAMPLE,
   })
   @Expose()
