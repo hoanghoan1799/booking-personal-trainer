@@ -4,6 +4,7 @@ import { MikroORM } from '@mikro-orm/core';
 import { ClassSerializerInterceptor, VersioningType } from '@nestjs/common';
 import cookieParser from 'cookie-parser';
 import { SwaggerModule } from '@nestjs/swagger';
+import helmet from 'helmet';
 
 // Commons
 import { API_PREFIX, APP_PORT_DEFAULT } from './common/constants/app.constant';
@@ -13,6 +14,7 @@ import { SWAGGER_JSON_FILE_NAME } from './common/constants/api-document.constant
 
 // Configs
 import { CORS_CONFIG } from './configs/cors.config';
+import { HELMET_CONFIG } from './configs/helmet.config';
 import { SWAGGER_CONFIG } from './configs/swagger.config';
 import { GLOBAL_PIPE_CONFIG } from './configs/pipe.config';
 
@@ -23,6 +25,9 @@ async function bootstrap() {
   // Run migrations
   const orm = app.get(MikroORM);
   await orm.migrator.up();
+
+  // Enable Helmet for security headers
+  app.use(helmet(HELMET_CONFIG));
 
   // Enable cookies
   app.use(cookieParser());
