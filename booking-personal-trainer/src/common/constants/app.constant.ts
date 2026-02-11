@@ -7,3 +7,13 @@ export const API_VERSION = {
   V1: 'v1',
   V2: 'v2',
 } as const;
+
+export const APP_META_DATA = {
+  TITLE: 'Booking Personal Trainer',
+  DESCRIPTION: 'Booking Personal Trainer API',
+};
+
+export const SWAGGER_API_VERSION = {
+  V1: '1.0',
+  V2: '2.0',
+};

@@ -11,4 +11,5 @@ export const ROUTES = {
   BOOKING: '/booking',
   TOKEN: '/token',
   TOKEN_REFRESH: '/token/refresh',
-} as const;
+  API_DOCS: '/api-docs',
+};

@@ -1,19 +1,20 @@
 import { NestFactory, Reflector } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { MikroORM } from '@mikro-orm/core';
-import {
-  ClassSerializerInterceptor,
-  ValidationPipe,
-  VersioningType,
-} from '@nestjs/common';
+import { ClassSerializerInterceptor, VersioningType } from '@nestjs/common';
 import cookieParser from 'cookie-parser';
+import { SwaggerModule } from '@nestjs/swagger';
 
 // Commons
 import { API_PREFIX, APP_PORT_DEFAULT } from './common/constants/app.constant';
 import { AllExceptionsFilter } from './common/filters/all-exception.filter';
+import { ROUTES } from './common/constants/route.constant';
+import { SWAGGER_JSON_FILE_NAME } from './common/constants/api-document.constants';
 
 // Configs
 import { CORS_CONFIG } from './configs/cors.config';
+import { SWAGGER_CONFIG } from './configs/swagger.config';
+import { GLOBAL_PIPE_CONFIG } from './configs/pipe.config';
 
 async function bootstrap() {
   // Create app
@@ -39,22 +40,20 @@ async function bootstrap() {
   });
 
   // Global pipes
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true,
-      forbidNonWhitelisted: true,
-      transform: true,
-      transformOptions: {
-        enableImplicitConversion: true,
-      },
-    }),
-  );
+  app.useGlobalPipes(GLOBAL_PIPE_CONFIG);
 
   // Global interceptors
   app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
 
   // Global filters
   app.useGlobalFilters(new AllExceptionsFilter());
+
+  const documentFactory = () =>
+    SwaggerModule.createDocument(app, SWAGGER_CONFIG);
+
+  SwaggerModule.setup(ROUTES.API_DOCS, app, documentFactory, {
+    jsonDocumentUrl: SWAGGER_JSON_FILE_NAME,
+  });
 
   // Start server
   await app.listen(process.env.PORT ?? APP_PORT_DEFAULT);
