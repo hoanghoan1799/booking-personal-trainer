@@ -102,14 +102,25 @@ export class AuthService {
       role: newUser.role,
     };
 
-    const { accessToken, refreshToken } = await this.createTokens(payload);
+    const {
+      accessToken,
+      refreshToken,
+      accessTokenExpiresIn,
+      refreshTokenExpiresIn,
+    } = await this.createTokens(payload);
 
     await this.refreshTokenService.saveRefreshToken({
       userId: newUser.id,
       refreshToken,
     });
 
-    return { accessToken, refreshToken, user: newUser };
+    return {
+      accessToken,
+      refreshToken,
+      user: newUser,
+      accessTokenExpiresIn,
+      refreshTokenExpiresIn,
+    };
   }
 
   /**
@@ -147,14 +158,25 @@ export class AuthService {
       role: existingUser.role,
     };
 
-    const { accessToken, refreshToken } = await this.createTokens(payload);
+    const {
+      accessToken,
+      refreshToken,
+      accessTokenExpiresIn,
+      refreshTokenExpiresIn,
+    } = await this.createTokens(payload);
 
     await this.refreshTokenService.saveRefreshToken({
       userId: existingUser.id,
       refreshToken,
     });
 
-    return { accessToken, refreshToken, user: existingUser };
+    return {
+      accessToken,
+      refreshToken,
+      user: existingUser,
+      accessTokenExpiresIn,
+      refreshTokenExpiresIn,
+    };
   }
 
   /**
@@ -277,9 +299,13 @@ export class AuthService {
    * The refresh token is signed with the payload and expires in the time specified by
    * {@link TOKEN_EXPIRATION.REFRESH}.
    * @param payload The payload to be signed into the tokens.
-   * @returns A promise that resolves to an object containing the access token and the refresh token.
+   * @returns A promise that resolves to an object containing the access token, refresh token, and expiration times.
    */
-  private async createTokens(payload: JwtAuthPayload): Promise<TokensDto> {
+  private async createTokens(
+    payload: JwtAuthPayload,
+  ): Promise<
+    TokensDto & { accessTokenExpiresIn: number; refreshTokenExpiresIn: number }
+  > {
     const accessToken: string = await this.jwtService.signAsync(payload, {
       expiresIn: TOKEN_EXPIRATION.ACCESS,
     });
@@ -287,6 +313,47 @@ export class AuthService {
       expiresIn: TOKEN_EXPIRATION.REFRESH,
     });
 
-    return { accessToken, refreshToken };
+    // Convert expiration strings to seconds
+    const accessTokenExpiresIn = this.parseExpirationToSeconds(
+      TOKEN_EXPIRATION.ACCESS,
+    );
+    const refreshTokenExpiresIn = this.parseExpirationToSeconds(
+      TOKEN_EXPIRATION.REFRESH,
+    );
+
+    return {
+      accessToken,
+      refreshToken,
+      accessTokenExpiresIn,
+      refreshTokenExpiresIn,
+    };
+  }
+
+  /**
+   * Parses expiration string (e.g., '15m', '7d') to seconds.
+   * @param expiration The expiration string.
+   * @returns The expiration time in seconds.
+   */
+  private parseExpirationToSeconds(expiration: string): number {
+    const match = expiration.match(/^(\d+)([smhd])$/);
+    if (!match) {
+      throw new Error(`Invalid expiration format: ${expiration}`);
+    }
+
+    const value = parseInt(match[1], 10);
+    const unit = match[2];
+
+    switch (unit) {
+      case 's':
+        return value;
+      case 'm':
+        return value * 60;
+      case 'h':
+        return value * 60 * 60;
+      case 'd':
+        return value * 24 * 60 * 60;
+      default:
+        throw new Error(`Unknown expiration unit: ${unit}`);
+    }
   }
 }

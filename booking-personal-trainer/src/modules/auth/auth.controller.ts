@@ -5,8 +5,6 @@ import {
   HttpCode,
   HttpStatus,
   Post,
-  Res,
-  UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
@@ -19,22 +17,15 @@ import {
   ApiExtraModels,
   getSchemaPath,
 } from '@nestjs/swagger';
-import type { Response } from 'express';
+import { plainToInstance } from 'class-transformer';
 
 // Commons
 import { Public } from '../../common/decorators/public.decorator';
-import {
-  TOKEN_COOKIE,
-  TOKEN_MAX_AGE,
-} from '../../common/constants/token.constants';
-import { ROUTES, ROUTE_PREFIX } from '../../common/constants/route.constant';
-import { COOKIE_OPTIONS } from '../../common/constants/cookie.constant';
 import {
   API_DESCRIPTIONS,
   ERROR_MESSAGES,
   SUCCESS_MESSAGES,
 } from '../../common/constants/message.constant';
-import { Cookie } from '../../common/decorators/cookie.decorator';
 import { CurrentUser } from '../../common/decorators/user.decorator';
 import { Serialize } from '../../common/decorators/serialize.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -43,10 +34,18 @@ import { Roles } from '../../common/decorators/role.decorator';
 import { UserRole } from '../../common/enums/user/user.enum';
 import { SWAGGER_ACCESS_TOKEN } from '../../common/constants/api-document.constants';
 
+// Types
+import type { JwtAuthPayload } from './types/jwt-auth.type';
+
 // DTOs
 import { RegisterDto } from './dtos/register.dto';
-import { LoginDto } from './dtos/login.dto';
-import { RefreshTokenResponseDto, LogoutResponseDto } from './dtos/token.dto';
+import { LoginDto, AuthResponseDataDto } from './dtos/login.dto';
+import {
+  RefreshTokenRequestDto,
+  TokensDto,
+  LogoutResponseDto,
+} from './dtos/token.dto';
+import { LogoutDto } from './dtos/logout.dto';
 import {
   ResponseFullUserDto,
   ResponseUserDto,
@@ -54,7 +53,6 @@ import {
 
 // Services
 import { AuthService } from './auth.service';
-import type { JwtAuthPayload } from './types/jwt-auth.type';
 
 // Rate limiting
 import {
@@ -63,7 +61,7 @@ import {
 } from '../../common/helpers/rate-limit-override.helper';
 
 @ApiTags('Auth')
-@ApiExtraModels(ResponseUserDto, ResponseFullUserDto)
+@ApiExtraModels(ResponseUserDto, ResponseFullUserDto, AuthResponseDataDto)
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
@@ -98,7 +96,6 @@ export class AuthController {
       }),
     },
   })
-  @Serialize(ResponseUserDto)
   @ApiOperation({
     summary: API_DESCRIPTIONS.AUTH.REGISTER_SUMMARY,
     description: API_DESCRIPTIONS.AUTH.REGISTER_DESCRIPTION,
@@ -110,7 +107,7 @@ export class AuthController {
     schema: {
       required: ['data'],
       properties: {
-        data: { $ref: getSchemaPath(ResponseUserDto) },
+        data: { $ref: getSchemaPath(AuthResponseDataDto) },
       },
     },
   })
@@ -124,24 +121,24 @@ export class AuthController {
   })
   async create(
     @Body() data: RegisterDto,
-    @Res({ passthrough: true }) res: Response,
-  ): Promise<BaseResponseDto<ResponseUserDto>> {
-    const { accessToken, refreshToken, user } =
-      await this.authService.register(data);
+  ): Promise<BaseResponseDto<AuthResponseDataDto>> {
+    const {
+      accessToken,
+      refreshToken,
+      user,
+      accessTokenExpiresIn,
+      refreshTokenExpiresIn,
+    } = await this.authService.register(data);
 
-    // Set authentication cookies
-    res.cookie(TOKEN_COOKIE.ACCESS, accessToken, {
-      ...COOKIE_OPTIONS,
-      maxAge: TOKEN_MAX_AGE.ACCESS,
-    });
+    const responseData: AuthResponseDataDto = {
+      user: user,
+      accessToken,
+      refreshToken,
+      accessTokenExpiresIn,
+      refreshTokenExpiresIn,
+    };
 
-    res.cookie(TOKEN_COOKIE.REFRESH, refreshToken, {
-      ...COOKIE_OPTIONS,
-      path: `${ROUTE_PREFIX.V1}${ROUTES.AUTH}${ROUTES.TOKEN_REFRESH}`,
-      maxAge: TOKEN_MAX_AGE.REFRESH,
-    });
-
-    return BaseResponseDto.ok(user);
+    return BaseResponseDto.ok(responseData);
   }
 
   @Public()
@@ -175,7 +172,6 @@ export class AuthController {
       }),
     },
   })
-  @Serialize(ResponseUserDto)
   @ApiOperation({
     summary: API_DESCRIPTIONS.AUTH.LOGIN_SUMMARY,
     description: API_DESCRIPTIONS.AUTH.LOGIN_DESCRIPTION,
@@ -187,7 +183,7 @@ export class AuthController {
     schema: {
       required: ['data'],
       properties: {
-        data: { $ref: getSchemaPath(ResponseUserDto) },
+        data: { $ref: getSchemaPath(AuthResponseDataDto) },
       },
     },
   })
@@ -205,23 +201,29 @@ export class AuthController {
   })
   async login(
     @Body() data: LoginDto,
-    @Res({ passthrough: true }) res: Response,
-  ): Promise<BaseResponseDto<ResponseUserDto>> {
-    const { accessToken, refreshToken, user } =
-      await this.authService.login(data);
+  ): Promise<BaseResponseDto<AuthResponseDataDto>> {
+    const {
+      accessToken,
+      refreshToken,
+      user,
+      accessTokenExpiresIn,
+      refreshTokenExpiresIn,
+    } = await this.authService.login(data);
 
-    res.cookie(TOKEN_COOKIE.ACCESS, accessToken, {
-      ...COOKIE_OPTIONS,
-      maxAge: TOKEN_MAX_AGE.ACCESS,
+    const userDto = plainToInstance(ResponseUserDto, user, {
+      excludeExtraneousValues: true,
+      enableImplicitConversion: true,
     });
 
-    res.cookie(TOKEN_COOKIE.REFRESH, refreshToken, {
-      ...COOKIE_OPTIONS,
-      path: `${ROUTE_PREFIX.V1}${ROUTES.AUTH}${ROUTES.TOKEN_REFRESH}`,
-      maxAge: TOKEN_MAX_AGE.REFRESH,
-    });
+    const responseData: AuthResponseDataDto = {
+      user: userDto,
+      accessToken,
+      refreshToken,
+      accessTokenExpiresIn,
+      refreshTokenExpiresIn,
+    };
 
-    return BaseResponseDto.ok(user);
+    return BaseResponseDto.ok(responseData);
   }
 
   @Public()
@@ -256,42 +258,22 @@ export class AuthController {
     summary: API_DESCRIPTIONS.AUTH.REFRESH_TOKEN_SUMMARY,
     description: API_DESCRIPTIONS.AUTH.REFRESH_TOKEN_DESCRIPTION,
   })
+  @ApiBody({ type: RefreshTokenRequestDto })
   @ApiResponse({
     status: HttpStatus.OK,
     description: SUCCESS_MESSAGES.AUTH.TOKEN_REFRESHED,
-    type: RefreshTokenResponseDto,
+    type: TokensDto,
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: ERROR_MESSAGES.AUTH.REFRESH_TOKEN_REQUIRED,
   })
   @ApiResponse({
     status: HttpStatus.UNAUTHORIZED,
-    description: `${ERROR_MESSAGES.AUTH.REFRESH_TOKEN_NOT_FOUND} or ${ERROR_MESSAGES.AUTH.INVALID_REFRESH_TOKEN}`,
+    description: ERROR_MESSAGES.AUTH.INVALID_REFRESH_TOKEN,
   })
-  async refresh(
-    @Res({ passthrough: true })
-    res: Response,
-    @Cookie(TOKEN_COOKIE.REFRESH) refreshTokenFromCookie?: string,
-  ): Promise<void> {
-    if (!refreshTokenFromCookie) {
-      throw new UnauthorizedException(
-        ERROR_MESSAGES.AUTH.REFRESH_TOKEN_NOT_FOUND,
-      );
-    }
-
-    const { accessToken, refreshToken } = await this.authService.refreshTokens({
-      refreshToken: refreshTokenFromCookie,
-    });
-
-    res.cookie(TOKEN_COOKIE.REFRESH, refreshToken, {
-      ...COOKIE_OPTIONS,
-      path: `${ROUTE_PREFIX.V1}${ROUTES.AUTH}${ROUTES.TOKEN_REFRESH}`,
-      maxAge: TOKEN_MAX_AGE.REFRESH,
-    });
-
-    res.cookie(TOKEN_COOKIE.ACCESS, accessToken, {
-      ...COOKIE_OPTIONS,
-      maxAge: TOKEN_MAX_AGE.ACCESS,
-    });
-
-    res.json({ accessToken });
+  async refresh(@Body() data: RefreshTokenRequestDto): Promise<TokensDto> {
+    return this.authService.refreshTokens({ refreshToken: data.refreshToken });
   }
 
   @Public()
@@ -321,21 +303,16 @@ export class AuthController {
     summary: API_DESCRIPTIONS.AUTH.LOGOUT_SUMMARY,
     description: API_DESCRIPTIONS.AUTH.LOGOUT_DESCRIPTION,
   })
+  @ApiBody({ type: LogoutDto })
   @ApiResponse({
     status: HttpStatus.OK,
     description: SUCCESS_MESSAGES.AUTH.LOGGED_OUT,
     type: LogoutResponseDto,
   })
-  async logout(
-    @Res({ passthrough: true }) res: Response,
-    @Cookie(TOKEN_COOKIE.REFRESH) refreshTokenFromCookie?: string,
-  ): Promise<{ success: boolean }> {
+  async logout(@Body() data: LogoutDto = {}): Promise<{ success: boolean }> {
     await this.authService.logout({
-      refreshToken: refreshTokenFromCookie,
+      refreshToken: data.refreshToken,
     });
-
-    res.clearCookie(TOKEN_COOKIE.ACCESS, { path: ROUTES.ROOT });
-    res.clearCookie(TOKEN_COOKIE.REFRESH, { path: ROUTES.ROOT });
     return { success: true };
   }
 

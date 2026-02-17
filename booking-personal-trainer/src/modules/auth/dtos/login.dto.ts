@@ -2,6 +2,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import {
   IsEmail,
   IsNotEmpty,
+  IsNumber,
   IsObject,
   IsString,
   ValidateNested,
@@ -46,22 +47,59 @@ export class LoginResponseDto extends TokensDto {
   @ValidateNested()
   @Type(() => User)
   user: User;
+
+  @IsNumber()
+  @IsNotEmpty()
+  accessTokenExpiresIn: number;
+
+  @IsNumber()
+  @IsNotEmpty()
+  refreshTokenExpiresIn: number;
 }
 
 /**
- * Response body for login endpoint.
- * Copy accessToken into Swagger Authorize (Bearer) to call protected APIs.
+ * Response data for login/register endpoints.
+ * Contains user information, tokens, and expiration times.
  */
-export class LoginSuccessResponseDto {
+export class AuthResponseDataDto {
   @ApiProperty({
     description: FIELD_DESCRIPTIONS.AUTH.AUTHENTICATED_USER,
     type: () => ResponseUserDto,
   })
-  data: ResponseUserDto;
+  @IsObject()
+  @ValidateNested()
+  @Type(() => ResponseUserDto)
+  user: ResponseUserDto;
 
   @ApiProperty({
-    description: FIELD_DESCRIPTIONS.AUTH.ACCESS_TOKEN_SWAGGER_HINT,
+    description: FIELD_DESCRIPTIONS.AUTH.ACCESS_TOKEN,
     example: FIELD_DESCRIPTIONS.AUTH.ACCESS_TOKEN_EXAMPLE,
   })
+  @IsString()
+  @IsNotEmpty()
   accessToken: string;
+
+  @ApiProperty({
+    description: FIELD_DESCRIPTIONS.AUTH.JWT_REFRESH_TOKEN,
+    example: FIELD_DESCRIPTIONS.AUTH.ACCESS_TOKEN_EXAMPLE,
+  })
+  @IsString()
+  @IsNotEmpty()
+  refreshToken: string;
+
+  @ApiProperty({
+    description: 'Access token expiration time in seconds',
+    example: 900,
+  })
+  @IsNumber()
+  @IsNotEmpty()
+  accessTokenExpiresIn: number;
+
+  @ApiProperty({
+    description: 'Refresh token expiration time in seconds',
+    example: 604800,
+  })
+  @IsNumber()
+  @IsNotEmpty()
+  refreshTokenExpiresIn: number;
 }

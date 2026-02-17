@@ -248,10 +248,11 @@ export const FIELD_DESCRIPTIONS = {
     ACCESS_TOKEN_EXAMPLE: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
     ACCESS_TOKEN_SWAGGER_HINT:
       'JWT access token. Copy this value and paste it in Authorize (Bearer) above to test protected endpoints.',
-    REFRESH_TOKEN_RESPONSE:
-      'New JWT access token. Refresh token is returned in HTTP-only cookie.',
+    REFRESH_TOKEN_RESPONSE: 'New JWT access token and refresh token.',
     LOGOUT_SUCCESS: 'Whether logout was successful',
     RESPONSE_DATA: 'Response data',
+    JWT_REFRESH_TOKEN: 'JWT refresh token',
+    NEW_REFRESH_TOKEN: 'New JWT refresh token',
   },
   QUERY: {
     PAGE: 'Page number (1-based)',

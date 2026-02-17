@@ -33,10 +33,18 @@ export class AccessTokenDto {
 }
 
 export class TokensDto {
+  @ApiProperty({
+    description: FIELD_DESCRIPTIONS.AUTH.ACCESS_TOKEN,
+    example: FIELD_DESCRIPTIONS.AUTH.ACCESS_TOKEN_EXAMPLE,
+  })
   @IsString()
   @IsNotEmpty()
   accessToken: string;
 
+  @ApiProperty({
+    description: FIELD_DESCRIPTIONS.AUTH.JWT_REFRESH_TOKEN,
+    example: FIELD_DESCRIPTIONS.AUTH.ACCESS_TOKEN_EXAMPLE,
+  })
   @IsString()
   @IsNotEmpty()
   refreshToken: string;
@@ -50,7 +58,7 @@ export class TokenResponseDto extends TokensDto {
 
 /**
  * Response body for token refresh endpoint.
- * Access token is also set in HTTP-only cookie.
+ * Returns a new access token and refresh token.
  */
 export class RefreshTokenResponseDto {
   @ApiProperty({
@@ -59,6 +67,13 @@ export class RefreshTokenResponseDto {
   })
   @IsString()
   accessToken: string;
+
+  @ApiProperty({
+    description: FIELD_DESCRIPTIONS.AUTH.NEW_REFRESH_TOKEN,
+    example: FIELD_DESCRIPTIONS.AUTH.ACCESS_TOKEN_EXAMPLE,
+  })
+  @IsString()
+  refreshToken: string;
 }
 
 /**
