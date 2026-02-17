@@ -1,9 +1,8 @@
 import type { User } from "@/types/user.types";
 import { apiFetch } from "@/lib/api";
 import { getApiErrorMessage } from "@/lib/error.utils";
-import { clearAccessToken, setAccessToken } from "@/lib/token";
-import { refreshAccessToken } from "@/lib/auth";
-import { Router } from "next/router";
+import { setTokens, clearTokens } from "@/lib/token";
+import { getRefreshToken } from "@/lib/token";
 
 interface ApiResponse<T> {
   data: T;
@@ -23,7 +22,7 @@ interface RegisterBody {
   userType: "TRAINER" | "TRAINEE";
 }
 
-interface AuthResponse {
+interface AuthResponseData {
   accessToken: string;
   refreshToken: string;
   user: {
@@ -35,27 +34,12 @@ interface AuthResponse {
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
-/**
- * Gets the access token from cookies by calling the refresh endpoint.
- * Backend sets httpOnly cookies after login, and refresh endpoint returns the access token.
- */
-async function getTokenFromCookies(): Promise<string | null> {
-  try {
-    const accessToken = await refreshAccessToken();
-    return accessToken;
-  } catch (error) {
-    console.error("Failed to get token from cookies:", error);
-    return null;
-  }
-}
-
-export async function login(data: LoginBody) {
+export async function login(data: LoginBody): Promise<ApiResponse<AuthResponseData>> {
   const res = await fetch(`${API_URL}/api/v1/auth/login`, {
-    method: 'POST',
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
     },
-    credentials: 'include', // IMPORTANT - allows cookies to be set
     body: JSON.stringify(data),
   });
 
@@ -64,19 +48,19 @@ export async function login(data: LoginBody) {
     const message = getApiErrorMessage(body) || "Login failed";
     throw new Error(message);
   }
-  
-  const result = await res.json();
 
+  const result = (await res.json()) as ApiResponse<AuthResponseData>;
+  const { accessToken, refreshToken } = result.data;
+  setTokens(accessToken, refreshToken);
   return result;
 }
 
-export async function register(data: RegisterBody) {
+export async function register(data: RegisterBody): Promise<ApiResponse<AuthResponseData>> {
   const res = await fetch(`${API_URL}/api/v1/auth/register`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    credentials: "include", // IMPORTANT - allows cookies to be set
     body: JSON.stringify(data),
   });
 
@@ -86,8 +70,9 @@ export async function register(data: RegisterBody) {
     throw new Error(message);
   }
 
-  const result = await res.json();
-
+  const result = (await res.json()) as ApiResponse<AuthResponseData>;
+  const { accessToken, refreshToken } = result.data;
+  setTokens(accessToken, refreshToken);
   return result;
 }
 
@@ -110,12 +95,17 @@ export async function updateProfile(data: UpdateProfileBody): Promise<User> {
   return res.data;
 }
 
-export async function logout() {
+export async function logout(): Promise<void> {
+  const refreshToken = getRefreshToken();
   try {
-    await apiFetch("/api/v1/auth/logout", {
+    await fetch(`${API_URL}/api/v1/auth/logout`, {
       method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ refreshToken }),
     });
   } finally {
-    clearAccessToken();
+    clearTokens();
   }
 }

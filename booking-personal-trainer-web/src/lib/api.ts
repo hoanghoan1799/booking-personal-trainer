@@ -1,4 +1,4 @@
-import { getAccessToken, setAccessToken, clearAccessToken } from "./token";
+import { getAccessToken, clearTokens } from "./token";
 import { getApiErrorMessage } from "./error.utils";
 import { refreshAccessToken } from "./auth";
 
@@ -14,7 +14,7 @@ type FetchOptions = RequestInit & {
 let refreshPromise: Promise<string> | null = null;
 
 function performLogout(): void {
-  clearAccessToken();
+  clearTokens();
   if (typeof window !== "undefined") {
     window.location.href = "/signin";
   }
@@ -32,7 +32,6 @@ async function doFetch<T>(
       ...(auth && { Authorization: `Bearer ${getAccessToken()}` }),
       ...headers,
     } as HeadersInit,
-    credentials: "include",
     cache: "no-store",
   });
 }
@@ -61,7 +60,6 @@ export async function apiFetch<T>(
       }
       const newToken = await refreshPromise;
       refreshPromise = null;
-      setAccessToken(newToken);
 
       const retryHeaders = new Headers(options.headers ?? {});
       retryHeaders.set("Authorization", `Bearer ${newToken}`);

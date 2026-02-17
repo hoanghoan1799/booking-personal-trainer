@@ -21,9 +21,9 @@ export function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  // ✅ Read from request cookies
-  const accessToken = req.cookies.get('access_token')?.value;
-  const isAuthenticated = Boolean(accessToken);
+  // Auth cookie set by client when user logs in (tokens stored in localStorage)
+  const authCookie = req.cookies.get('auth')?.value;
+  const isAuthenticated = authCookie === '1';
   const isPublic = isPublicRoute(pathname);
 
   // Logged in but trying to access auth pages

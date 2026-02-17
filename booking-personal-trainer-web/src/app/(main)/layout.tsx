@@ -4,6 +4,7 @@ import { useSidebar } from "@/context/SidebarContext";
 import AppHeader from "@/layout/AppHeader";
 import AppSidebar from "@/layout/AppSidebar";
 import Backdrop from "@/layout/Backdrop";
+import AuthGuard from "@/components/auth/AuthGuard";
 import React from "react";
 
 export default function MainLayout({
@@ -20,9 +21,10 @@ export default function MainLayout({
       : "lg:ml-[90px]";
 
   return (
-    <div className="min-h-screen xl:flex">
-      <AppSidebar />
-      <Backdrop />
+    <AuthGuard>
+      <div className="min-h-screen xl:flex">
+        <AppSidebar />
+        <Backdrop />
       <div
         className={`flex-1 transition-all duration-300 ease-in-out ${mainContentMargin}`}
       >
@@ -32,5 +34,6 @@ export default function MainLayout({
         </div>
       </div>
     </div>
+    </AuthGuard>
   );
 }
