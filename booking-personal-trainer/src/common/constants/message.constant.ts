@@ -115,19 +115,19 @@ export const API_DESCRIPTIONS = {
   AUTH: {
     REGISTER_SUMMARY: 'Register a new user',
     REGISTER_DESCRIPTION:
-      'Creates a new user account. Returns the created user (no tokens). Use login to obtain access and refresh tokens.',
+      'Creates a new user account and returns access token, refresh token, and user in the response body.',
     LOGIN_SUMMARY: 'Authenticate user (login)',
     LOGIN_DESCRIPTION:
-      'Authenticates with email and password. On success, sets access and refresh tokens in HTTP-only cookies and returns the user in the response body.',
+      'Authenticates with email and password. Returns access token, refresh token, and user in the response body.',
     REFRESH_TOKEN_SUMMARY: 'Refresh access token',
     REFRESH_TOKEN_DESCRIPTION:
-      'Issues a new access token using the refresh token from HTTP-only cookie. New tokens are set in cookies; response body contains the new access token.',
+      'Issues new access and refresh tokens. Requires refresh token in request body.',
     LOGOUT_SUMMARY: 'Log out',
     LOGOUT_DESCRIPTION:
-      'Invalidates the current session by clearing token cookies. Optional refresh token from cookie is revoked if present.',
+      'Invalidates the session by revoking the refresh token. Pass refresh token in request body.',
     PROFILE_SUMMARY: 'Get current user profile',
     PROFILE_DESCRIPTION:
-      'Returns the authenticated user profile. Requires a valid JWT in Authorization header or cookie.',
+      'Returns the authenticated user profile. Requires a valid JWT in Authorization Bearer header.',
   },
   USER: {
     GET_ALL_SUMMARY: 'List users',

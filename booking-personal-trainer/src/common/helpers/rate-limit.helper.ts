@@ -3,7 +3,6 @@ import type { Request } from 'express';
 
 // Constants
 import { RATE_LIMIT } from '../constants/rate-limit.constant';
-import { TOKEN_COOKIE } from '../constants/token.constants';
 
 type RateLimitTrackerKind =
   (typeof RATE_LIMIT.TRACKER_KIND)[keyof typeof RATE_LIMIT.TRACKER_KIND];
@@ -55,16 +54,6 @@ export const getRateLimitTracker = (req: Request): RateLimitTrackerResult => {
   if (tokenFromHeader) {
     return {
       tracker: `token:${hashToken(tokenFromHeader)}`,
-      kind: RATE_LIMIT.TRACKER_KIND.TOKEN,
-    };
-  }
-  const requestWithCookies = req as unknown as {
-    cookies?: Record<string, unknown>;
-  };
-  const tokenFromCookie = requestWithCookies.cookies?.[TOKEN_COOKIE.ACCESS];
-  if (typeof tokenFromCookie === 'string' && tokenFromCookie.length > 0) {
-    return {
-      tracker: `token:${hashToken(tokenFromCookie)}`,
       kind: RATE_LIMIT.TRACKER_KIND.TOKEN,
     };
   }

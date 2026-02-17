@@ -4,10 +4,8 @@ import { PassportStrategy } from '@nestjs/passport';
 import { InjectRepository } from '@mikro-orm/nestjs';
 import { EntityRepository } from '@mikro-orm/core';
 import { ExtractJwt, Strategy } from 'passport-jwt';
-import type { Request } from 'express';
 
 // Constants
-import { TOKEN_COOKIE } from '../constants/token.constants';
 import { ERROR_MESSAGES } from '../constants/message.constant';
 
 // Entities
@@ -23,11 +21,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     @InjectRepository(User) private userRepo: EntityRepository<User>,
   ) {
     super({
-      jwtFromRequest: ExtractJwt.fromExtractors([
-        ExtractJwt.fromAuthHeaderAsBearerToken(),
-        (req: Request) =>
-          (req.cookies as Record<string, string>)?.[TOKEN_COOKIE.ACCESS],
-      ]),
+      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
       secretOrKey: configService.getOrThrow<string>('JWT_SECRET'),
     });

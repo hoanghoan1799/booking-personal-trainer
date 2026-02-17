@@ -73,8 +73,8 @@ export const CORS_CONFIG: CorsOptions = {
    * - `true`: allows credentials to be included in cross-origin requests.
    *
    * Why it's needed:
-   * - Your application uses cookies for authentication (JWT tokens stored in httpOnly cookies).
-   * - Without this, browsers will not send cookies with cross-origin requests.
+   * - Allows credentials (e.g. cookies) to be sent with cross-origin requests if needed.
+   * - Authentication uses Bearer tokens in Authorization header.
    *
    * Security consideration:
    * - When `credentials: true`, you MUST specify exact origins (cannot use '*').

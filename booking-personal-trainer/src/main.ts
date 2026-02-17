@@ -2,7 +2,6 @@ import { NestFactory, Reflector } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { MikroORM } from '@mikro-orm/core';
 import { ClassSerializerInterceptor, VersioningType } from '@nestjs/common';
-import cookieParser from 'cookie-parser';
 import { SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
 
@@ -28,9 +27,6 @@ async function bootstrap() {
 
   // Enable Helmet for security headers
   app.use(helmet(HELMET_CONFIG));
-
-  // Enable cookies
-  app.use(cookieParser());
 
   // Enable cors
   app.enableCors(CORS_CONFIG);
