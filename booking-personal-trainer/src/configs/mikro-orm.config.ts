@@ -27,6 +27,7 @@ export default defineConfig({
 });
 
 export const mikroORMConfig: MikroOrmModuleAsyncOptions = {
+  driver: PostgreSqlDriver,
   inject: [ConfigService],
   useFactory: (config: ConfigService) => ({
     driver: PostgreSqlDriver,
