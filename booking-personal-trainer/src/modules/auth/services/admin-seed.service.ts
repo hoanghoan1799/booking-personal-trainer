@@ -1,10 +1,4 @@
-import { InjectRepository } from '@mikro-orm/nestjs';
-import { Injectable, OnModuleInit } from '@nestjs/common';
-import {
-  EntityManager,
-  EntityRepository,
-  CreateRequestContext,
-} from '@mikro-orm/core';
+import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 // Commons
@@ -15,11 +9,12 @@ import {
   UserType,
 } from '../../../common/enums/user/user.enum';
 
-// Entities
-import { User } from '../../../modules/user/entities/user.entity';
-
 // Services
 import { HashingService } from './hashing.service';
+
+// Repositories
+import { UserRepositoryToken } from '../../user/repositories/user.repository.interface';
+import type { UserRepository } from '../../user/repositories/user.repository.interface';
 
 const DEFAULT_ADMIN_EMAIL = 'hoan.hoang@asnet.com.vn' as const;
 const DEFAULT_ADMIN_PASSWORD = 'Password123!' as const;
@@ -27,14 +22,12 @@ const DEFAULT_ADMIN_PASSWORD = 'Password123!' as const;
 @Injectable()
 export class AdminSeedService implements OnModuleInit {
   constructor(
-    @InjectRepository(User)
-    private readonly userRepo: EntityRepository<User>,
-    private readonly em: EntityManager,
+    @Inject(UserRepositoryToken)
+    private readonly userRepo: UserRepository,
     private readonly configService: ConfigService,
     private readonly hashingService: HashingService,
   ) {}
 
-  @CreateRequestContext()
   async onModuleInit() {
     if (process.env.NODE_ENV === 'production') return;
 
@@ -52,9 +45,7 @@ export class AdminSeedService implements OnModuleInit {
       return;
     }
 
-    const existedAdmin = await this.userRepo.findOne({
-      role: UserRole.ADMIN,
-    });
+    const existedAdmin = await this.userRepo.findOneByRole(UserRole.ADMIN);
 
     if (existedAdmin) {
       return;
@@ -62,7 +53,7 @@ export class AdminSeedService implements OnModuleInit {
 
     const hashedPassword = await this.hashingService.hash(adminPassword);
 
-    const admin = this.userRepo.create({
+    await this.userRepo.create({
       email: adminEmail,
       password: hashedPassword,
       role: UserRole.ADMIN,
@@ -73,8 +64,6 @@ export class AdminSeedService implements OnModuleInit {
       userName: 'Hoan Admin',
       userType: UserType.TRAINER,
     });
-
-    await this.em.persist(admin).flush();
 
     console.log('🚀 Default admin created');
   }

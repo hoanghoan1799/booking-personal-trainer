@@ -1,24 +1,24 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
-import { InjectRepository } from '@mikro-orm/nestjs';
-import { EntityRepository } from '@mikro-orm/core';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 
 // Constants
 import { ERROR_MESSAGES } from '../constants/message.constant';
 
-// Entities
-import { User } from '../../modules/user/entities/user.entity';
-
 // Types
 import { JwtAuthPayload } from '../../modules/auth/types/jwt-auth.type';
+
+// Repositories
+import { UserRepositoryToken } from '../../modules/user/repositories/user.repository.interface';
+import type { UserRepository } from '../../modules/user/repositories/user.repository.interface';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
   constructor(
     private configService: ConfigService,
-    @InjectRepository(User) private userRepo: EntityRepository<User>,
+    @Inject(UserRepositoryToken)
+    private readonly userRepo: UserRepository,
   ) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
@@ -27,8 +27,8 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     });
   }
 
-  async validate(payload: JwtAuthPayload): Promise<User | null> {
-    const user = await this.userRepo.findOne({ id: payload.id });
+  async validate(payload: JwtAuthPayload) {
+    const user = await this.userRepo.findById(payload.id);
 
     if (!user) {
       throw new UnauthorizedException(ERROR_MESSAGES.AUTH.ACCESS_TOKEN_INVALID);

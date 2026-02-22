@@ -1,14 +1,10 @@
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
-import { MikroOrmModule } from '@mikro-orm/nestjs';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 
 // Commons
 import { JwtStrategy } from '../../common/strategies/jwt.strategy';
 import { TOKEN_EXPIRATION } from '../../common/constants/token.constants';
-
-// Entities
-import { User } from '../user/entities/user.entity';
 
 // Services
 import { AuthService } from './auth.service';
@@ -28,7 +24,6 @@ import { RedisModule } from '../redis/redis.module';
   imports: [
     UserModule,
     RedisModule,
-    MikroOrmModule.forFeature([User]),
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
