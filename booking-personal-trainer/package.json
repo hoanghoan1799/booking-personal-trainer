@@ -17,7 +17,7 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json",
+    "test:e2e": "jest --config ./src/test/jest-e2e.json",
     "prepare": "cd .. && husky booking-personal-trainer/.husky",
     "mikro-orm": "mikro-orm",
     "migration:create": "pnpm mikro-orm migration:create --path=src/migrations --name=$MIGRATION_NAME",
@@ -105,6 +105,9 @@
     "testRegex": ".*\\.spec\\.ts$",
     "transform": {
       "^.+\\.(t|j)s$": "ts-jest"
+    },
+    "moduleNameMapper": {
+      "^uuid$": "<rootDir>/__mocks__/uuid.ts"
     },
     "collectCoverageFrom": [
       "**/*.(t|j)s"
