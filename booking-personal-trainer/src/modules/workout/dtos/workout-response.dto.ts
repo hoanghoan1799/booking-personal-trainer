@@ -5,7 +5,6 @@ import { Expose, Type } from 'class-transformer';
 import { WorkoutStatus } from '../../../common/enums/workout/workout.enum';
 import { ExerciseResponseDto } from '../../exercise/dto/exercise-response.dto';
 import { ResponseUserDto } from '../../user/dtos/response-user.dto';
-import { Collection } from '@mikro-orm/core';
 import {
   API_FORMATS,
   FIELD_DESCRIPTIONS,
@@ -90,7 +89,7 @@ export class WorkoutResponseDto {
   })
   @Expose()
   @Type(() => WorkoutExerciseResponseDto)
-  exercises: WorkoutExerciseResponseDto[] | Collection<any>;
+  exercises: WorkoutExerciseResponseDto[];
 
   @ApiPropertyOptional({
     description: FIELD_DESCRIPTIONS.WORKOUT.TOTAL_EXERCISES,
