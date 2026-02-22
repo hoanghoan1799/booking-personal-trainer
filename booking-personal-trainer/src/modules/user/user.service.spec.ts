@@ -1,7 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
-import { getRepositoryToken } from '@mikro-orm/nestjs';
-import { EntityManager } from '@mikro-orm/core';
 
 // Commons
 import { ERROR_MESSAGES } from '../../common/constants/message.constant';
@@ -22,6 +20,10 @@ import { User } from './entities/user.entity';
 // Services
 import { UserService } from './user.service';
 
+// Repositories
+import { UserRepositoryToken } from './repositories/user.repository.interface';
+import { BookingRepositoryToken } from '../booking/repositories/booking.repository.interface';
+
 const DEFAULT_PAGE = 1;
 const DEFAULT_LIMIT_TRAINEES = 20;
 const DEFAULT_LIMIT = 10;
@@ -32,10 +34,12 @@ describe('UserService', () => {
   let service: UserService;
   let userRepo: {
     create: jest.Mock;
-    findOne: jest.Mock;
+    findById: jest.Mock;
+    findByEmailOrUserName: jest.Mock;
     findAndCount: jest.Mock;
+    save: jest.Mock;
   };
-  let em: { persist: jest.Mock; flush: jest.Mock; find: jest.Mock };
+  let bookingRepo: { findTraineeIdsByTrainerId: jest.Mock };
 
   const mockUser = {
     id: 'user-uuid',
@@ -47,23 +51,28 @@ describe('UserService', () => {
   } as User;
 
   beforeEach(async () => {
-    const mockFlush = jest.fn().mockResolvedValue(undefined);
-    em = {
-      persist: jest.fn().mockReturnValue({ flush: mockFlush }),
-      flush: jest.fn().mockResolvedValue(undefined),
-      find: jest.fn().mockResolvedValue([]),
-    };
     userRepo = {
       create: jest.fn(),
-      findOne: jest.fn(),
+      findById: jest.fn(),
+      findByEmailOrUserName: jest.fn(),
       findAndCount: jest.fn(),
+      save: jest.fn().mockResolvedValue(undefined),
+    };
+    bookingRepo = {
+      findTraineeIdsByTrainerId: jest.fn().mockResolvedValue([]),
     };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         UserService,
-        { provide: getRepositoryToken(User), useValue: userRepo },
-        { provide: EntityManager, useValue: em },
+        {
+          provide: UserRepositoryToken,
+          useValue: userRepo,
+        },
+        {
+          provide: BookingRepositoryToken,
+          useValue: bookingRepo,
+        },
       ],
     }).compile();
 
@@ -84,7 +93,7 @@ describe('UserService', () => {
         status: UserStatus.ACTIVE,
       };
       const createdUser = { ...mockUser, ...data };
-      userRepo.create.mockReturnValue(createdUser);
+      userRepo.create.mockResolvedValue(createdUser);
 
       const actual = await service.create(data);
 
@@ -95,24 +104,24 @@ describe('UserService', () => {
           userName: data.userName,
         }),
       );
-      expect(em.persist).toHaveBeenCalled();
     });
   });
 
   describe('findByEmailOrUserName', () => {
     it('should return user when found by email', async () => {
-      userRepo.findOne.mockResolvedValue(mockUser);
+      userRepo.findByEmailOrUserName.mockResolvedValue(mockUser);
 
       const actual = await service.findByEmailOrUserName('user@test.com');
 
       expect(actual).toEqual(mockUser);
-      expect(userRepo.findOne).toHaveBeenCalledWith({
-        $or: [{ userName: undefined }, { email: 'user@test.com' }],
-      });
+      expect(userRepo.findByEmailOrUserName).toHaveBeenCalledWith(
+        'user@test.com',
+        undefined,
+      );
     });
 
     it('should return null when not found', async () => {
-      userRepo.findOne.mockResolvedValue(null);
+      userRepo.findByEmailOrUserName.mockResolvedValue(null);
 
       const actual = await service.findByEmailOrUserName('nobody@test.com');
 
@@ -122,7 +131,7 @@ describe('UserService', () => {
 
   describe('findById', () => {
     it('should return user when found', async () => {
-      userRepo.findOne.mockResolvedValue(mockUser);
+      userRepo.findById.mockResolvedValue(mockUser);
 
       const actual = await service.findById(mockUser.id);
 
@@ -130,7 +139,7 @@ describe('UserService', () => {
     });
 
     it('should throw NotFoundException when not found', async () => {
-      userRepo.findOne.mockResolvedValue(null);
+      userRepo.findById.mockResolvedValue(null);
 
       await expect(service.findById('missing-id')).rejects.toThrow(
         NotFoundException,
@@ -245,7 +254,7 @@ describe('UserService', () => {
     });
 
     it('should throw NotFoundException when target user not found', async () => {
-      userRepo.findOne.mockResolvedValue(null);
+      userRepo.findById.mockResolvedValue(null);
       const currentUser: JwtAuthPayload = {
         id: 'admin-id',
         email: 'admin@test.com',
@@ -270,7 +279,7 @@ describe('UserService', () => {
         role: UserRole.TRAINEE,
         approvalStatus: TrainerApprovalStatus.PENDING,
       };
-      userRepo.findOne.mockResolvedValue(targetUser);
+      userRepo.findById.mockResolvedValue(targetUser);
       const currentUser: JwtAuthPayload = {
         id: 'admin-id',
         email: 'admin@test.com',
@@ -286,13 +295,13 @@ describe('UserService', () => {
 
       expect(actual.data.role).toBe(UserRole.TRAINER);
       expect(actual.data.approvalStatus).toBe(TrainerApprovalStatus.APPROVED);
-      expect(em.persist).toHaveBeenCalled();
+      expect(userRepo.save).toHaveBeenCalled();
     });
   });
 
   describe('updateProfile', () => {
     it('should throw NotFoundException when user not found', async () => {
-      userRepo.findOne.mockResolvedValue(null);
+      userRepo.findById.mockResolvedValue(null);
       const currentUser: JwtAuthPayload = {
         id: 'missing-id',
         email: 'missing@test.com',
@@ -307,7 +316,7 @@ describe('UserService', () => {
 
     it('should update and return user when found', async () => {
       const user = { ...mockUser, age: 20 };
-      userRepo.findOne.mockResolvedValue(user);
+      userRepo.findById.mockResolvedValue(user);
       const currentUser: JwtAuthPayload = {
         id: user.id,
         email: user.email,
@@ -318,7 +327,7 @@ describe('UserService', () => {
       const actual = await service.updateProfile({ age: 30 }, currentUser);
 
       expect(actual.data.age).toBe(30);
-      expect(em.persist).toHaveBeenCalled();
+      expect(userRepo.save).toHaveBeenCalled();
     });
   });
 });

@@ -1,10 +1,9 @@
 import {
   ForbiddenException,
+  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { InjectRepository } from '@mikro-orm/nestjs';
-import { EntityManager, EntityRepository, FilterQuery } from '@mikro-orm/core';
 
 // DTOs
 import { RegisterDto } from '../auth/dtos/register.dto';
@@ -27,7 +26,6 @@ import type { JwtAuthPayload } from '../auth/types/jwt-auth.type';
 
 // Entities
 import { User } from './entities/user.entity';
-import { Booking } from '../booking/entities/booking.entity';
 
 // DTOs
 import {
@@ -37,11 +35,22 @@ import {
 import { GetUsersQueryDto } from './dtos/get-user.dto';
 import { BaseResponseDto } from '../../common/dtos/base-response.dto';
 
+// Repositories
+import {
+  UserRepositoryToken,
+  type UserRepository,
+  type UserFindManyFilter,
+} from './repositories/user.repository.interface';
+import { BookingRepositoryToken } from '../booking/repositories/booking.repository.interface';
+import type { BookingRepository } from '../booking/repositories/booking.repository.interface';
+
 @Injectable()
 export class UserService {
   constructor(
-    @InjectRepository(User) private readonly userRepo: EntityRepository<User>,
-    private readonly em: EntityManager,
+    @Inject(UserRepositoryToken)
+    private readonly userRepo: UserRepository,
+    @Inject(BookingRepositoryToken)
+    private readonly bookingRepo: BookingRepository,
   ) {}
 
   /**
@@ -50,7 +59,7 @@ export class UserService {
    * @returns The newly created user.
    */
   async create(data: RegisterDto): Promise<User> {
-    const newUser: User = this.userRepo.create({
+    return this.userRepo.create({
       email: data.email,
       password: data.password,
       userName: data.userName,
@@ -61,10 +70,6 @@ export class UserService {
       approvalStatus: data.approvalStatus,
       status: data.status,
     });
-
-    await this.em.persist(newUser).flush();
-
-    return newUser;
   }
 
   /**
@@ -77,9 +82,7 @@ export class UserService {
     email: string,
     userName?: string,
   ): Promise<User | null> {
-    return this.userRepo.findOne({
-      $or: [{ userName }, { email }],
-    });
+    return this.userRepo.findByEmailOrUserName(email, userName);
   }
 
   /**
@@ -88,7 +91,7 @@ export class UserService {
    * @returns The user if found, or null if not found.
    */
   async findById(id: string): Promise<User> {
-    const existingUser = await this.userRepo.findOne({ id });
+    const existingUser = await this.userRepo.findById(id);
 
     if (!existingUser) {
       throw new NotFoundException(ERROR_MESSAGES.USER.NOT_FOUND);
@@ -123,7 +126,7 @@ export class UserService {
     } = query;
     const offset = (page - 1) * limit;
 
-    const where: FilterQuery<User> = {};
+    const filter: UserFindManyFilter = {};
 
     switch (currentUser.role) {
       case UserRole.ADMIN:
@@ -133,59 +136,47 @@ export class UserService {
           role === UserRole.TRAINER &&
           approvalStatus === TrainerApprovalStatus.APPROVED
         ) {
-          where.role = UserRole.TRAINER;
-          where.approvalStatus = TrainerApprovalStatus.APPROVED;
-          where.id = { $ne: currentUser.id };
+          filter.role = UserRole.TRAINER;
+          filter.approvalStatus = TrainerApprovalStatus.APPROVED;
+          filter.excludeUserId = currentUser.id;
         } else {
-          where.role = UserRole.TRAINEE;
-          const bookings = await this.em.find(
-            Booking,
-            { trainer: currentUser.id },
-            { fields: ['trainee'], populate: ['trainee'] },
+          filter.role = UserRole.TRAINEE;
+          const traineeIds = await this.bookingRepo.findTraineeIdsByTrainerId(
+            currentUser.id,
           );
-          const traineeIds = [...new Set(bookings.map((b) => b.trainee.id))];
-          if (traineeIds.length > 0) {
-            where.id = { $in: traineeIds };
-          } else {
-            where.id = { $in: [] };
-          }
+          filter.onlyTraineeIds = traineeIds;
         }
         break;
       case UserRole.TRAINEE:
-        where.role = UserRole.TRAINER;
-        where.approvalStatus = TrainerApprovalStatus.APPROVED;
+        filter.role = UserRole.TRAINER;
+        filter.approvalStatus = TrainerApprovalStatus.APPROVED;
         break;
       default:
-        where.role = UserRole.TRAINER;
-        where.approvalStatus = TrainerApprovalStatus.APPROVED;
+        filter.role = UserRole.TRAINER;
+        filter.approvalStatus = TrainerApprovalStatus.APPROVED;
     }
 
     if (currentUser.role === UserRole.ADMIN) {
       if (userType) {
-        where.userType = userType;
+        filter.userType = userType;
       }
-
       if (role) {
-        where.role = role;
+        filter.role = role;
       }
-
       if (approvalStatus) {
-        where.approvalStatus = approvalStatus;
+        filter.approvalStatus = approvalStatus;
       }
     }
 
     if (search) {
-      where.$or = [
-        { email: { $ilike: `%${search}%` } },
-        { userName: { $ilike: `%${search}%` } },
-      ];
+      filter.search = search;
     }
 
     const orderBy = {
       [sortBy ?? SortBy.CREATED_AT]: order ?? SortOrder.DESC,
     };
 
-    const [data, totalItems] = await this.userRepo.findAndCount(where, {
+    const [data, totalItems] = await this.userRepo.findAndCount(filter, {
       limit,
       offset,
       orderBy,
@@ -214,7 +205,6 @@ export class UserService {
     data: UpdateUserRoleDto,
     currentUser: JwtAuthPayload,
   ): Promise<BaseResponseDto<ResponseUserDto>> {
-    // Check if the user is trying to update their own role
     if (currentUser.id === targetUserId) {
       throw new ForbiddenException(ERROR_MESSAGES.USER.CANNOT_UPDATE_SELF_ROLE);
     }
@@ -223,32 +213,25 @@ export class UserService {
       throw new ForbiddenException(ERROR_MESSAGES.USER.CANNOT_ASSIGN_ADMIN);
     }
 
-    const targetUser = await this.userRepo.findOne({ id: targetUserId });
+    const targetUser = await this.userRepo.findById(targetUserId);
 
     if (!targetUser) {
       throw new NotFoundException(ERROR_MESSAGES.USER.NOT_FOUND);
     }
 
-    // Check if the user is trying to update the role of an admin
     if (targetUser.role === UserRole.ADMIN) {
       throw new ForbiddenException(ERROR_MESSAGES.USER.ADMIN_UPDATE);
     }
 
     if (targetUser.userType === UserType.TRAINER) {
-      // ADMIN APPROVE
       if (data.role === UserRole.TRAINER) {
         targetUser.role = UserRole.TRAINER;
         targetUser.approvalStatus = TrainerApprovalStatus.APPROVED;
-      }
-
-      // ADMIN REJECT
-      else if (data.role === UserRole.TRAINEE) {
+      } else if (data.role === UserRole.TRAINEE) {
         targetUser.role = UserRole.TRAINEE;
         targetUser.approvalStatus = TrainerApprovalStatus.REJECTED;
       }
-
-      await this.em.persist(targetUser).flush();
-
+      await this.userRepo.save(targetUser);
       return BaseResponseDto.ok(targetUser);
     }
 
@@ -258,8 +241,7 @@ export class UserService {
 
     targetUser.role = data.role;
     targetUser.approvalStatus = TrainerApprovalStatus.NONE;
-
-    await this.em.persist(targetUser).flush();
+    await this.userRepo.save(targetUser);
 
     return BaseResponseDto.ok(targetUser);
   }
@@ -282,8 +264,7 @@ export class UserService {
     }
 
     Object.assign(user, data);
-
-    await this.em.persist(user).flush();
+    await this.userRepo.save(user);
 
     return BaseResponseDto.ok(user);
   }

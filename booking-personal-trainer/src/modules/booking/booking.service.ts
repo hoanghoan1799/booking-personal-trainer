@@ -1,10 +1,9 @@
 import {
   BadRequestException,
+  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { EntityManager, EntityRepository, FilterQuery } from '@mikro-orm/core';
-import { InjectRepository } from '@mikro-orm/nestjs';
 
 // Commons
 import { UserRole } from '../../common/enums/user/user.enum';
@@ -12,6 +11,7 @@ import { BookingStatus } from '../../common/enums/booking/booking.enum';
 import { ERROR_MESSAGES } from '../../common/constants/message.constant';
 import { addMinutesToDate } from '../../common/helpers/time.helper';
 import { BaseResponseDto } from '../../common/dtos/base-response.dto';
+import { SortOrder } from '../../common/enums/pagination/pagination.enum';
 
 // Entities
 import { Booking } from './entities/booking.entity';
@@ -21,16 +21,22 @@ import { User } from '../user/entities/user.entity';
 import { GetBookingsQueryDto } from './dtos/get-booking.dto';
 import { CreateBookingDto } from './dtos/create-booking.dto';
 
-// Services
-import { UserService } from '../user/user.service';
+// Repositories
+import {
+  BookingRepositoryToken,
+  type BookingRepository,
+  type BookingFindManyFilter,
+} from './repositories/booking.repository.interface';
+import { UserRepositoryToken } from '../user/repositories/user.repository.interface';
+import type { UserRepository } from '../user/repositories/user.repository.interface';
 
 @Injectable()
 export class BookingService {
   constructor(
-    @InjectRepository(Booking)
-    private readonly bookingRepo: EntityRepository<Booking>,
-    private readonly userService: UserService,
-    private readonly em: EntityManager,
+    @Inject(BookingRepositoryToken)
+    private readonly bookingRepo: BookingRepository,
+    @Inject(UserRepositoryToken)
+    private readonly userRepo: UserRepository,
   ) {}
 
   async create(data: CreateBookingDto, currentUser: User): Promise<Booking> {
@@ -56,7 +62,7 @@ export class BookingService {
       );
     }
 
-    const trainer = await this.userService.findById(trainerId);
+    const trainer = await this.userRepo.findById(trainerId);
 
     if (!trainer) {
       throw new NotFoundException(ERROR_MESSAGES.USER.TRAINER_NOT_AVAILABLE);
@@ -66,16 +72,12 @@ export class BookingService {
       throw new BadRequestException(ERROR_MESSAGES.BOOKING.CANNOT_BOOK_SELF);
     }
 
-    const overlap = await this.bookingRepo.count({
-      trainer,
-      status: { $ne: BookingStatus.REJECTED },
-      $or: [
-        {
-          startTime: { $lt: endTime },
-          endTime: { $gt: startTime },
-        },
-      ],
-    });
+    const overlap = await this.bookingRepo.countOverlapping(
+      trainerId,
+      start,
+      end,
+      BookingStatus.REJECTED,
+    );
 
     if (overlap > 0) {
       throw new BadRequestException(
@@ -83,15 +85,13 @@ export class BookingService {
       );
     }
 
-    const booking = this.bookingRepo.create({
-      trainee: currentUser,
+    const booking = await this.bookingRepo.create({
       trainer,
-      startTime: new Date(startTime),
-      endTime: new Date(endTime),
+      trainee: currentUser,
+      startTime: start,
+      endTime: end,
       status: BookingStatus.PENDING,
     });
-
-    await this.em.persist(booking).flush();
 
     return booking;
   }
@@ -102,41 +102,38 @@ export class BookingService {
   ): Promise<BaseResponseDto<Booking[]>> {
     const { page, limit, status, traineeId, trainerId, order } = query;
 
-    const where: FilterQuery<Booking> = {};
+    const filter: BookingFindManyFilter = {};
 
     switch (currentUser.role) {
       case UserRole.ADMIN:
         break;
       case UserRole.TRAINER:
-        where.trainer = currentUser.id;
+        filter.trainer = currentUser.id;
         break;
       case UserRole.TRAINEE:
-        where.trainee = currentUser.id;
+        filter.trainee = currentUser.id;
         break;
       default:
-        where.trainee = currentUser.id;
+        filter.trainee = currentUser.id;
     }
 
     if (currentUser.role === UserRole.ADMIN) {
       if (traineeId) {
-        where.trainee = traineeId;
+        filter.trainee = traineeId;
       }
       if (trainerId) {
-        where.trainer = trainerId;
+        filter.trainer = trainerId;
       }
     }
 
     if (status) {
-      where.status = status;
+      filter.status = status;
     }
 
-    const [bookings, totalItems] = await this.bookingRepo.findAndCount(where, {
-      populate: ['trainee', 'trainer'],
+    const [bookings, totalItems] = await this.bookingRepo.findAndCount(filter, {
       limit,
       offset: (page - 1) * limit,
-      orderBy: {
-        createdAt: order,
-      },
+      orderBy: { createdAt: order ?? SortOrder.DESC },
     });
 
     return BaseResponseDto.okWithPagination(bookings, {
@@ -155,10 +152,7 @@ export class BookingService {
     status: BookingStatus,
     currentUser: User,
   ): Promise<Booking> {
-    const booking = await this.bookingRepo.findOne(
-      { id },
-      { populate: ['trainer', 'trainee'] },
-    );
+    const booking = await this.bookingRepo.findById(id);
 
     if (!booking) {
       throw new NotFoundException(ERROR_MESSAGES.BOOKING.NOT_FOUND);
@@ -174,7 +168,7 @@ export class BookingService {
     }
 
     booking.status = status;
-    await this.em.flush();
+    await this.bookingRepo.save(booking);
 
     return booking;
   }

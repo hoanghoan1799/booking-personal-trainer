@@ -1,7 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
-import { getRepositoryToken } from '@mikro-orm/nestjs';
-import { EntityManager } from '@mikro-orm/core';
 
 // Commons
 import { UserRole } from '../../common/enums/user/user.enum';
@@ -15,7 +13,10 @@ import { User } from '../user/entities/user.entity';
 
 // Services
 import { BookingService } from './booking.service';
-import { UserService } from '../user/user.service';
+
+// Repositories
+import { BookingRepositoryToken } from './repositories/booking.repository.interface';
+import { UserRepositoryToken } from '../user/repositories/user.repository.interface';
 
 const DEFAULT_PAGE = 1;
 const DEFAULT_LIMIT = 10;
@@ -32,13 +33,13 @@ const HOURS_DURATION = 1;
 describe('BookingService', () => {
   let service: BookingService;
   let bookingRepo: {
-    count: jest.Mock;
+    countOverlapping: jest.Mock;
     create: jest.Mock;
-    findOne: jest.Mock;
+    findById: jest.Mock;
     findAndCount: jest.Mock;
+    save: jest.Mock;
   };
-  let userService: { findById: jest.Mock };
-  let em: { persist: jest.Mock; flush: jest.Mock };
+  let userRepo: { findById: jest.Mock };
 
   const mockTrainee: User = {
     id: 'trainee-uuid',
@@ -66,30 +67,26 @@ describe('BookingService', () => {
   };
 
   beforeEach(async () => {
-    const mockPersist = jest
-      .fn()
-      .mockReturnValue({ flush: jest.fn().mockResolvedValue(undefined) });
-    em = {
-      persist: mockPersist,
-      flush: jest.fn().mockResolvedValue(undefined),
-    };
     bookingRepo = {
-      count: jest.fn(),
+      countOverlapping: jest.fn(),
       create: jest.fn(),
-      findOne: jest.fn(),
+      findById: jest.fn(),
       findAndCount: jest.fn(),
+      save: jest.fn().mockResolvedValue(undefined),
     };
-    userService = { findById: jest.fn() };
+    userRepo = { findById: jest.fn() };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         BookingService,
         {
-          provide: getRepositoryToken(Booking),
+          provide: BookingRepositoryToken,
           useValue: bookingRepo,
         },
-        { provide: UserService, useValue: userService },
-        { provide: EntityManager, useValue: em },
+        {
+          provide: UserRepositoryToken,
+          useValue: userRepo,
+        },
       ],
     }).compile();
 
@@ -134,7 +131,7 @@ describe('BookingService', () => {
 
     it('should throw NotFoundException when trainer not found', async () => {
       const { startTime, endTime } = createValidFutureDates();
-      userService.findById.mockResolvedValue(null);
+      userRepo.findById.mockResolvedValue(null);
 
       await expect(
         service.create(
@@ -152,7 +149,7 @@ describe('BookingService', () => {
 
     it('should throw BadRequestException when trainee books self', async () => {
       const { startTime, endTime } = createValidFutureDates();
-      userService.findById.mockResolvedValue(mockTrainee);
+      userRepo.findById.mockResolvedValue(mockTrainee);
 
       await expect(
         service.create(
@@ -170,8 +167,8 @@ describe('BookingService', () => {
 
     it('should throw BadRequestException when time slot overlaps', async () => {
       const { startTime, endTime } = createValidFutureDates();
-      userService.findById.mockResolvedValue(mockTrainer);
-      bookingRepo.count.mockResolvedValue(OVERLAP_COUNT);
+      userRepo.findById.mockResolvedValue(mockTrainer);
+      bookingRepo.countOverlapping.mockResolvedValue(OVERLAP_COUNT);
 
       await expect(
         service.create(
@@ -189,8 +186,8 @@ describe('BookingService', () => {
 
     it('should create booking when valid', async () => {
       const { startTime, endTime } = createValidFutureDates();
-      userService.findById.mockResolvedValue(mockTrainer);
-      bookingRepo.count.mockResolvedValue(NO_OVERLAP_COUNT);
+      userRepo.findById.mockResolvedValue(mockTrainer);
+      bookingRepo.countOverlapping.mockResolvedValue(NO_OVERLAP_COUNT);
       const createdBooking = {
         id: 'booking-uuid',
         trainee: mockTrainee,
@@ -199,7 +196,7 @@ describe('BookingService', () => {
         endTime: new Date(endTime),
         status: BookingStatus.PENDING,
       };
-      bookingRepo.create.mockReturnValue(createdBooking);
+      bookingRepo.create.mockResolvedValue(createdBooking);
 
       const actual = await service.create(
         { trainerId: mockTrainer.id, startTime, endTime },
@@ -230,7 +227,11 @@ describe('BookingService', () => {
 
       expect(bookingRepo.findAndCount).toHaveBeenCalledWith(
         { trainee: mockTrainee.id },
-        expect.any(Object),
+        expect.objectContaining({
+          limit: DEFAULT_LIMIT,
+          offset: 0,
+          orderBy: { createdAt: SortOrder.DESC },
+        }),
       );
     });
 
@@ -246,7 +247,11 @@ describe('BookingService', () => {
 
       expect(bookingRepo.findAndCount).toHaveBeenCalledWith(
         { trainer: mockTrainer.id },
-        expect.any(Object),
+        expect.objectContaining({
+          limit: DEFAULT_LIMIT,
+          offset: 0,
+          orderBy: { createdAt: SortOrder.DESC },
+        }),
       );
     });
 
@@ -268,7 +273,10 @@ describe('BookingService', () => {
           trainee: 'some-trainee-id',
           trainer: 'some-trainer-id',
         },
-        expect.any(Object),
+        expect.objectContaining({
+          limit: DEFAULT_LIMIT,
+          offset: 0,
+        }),
       );
     });
 
@@ -300,7 +308,7 @@ describe('BookingService', () => {
 
   describe('updateStatus', () => {
     it('should throw NotFoundException when booking not found', async () => {
-      bookingRepo.findOne.mockResolvedValue(null);
+      bookingRepo.findById.mockResolvedValue(null);
 
       await expect(
         service.updateStatus(
@@ -325,7 +333,7 @@ describe('BookingService', () => {
         trainee: mockTrainee,
         status: BookingStatus.PENDING,
       };
-      bookingRepo.findOne.mockResolvedValue(booking);
+      bookingRepo.findById.mockResolvedValue(booking);
       const otherUser = { ...mockTrainee, id: 'other-user-id' } as User;
 
       await expect(
@@ -343,7 +351,7 @@ describe('BookingService', () => {
         trainee: mockTrainee,
         status: BookingStatus.PENDING,
       };
-      bookingRepo.findOne.mockResolvedValue(booking);
+      bookingRepo.findById.mockResolvedValue(booking);
 
       const actual = await service.updateStatus(
         booking.id,
@@ -352,7 +360,7 @@ describe('BookingService', () => {
       );
 
       expect(actual.status).toBe(BookingStatus.CONFIRMED);
-      expect(em.flush).toHaveBeenCalled();
+      expect(bookingRepo.save).toHaveBeenCalled();
     });
 
     it('should update status when user is admin', async () => {
@@ -363,7 +371,7 @@ describe('BookingService', () => {
         trainee: mockTrainee,
         status: BookingStatus.PENDING,
       };
-      bookingRepo.findOne.mockResolvedValue(booking);
+      bookingRepo.findById.mockResolvedValue(booking);
 
       const actual = await service.updateStatus(
         booking.id,
@@ -372,7 +380,7 @@ describe('BookingService', () => {
       );
 
       expect(actual.status).toBe(BookingStatus.REJECTED);
-      expect(em.flush).toHaveBeenCalled();
+      expect(bookingRepo.save).toHaveBeenCalled();
     });
   });
 

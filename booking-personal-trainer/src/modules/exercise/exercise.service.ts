@@ -1,15 +1,9 @@
 import {
   BadRequestException,
+  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { InjectRepository } from '@mikro-orm/nestjs';
-import {
-  EntityManager,
-  EntityRepository,
-  FilterQuery,
-  wrap,
-} from '@mikro-orm/core';
 
 // Commons
 import {
@@ -35,12 +29,18 @@ import { ResponseExerciseDto } from './dto/response-exercise.dto';
 import { UpdateExerciseDto } from './dto/update-exercise.dto';
 import { ExerciseResponseDto } from './dto/exercise-response.dto';
 
+// Repositories
+import {
+  ExerciseRepositoryToken,
+  type ExerciseRepository,
+  type ExerciseFindManyFilter,
+} from './repositories/exercise.repository.interface';
+
 @Injectable()
 export class ExerciseService {
   constructor(
-    @InjectRepository(Exercise)
-    private readonly exerciseRepo: EntityRepository<Exercise>,
-    private readonly em: EntityManager,
+    @Inject(ExerciseRepositoryToken)
+    private readonly exerciseRepo: ExerciseRepository,
   ) {}
 
   /**
@@ -51,10 +51,14 @@ export class ExerciseService {
   async create(
     data: CreateExerciseDto,
   ): Promise<BaseResponseDto<ExerciseResponseDto>> {
-    const exercise = this.exerciseRepo.create(data);
-
-    await this.em.persist(exercise).flush();
-
+    const exercise = await this.exerciseRepo.create({
+      name: data.name,
+      description: data.description ?? '',
+      muscleGroup: data.muscleGroup,
+      equipment: data.equipment,
+      videoUrl: data.videoUrl,
+      thumbnailUrl: data.thumbnailUrl,
+    });
     return BaseResponseDto.ok(exercise);
   }
 
@@ -76,27 +80,18 @@ export class ExerciseService {
     } = query;
     const offset = (page - 1) * limit;
 
-    const where: FilterQuery<Exercise> = {
+    const filter: ExerciseFindManyFilter = {
       isDeleted: false,
+      muscleGroup,
+      equipment,
+      search,
     };
-
-    if (muscleGroup) {
-      where.muscleGroup = muscleGroup;
-    }
-
-    if (equipment) {
-      where.equipment = equipment;
-    }
-
-    if (search) {
-      where.name = { $ilike: `%${search}%` };
-    }
 
     const orderBy = {
       [SortBy.CREATED_AT]: order ?? SortOrder.DESC,
     };
 
-    const [data, totalItems] = await this.exerciseRepo.findAndCount(where, {
+    const [data, totalItems] = await this.exerciseRepo.findAndCount(filter, {
       limit,
       offset,
       orderBy,
@@ -115,7 +110,7 @@ export class ExerciseService {
    * @returns The exercise with the given id if found.
    */
   async getOne(id: string): Promise<BaseResponseDto<ExerciseResponseDto>> {
-    const exercise = await this.exerciseRepo.findOne({ id });
+    const exercise = await this.exerciseRepo.findById(id);
 
     if (!exercise) {
       throw new NotFoundException(ERROR_MESSAGES.EXERCISE.NOT_FOUND);
@@ -135,59 +130,45 @@ export class ExerciseService {
     id: string,
     body: UpdateExerciseDto,
   ): Promise<BaseResponseDto<ExerciseResponseDto>> {
-    const exercise = await this.exerciseRepo.findOne({ id });
-
-    if (!exercise) {
-      throw new NotFoundException(ERROR_MESSAGES.EXERCISE.NOT_FOUND);
-    }
-
-    wrap(exercise).assign(body, {
-      onlyProperties: true,
+    const exercise = await this.exerciseRepo.update(id, {
+      name: body.name,
+      description: body.description,
+      muscleGroup: body.muscleGroup,
+      equipment: body.equipment,
+      videoUrl: body.videoUrl,
+      thumbnailUrl: body.thumbnailUrl,
     });
-
-    await this.em.flush();
-
     return BaseResponseDto.ok(exercise);
   }
 
   /**
    * Soft deletes an exercise with the given id.
-   * Sets the isDeleted flag to true and the deletedAt timestamp to the current date and time.
    * @param id The id of the exercise to be soft deleted.
    * @returns A success message response.
    * @throws NotFoundException If the exercise is not found.
    */
   async remove(id: string): Promise<void> {
-    const exercise = await this.exerciseRepo.findOne({ id });
+    const exercise = await this.exerciseRepo.findById(id);
 
     if (!exercise) {
       throw new NotFoundException(ERROR_MESSAGES.EXERCISE.NOT_FOUND);
     }
 
-    await this.em.remove(exercise).flush();
+    await this.exerciseRepo.remove(id);
   }
 
   /**
    * Soft deletes an exercise with the given id.
-   * Sets the isDeleted flag to true and the deletedAt timestamp to the current date and time.
    * @param id The id of the exercise to be soft deleted.
    * @returns A success message response.
    * @throws NotFoundException If the exercise is not found.
    */
   async softDelete(id: string): Promise<SuccessMessageResponse> {
-    const exercise = await this.exerciseRepo.findOne({
-      id,
-      isDeleted: false,
-    });
+    const deleted = await this.exerciseRepo.softDelete(id);
 
-    if (!exercise) {
+    if (!deleted) {
       throw new NotFoundException(ERROR_MESSAGES.EXERCISE.NOT_FOUND);
     }
-
-    exercise.isDeleted = true;
-    exercise.deletedAt = new Date();
-
-    await this.em.flush();
 
     return { message: SUCCESS_MESSAGES.EXERCISE.DELETED };
   }
@@ -199,16 +180,11 @@ export class ExerciseService {
    * @throws NotFoundException If the exercise is not found
    */
   async restore(id: string): Promise<SuccessMessageResponse> {
-    const exercise = await this.exerciseRepo.findOne({ id, isDeleted: true });
+    const restored = await this.exerciseRepo.restore(id);
 
-    if (!exercise) {
+    if (!restored) {
       throw new NotFoundException(ERROR_MESSAGES.EXERCISE.NOT_FOUND);
     }
-
-    exercise.isDeleted = false;
-    exercise.deletedAt = null;
-
-    await this.em.flush();
 
     return { message: SUCCESS_MESSAGES.EXERCISE.RESTORED };
   }
@@ -216,14 +192,11 @@ export class ExerciseService {
   /**
    * Finds exercises by their ids.
    * @param ids The ids of the exercises to find.
-   * @returns The exercises if found, or an error if not found.
+   * @returns The exercises if found.
    * @throws {BadRequestException} If the exercises are not found or if the ids contain invalid exercise ids.
    */
   async findByIds(ids: string[]): Promise<Exercise[]> {
-    const exercises = await this.exerciseRepo.find({
-      id: { $in: ids },
-      isDeleted: false,
-    });
+    const exercises = await this.exerciseRepo.findByIds(ids);
 
     if (exercises.length !== ids.length) {
       throw new BadRequestException(ERROR_MESSAGES.WORKOUT.INVALID_EXERCISES);
