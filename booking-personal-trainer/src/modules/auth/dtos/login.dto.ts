@@ -15,7 +15,6 @@ import {
   ERROR_MESSAGES,
   FIELD_DESCRIPTIONS,
 } from '../../../common/constants/message.constant';
-import { User } from '../../../modules/user/entities/user.entity';
 
 // DTOs
 import { TokensDto } from './token.dto';
@@ -45,8 +44,8 @@ export class LoginDto {
 export class LoginResponseDto extends TokensDto {
   @IsObject()
   @ValidateNested()
-  @Type(() => User)
-  user: User;
+  @Type(() => ResponseUserDto)
+  user: ResponseUserDto;
 
   @IsNumber()
   @IsNotEmpty()

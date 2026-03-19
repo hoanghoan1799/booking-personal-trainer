@@ -6,6 +6,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { plainToInstance } from 'class-transformer';
 
 // Commons
 import { ERROR_MESSAGES } from '../../common/constants/message.constant';
@@ -23,6 +24,7 @@ import { RegisterDto } from './dtos/register.dto';
 import { LoginDto, LoginResponseDto } from './dtos/login.dto';
 import { RefreshTokenRequestDto, TokensDto } from './dtos/token.dto';
 import { LogoutDto } from './dtos/logout.dto';
+import { ResponseUserDto } from '../user/dtos/response-user.dto';
 
 // Services
 import { UserService } from '../user/user.service';
@@ -114,10 +116,15 @@ export class AuthService {
       refreshToken,
     });
 
+    const userResponse = plainToInstance(ResponseUserDto, newUser, {
+      excludeExtraneousValues: true,
+      enableImplicitConversion: true,
+    });
+
     return {
       accessToken,
       refreshToken,
-      user: newUser,
+      user: userResponse,
       accessTokenExpiresIn,
       refreshTokenExpiresIn,
     };
@@ -170,10 +177,15 @@ export class AuthService {
       refreshToken,
     });
 
+    const userResponse = plainToInstance(ResponseUserDto, existingUser, {
+      excludeExtraneousValues: true,
+      enableImplicitConversion: true,
+    });
+
     return {
       accessToken,
       refreshToken,
-      user: existingUser,
+      user: userResponse,
       accessTokenExpiresIn,
       refreshTokenExpiresIn,
     };

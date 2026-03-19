@@ -17,7 +17,6 @@ import {
   ApiExtraModels,
   getSchemaPath,
 } from '@nestjs/swagger';
-import { plainToInstance } from 'class-transformer';
 
 // Commons
 import { Public } from '../../common/decorators/public.decorator';
@@ -131,7 +130,7 @@ export class AuthController {
     } = await this.authService.register(data);
 
     const responseData: AuthResponseDataDto = {
-      user: user,
+      user,
       accessToken,
       refreshToken,
       accessTokenExpiresIn,
@@ -210,13 +209,8 @@ export class AuthController {
       refreshTokenExpiresIn,
     } = await this.authService.login(data);
 
-    const userDto = plainToInstance(ResponseUserDto, user, {
-      excludeExtraneousValues: true,
-      enableImplicitConversion: true,
-    });
-
     const responseData: AuthResponseDataDto = {
-      user: userDto,
+      user,
       accessToken,
       refreshToken,
       accessTokenExpiresIn,
