@@ -42,7 +42,7 @@ export const CORS_CONFIG: CorsOptions = {
     if (isProduction) {
       if (!frontendUrl) {
         console.warn(
-          '⚠️  CORS: FRONTEND_URL not set in production. CORS will reject all origins.',
+          'CORS: FRONTEND_URL not set in production. CORS will reject all origins.',
         );
         return false;
       }

@@ -41,7 +41,7 @@ export class AdminSeedService implements OnModuleInit {
     );
 
     if (!adminEmail || !adminPassword) {
-      console.warn('⚠️ Default admin env not set');
+      console.warn('Default admin env not set');
       return;
     }
 
@@ -65,6 +65,6 @@ export class AdminSeedService implements OnModuleInit {
       userType: UserType.TRAINER,
     });
 
-    console.log('🚀 Default admin created');
+    console.log('Default admin created');
   }
 }
