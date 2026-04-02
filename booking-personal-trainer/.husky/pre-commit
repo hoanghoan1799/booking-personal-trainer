@@ -1,0 +1,5 @@
+#!/usr/bin/env sh
+cd booking-personal-trainer
+
+pnpm lint
+pnpm test

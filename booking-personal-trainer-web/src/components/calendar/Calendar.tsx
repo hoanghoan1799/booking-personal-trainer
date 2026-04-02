@@ -1,0 +1,275 @@
+"use client";
+
+import React, { useState, useRef, useEffect, useCallback } from "react";
+import FullCalendar from "@fullcalendar/react";
+import dayGridPlugin from "@fullcalendar/daygrid";
+import timeGridPlugin from "@fullcalendar/timegrid";
+import interactionPlugin from "@fullcalendar/interaction";
+import type { EventClickArg, EventContentArg } from "@fullcalendar/core";
+import type { EventInput } from "@fullcalendar/core";
+import type { Booking } from "@/services/bookings/bookings.service";
+import { getBookings, updateBookingStatus } from "@/services/bookings/bookings.service";
+import { useProfile } from "@/hooks/useProfile";
+import { Modal } from "@/components/ui/modal";
+import { useToast } from "@/context/ToastContext";
+
+interface BookingEvent extends EventInput {
+  extendedProps: {
+    booking: Booking;
+    status: string;
+    isPast: boolean;
+  };
+}
+
+const STATUS_COLORS: Record<string, string> = {
+  PENDING: "warning",
+  CONFIRMED: "success",
+  REJECTED: "danger",
+  CANCELLED: "danger",
+};
+
+function getDisplayName(user: { firstName?: string; lastName?: string; userName: string }) {
+  const parts = [user.firstName, user.lastName].filter(Boolean);
+  return parts.length > 0 ? parts.join(" ") : user.userName;
+}
+
+function formatDateTime(iso: string) {
+  const d = new Date(iso);
+  return d.toLocaleString(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+}
+
+const Calendar: React.FC = () => {
+  const [events, setEvents] = useState<BookingEvent[]>([]);
+  const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const calendarRef = useRef<FullCalendar>(null);
+  const { user: currentUser, isLoading: isProfileLoading } = useProfile();
+  const toast = useToast();
+
+  const fetchBookings = useCallback(async () => {
+    if (!currentUser) {
+      setIsLoading(false);
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const res = await getBookings({ limit: 200 });
+      const now = new Date();
+      const bookingEvents: BookingEvent[] = res.bookings.map((b) => {
+        const trainerName = b.trainer ? getDisplayName(b.trainer) : "—";
+        const traineeName = b.trainee ? getDisplayName(b.trainee) : "—";
+        const title = `${trainerName} – ${traineeName}`;
+        const colorKey = STATUS_COLORS[b.status] ?? "primary";
+        const endDate = new Date(b.endTime);
+        const isPast = endDate.getTime() < now.getTime();
+
+        return {
+          id: b.id,
+          title,
+          start: b.startTime,
+          end: b.endTime,
+          extendedProps: {
+            booking: b,
+            status: colorKey,
+            isPast,
+          },
+        };
+      });
+      setEvents(bookingEvents);
+    } catch {
+      setEvents([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [currentUser]);
+
+  useEffect(() => {
+    if (isProfileLoading) return;
+    fetchBookings();
+  }, [fetchBookings, isProfileLoading]);
+
+  const handleEventClick = (clickInfo: EventClickArg) => {
+    const props = clickInfo.event.extendedProps as {
+      booking: Booking;
+      isPast: boolean;
+    };
+    if (props.isPast) return;
+    setSelectedBooking(props.booking);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedBooking(null);
+  };
+
+  const canUpdateStatus = selectedBooking && currentUser && (
+    currentUser.role === "ADMIN" ||
+    (currentUser.role === "TRAINER" && selectedBooking.trainer?.id === currentUser.id)
+  ) && selectedBooking.status === "PENDING";
+
+  const handleUpdateStatus = async (status: "CONFIRMED" | "REJECTED") => {
+    if (!selectedBooking || isUpdating) return;
+    setIsUpdating(true);
+    try {
+      await updateBookingStatus(selectedBooking.id, status);
+      toast.success(status === "CONFIRMED" ? "Booking approved" : "Booking rejected");
+      handleCloseModal();
+      fetchBookings();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to update booking status";
+      toast.error(msg);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const renderEventContent = (eventInfo: EventContentArg) => {
+    const props = eventInfo.event.extendedProps as {
+      status: string;
+      isPast: boolean;
+    };
+    const colorClass = `fc-bg-${props.status}`;
+    const isConfirmed = props.status === "success";
+    const pastClass = props.isPast
+      ? "opacity-60 cursor-not-allowed pointer-events-none"
+      : "";
+
+    return (
+      <div
+        className={`event-fc-color flex fc-event-main ${colorClass} p-1 rounded-sm ${pastClass} ${isConfirmed ? "border-l-4 border-l-success-500" : ""}`}
+      >
+        <div className="fc-daygrid-event-dot" />
+        <div className="fc-event-time">{eventInfo.timeText}</div>
+        <div className="fc-event-title">{eventInfo.event.title}</div>
+      </div>
+    );
+  };
+
+  if (isProfileLoading || isLoading) {
+    return (
+      <div className="flex items-center justify-center rounded-2xl border border-gray-200 bg-white py-12 dark:border-gray-800 dark:bg-white/[0.03]">
+        <span className="text-sm text-gray-500 dark:text-gray-400">
+          Loading calendar...
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
+      <div className="custom-calendar">
+        <FullCalendar
+          ref={calendarRef}
+          plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+          initialView="dayGridMonth"
+          headerToolbar={{
+            left: "prev,next today",
+            center: "title",
+            right: "dayGridMonth,timeGridWeek,timeGridDay",
+          }}
+          events={events}
+          selectable={false}
+          eventClick={handleEventClick}
+          eventContent={renderEventContent}
+          height="auto"
+        />
+      </div>
+
+      <Modal
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        className="max-w-md p-6"
+      >
+        {selectedBooking && (
+          <div className="space-y-4">
+            <h5 className="text-lg font-semibold text-gray-800 dark:text-white/90">
+              Booking Details
+            </h5>
+            <div className="space-y-2 text-sm">
+              <div>
+                <span className="font-medium text-gray-500 dark:text-gray-500">
+                  Trainer:{" "}
+                </span>
+                <span className="text-gray-800 dark:text-white/90">
+                  {getDisplayName(selectedBooking.trainer)}
+                </span>
+              </div>
+              <div>
+                <span className="font-medium text-gray-500 dark:text-gray-500">
+                  Trainee:{" "}
+                </span>
+                <span className="text-gray-800 dark:text-white/90">
+                  {getDisplayName(selectedBooking.trainee)}
+                </span>
+              </div>
+              <div>
+                <span className="font-medium text-gray-500 dark:text-gray-500">
+                  Status:{" "}
+                </span>
+                <span className="text-gray-800 dark:text-white/90">
+                  {selectedBooking.status}
+                </span>
+              </div>
+              <div>
+                <span className="font-medium text-gray-500 dark:text-gray-500">
+                  Start:{" "}
+                </span>
+                <span className="text-gray-800 dark:text-white/90">
+                  {formatDateTime(selectedBooking.startTime)}
+                </span>
+              </div>
+              <div>
+                <span className="font-medium text-gray-500 dark:text-gray-500">
+                  End:{" "}
+                </span>
+                <span className="text-gray-800 dark:text-white/90">
+                  {formatDateTime(selectedBooking.endTime)}
+                </span>
+              </div>
+            </div>
+            <div className="flex flex-wrap justify-end gap-2">
+              {canUpdateStatus && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => handleUpdateStatus("CONFIRMED")}
+                    disabled={isUpdating}
+                    className="rounded-lg bg-success-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-success-700 disabled:opacity-50"
+                    aria-label="Approve booking"
+                  >
+                    {isUpdating ? "Updating…" : "Approve"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleUpdateStatus("REJECTED")}
+                    disabled={isUpdating}
+                    className="rounded-lg bg-error-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-error-700 disabled:opacity-50"
+                    aria-label="Reject booking"
+                  >
+                    Reject
+                  </button>
+                </>
+              )}
+              <button
+                type="button"
+                onClick={handleCloseModal}
+                className="rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-white/[0.03]"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
+    </div>
+  );
+};
+
+export default Calendar;
