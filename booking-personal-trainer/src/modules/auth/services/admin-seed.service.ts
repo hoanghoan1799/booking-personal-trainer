@@ -17,7 +17,7 @@ import { UserRepositoryToken } from '../../user/repositories/user.repository.int
 import type { UserRepository } from '../../user/repositories/user.repository.interface';
 
 const DEFAULT_ADMIN_EMAIL = 'hoan.hoang@asnet.com.vn' as const;
-const DEFAULT_ADMIN_PASSWORD = 'Password123!' as const;
+const DEFAULT_ADMIN_PASSWORD = 'Abcd@123' as const;
 
 @Injectable()
 export class AdminSeedService implements OnModuleInit {

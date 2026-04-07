@@ -27,6 +27,8 @@ export default function WorkoutsContent() {
   const [statusFilter, setStatusFilter] = useState<string>("");
 
   const { user: currentUser } = useProfile();
+  const currentUserId = currentUser?.id ?? null;
+  const currentUserRole = (currentUser?.role as string | undefined) ?? null;
   const toast = useToast();
   const {
     workouts,
@@ -69,17 +71,16 @@ export default function WorkoutsContent() {
   };
 
   useEffect(() => {
-    if (!canCreate || !createModalOpen || !currentUser) return;
+    if (!canCreate || !createModalOpen || !currentUserId || !currentUserRole)
+      return;
 
-    const role = currentUser.role as string;
-
-    if (role === "ADMIN") {
+    if (currentUserRole === "ADMIN") {
       getUsers({ role: "TRAINEE", limit: 100 })
         .then((res) => setTrainees(res.users))
         .catch(() => setTrainees([]));
-    } else if (role === "TRAINER") {
+    } else if (currentUserRole === "TRAINER") {
       getBookings({
-        trainerId: currentUser.id,
+        trainerId: currentUserId,
         status: "CONFIRMED",
         limit: 100,
       })
@@ -101,7 +102,7 @@ export default function WorkoutsContent() {
     getExercises({ limit: 200 })
       .then((res) => setExercises(res.exercises))
       .catch(() => setExercises([]));
-  }, [canCreate, createModalOpen, currentUser?.id, currentUser?.role]);
+  }, [canCreate, createModalOpen, currentUserId, currentUserRole]);
 
   const handleCreateSuccess = () => {
     refetch();

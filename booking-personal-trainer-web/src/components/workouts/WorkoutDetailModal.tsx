@@ -89,11 +89,15 @@ export default function WorkoutDetailModal({
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
+  const workoutId = workout?.id ?? null;
+  const workoutStatus = (workout?.status as WorkoutStatus | undefined) ?? null;
+  const workoutExercises = workout?.exercises ?? null;
+
   useEffect(() => {
-    if (!workout) return;
+    if (!workoutId || !workoutStatus || !workoutExercises) return;
     setSaveError(null);
-    setLocalStatus((workout.status as WorkoutStatus) ?? "PENDING");
-    const arr = toExercisesArray(workout.exercises);
+    setLocalStatus(workoutStatus ?? "PENDING");
+    const arr = toExercisesArray(workoutExercises);
     setLocalExercises(
       arr
         .sort((a, b) => a.order - b.order)
@@ -104,7 +108,7 @@ export default function WorkoutDetailModal({
           exercise: we.exercise,
         })),
     );
-  }, [workout?.id, workout?.status, workout?.exercises]);
+  }, [workoutId, workoutStatus, workoutExercises]);
 
   if (!workout) return null;
 

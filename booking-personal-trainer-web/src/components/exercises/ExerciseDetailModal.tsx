@@ -3,6 +3,7 @@
 import type { Exercise } from "@/services/exercises/exercises.service";
 import { Modal } from "@/components/ui/modal";
 import Badge from "@/components/ui/badge/Badge";
+import Image from "next/image";
 
 interface ExerciseDetailModalProps {
   isOpen: boolean;
@@ -46,10 +47,14 @@ export default function ExerciseDetailModal({
             <h4 className="mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">
               Thumbnail
             </h4>
-            <img
+            <Image
               src={exercise.thumbnailUrl}
               alt={`${exercise.name} thumbnail`}
-              className="max-h-48 w-auto rounded-lg border border-gray-200 dark:border-gray-700"
+              width={640}
+              height={360}
+              sizes="(max-width: 768px) 100vw, 640px"
+              unoptimized
+              className="h-auto max-h-48 w-auto rounded-lg border border-gray-200 dark:border-gray-700"
             />
           </div>
         )}
