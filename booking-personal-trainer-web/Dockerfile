@@ -1,4 +1,4 @@
-FROM node:24 AS base
+FROM node:24-alpine AS base
 
 WORKDIR /app
 
@@ -17,14 +17,14 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN pnpm build
 
-FROM node:24 AS runner
+FROM node:24-alpine AS runner
 
 WORKDIR /app
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
-RUN addgroup -S nextjs && adduser -S nextjs -G nextjs
+RUN addgroup -S -g 1001 nextjs && adduser -D -u 1001 -G nextjs nextjs
 
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
