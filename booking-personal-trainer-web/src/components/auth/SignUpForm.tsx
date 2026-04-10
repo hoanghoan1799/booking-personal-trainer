@@ -9,6 +9,7 @@ import Input from "@/components/form/input/InputField";
 import Label from "@/components/form/Label";
 import Button from "@/components/ui/button/Button";
 import { EyeCloseIcon, EyeIcon } from "@/icons";
+import Auth0LogoIcon from "@/components/icons/Auth0LogoIcon";
 import {
   signUpSchema,
   type SignUpBody,
@@ -43,6 +44,13 @@ export default function SignUpForm() {
     } catch (error) {
       toast.error(getErrorMessage(error, "Registration failed"));
     }
+  };
+
+  const handleAuth0Login = (): void => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    window.location.href = "/api/auth/login?returnTo=/";
   };
 
   return (
@@ -206,6 +214,24 @@ export default function SignUpForm() {
               </div>
             </div>
           </form>
+
+          <div className="my-6 flex items-center gap-3" aria-label="Or sign up with">
+            <div className="h-px flex-1 bg-gray-200 dark:bg-gray-800" />
+            <span className="text-xs text-gray-500 dark:text-gray-400">OR</span>
+            <div className="h-px flex-1 bg-gray-200 dark:bg-gray-800" />
+          </div>
+
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="w-full"
+            onClick={handleAuth0Login}
+            aria-label="Continue with Auth0"
+            endIcon={<Auth0LogoIcon className="text-gray-700 dark:text-gray-300" />}
+          >
+            Continue with Auth0
+          </Button>
 
           <div className="mt-5">
             <p className="text-sm font-normal text-center text-gray-700 dark:text-gray-400 sm:text-start">

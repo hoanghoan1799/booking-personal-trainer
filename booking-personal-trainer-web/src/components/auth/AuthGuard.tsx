@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getAccessToken, clearTokens } from "@/lib/token";
+import { useUser } from "@auth0/nextjs-auth0/client";
 
 const APP_ROUTES = {
   SIGNIN: "/signin",
@@ -15,17 +16,22 @@ export default function AuthGuard({
 }) {
   const router = useRouter();
   const [isVerified, setIsVerified] = useState(false);
+  const { user, isLoading } = useUser();
 
   useEffect(() => {
+    if (isLoading) {
+      return;
+    }
     const accessToken = getAccessToken();
-    if (!accessToken) {
+    const isAuth0Authenticated = Boolean(user);
+    if (!accessToken && !isAuth0Authenticated) {
       clearTokens();
       router.replace(APP_ROUTES.SIGNIN);
       return;
     }
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsVerified(true);
-  }, [router]);
+  }, [isLoading, router, user]);
 
   if (!isVerified) {
     return (
