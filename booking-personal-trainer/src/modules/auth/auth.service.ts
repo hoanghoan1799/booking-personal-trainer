@@ -12,6 +12,12 @@ import { plainToInstance } from 'class-transformer';
 import { ERROR_MESSAGES } from '../../common/constants/message.constant';
 import { TOKEN_EXPIRATION } from '../../common/constants/token.constants';
 import { BaseResponseDto } from '../../common/dtos/base-response.dto';
+import {
+  TrainerApprovalStatus,
+  UserRole,
+  UserStatus,
+  UserType,
+} from '../../common/enums/user/user.enum';
 
 // Types
 import { JwtAuthPayload } from './types/jwt-auth.type';
@@ -30,12 +36,6 @@ import { ResponseUserDto } from '../user/dtos/response-user.dto';
 import { UserService } from '../user/user.service';
 import { HashingService } from './services/hashing.service';
 import { RefreshTokenService } from './services/refresh-token.service';
-import {
-  TrainerApprovalStatus,
-  UserRole,
-  UserStatus,
-  UserType,
-} from '../../common/enums/user/user.enum';
 
 @Injectable()
 export class AuthService {
@@ -145,6 +145,11 @@ export class AuthService {
 
     if (!existingUser) {
       throw new NotFoundException(ERROR_MESSAGES.USER.NOT_FOUND);
+    }
+    if (!existingUser.password) {
+      throw new BadRequestException(
+        ERROR_MESSAGES.VALIDATION.PASSWORD_NOT_MATCH,
+      );
     }
 
     const isPasswordValid: boolean = await this.hashingService.compare(

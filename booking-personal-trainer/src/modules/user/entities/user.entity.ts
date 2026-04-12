@@ -21,10 +21,10 @@ export class User extends BaseEntity {
 
   @Property()
   @Unique()
-  email!: string;
+  email: string;
 
-  @Property({ hidden: true })
-  password!: string;
+  @Property({ hidden: true, nullable: true })
+  password?: string;
 
   @Property()
   firstName!: string;

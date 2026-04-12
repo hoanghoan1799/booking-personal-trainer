@@ -5,10 +5,6 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 
-// DTOs
-import { RegisterDto } from '../auth/dtos/register.dto';
-import { ResponseFullUserDto, ResponseUserDto } from './dtos/response-user.dto';
-
 // Commons
 import { ERROR_MESSAGES } from '../../common/constants/message.constant';
 import {
@@ -34,12 +30,14 @@ import {
 } from './dtos/update-user.dto';
 import { GetUsersQueryDto } from './dtos/get-user.dto';
 import { BaseResponseDto } from '../../common/dtos/base-response.dto';
+import { ResponseFullUserDto, ResponseUserDto } from './dtos/response-user.dto';
 
 // Repositories
 import {
   UserRepositoryToken,
   type UserRepository,
   type UserFindManyFilter,
+  type CreateUserData,
 } from './repositories/user.repository.interface';
 import { BookingRepositoryToken } from '../booking/repositories/booking.repository.interface';
 import type { BookingRepository } from '../booking/repositories/booking.repository.interface';
@@ -58,18 +56,8 @@ export class UserService {
    * @param data The user data to be created.
    * @returns The newly created user.
    */
-  async create(data: RegisterDto): Promise<User> {
-    return this.userRepo.create({
-      email: data.email,
-      password: data.password,
-      userName: data.userName,
-      userType: data.userType,
-      firstName: data.firstName,
-      lastName: data.lastName,
-      role: data.role,
-      approvalStatus: data.approvalStatus,
-      status: data.status,
-    });
+  async create(data: CreateUserData): Promise<User> {
+    return this.userRepo.create(data);
   }
 
   /**
