@@ -1,3 +1,4 @@
+// Commons
 import {
   TrainerApprovalStatus,
   UserRole,
@@ -5,6 +6,8 @@ import {
   UserType,
 } from '../../../common/enums/user/user.enum';
 import { SortOrder } from '../../../common/enums/pagination/pagination.enum';
+
+// Entities
 import { User } from '../entities/user.entity';
 
 /** Injection token for UserRepository */
@@ -12,7 +15,7 @@ export const UserRepositoryToken = Symbol('UserRepository');
 
 export interface CreateUserData {
   email: string;
-  password: string;
+  password?: string;
   userName: string;
   userType: UserType;
   firstName: string;
