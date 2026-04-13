@@ -13,6 +13,7 @@ import {
   HorizontaLDots,
   TaskIcon,
   UserCircleIcon,
+  PaperPlaneIcon
 } from "../icons/index";
 import { APP_ROUTES } from "@/lib/route.constants";
 import SidebarWidget from "./SidebarWidget";
@@ -36,8 +37,13 @@ const navItems: NavItem[] = [
     path: APP_ROUTES.BOOKINGS,
   },
   {
+    icon: <PaperPlaneIcon />,
+    name: "Templates",
+    path: APP_ROUTES.TEMPLATES,
+  },
+    {
     icon: <CalenderIcon />,
-    name: "Calendar",
+    name: "Calendars",
     path: APP_ROUTES.CALENDAR,
   },
   {

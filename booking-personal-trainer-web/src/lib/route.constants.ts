@@ -41,6 +41,8 @@ export const APP_ROUTES = {
   REGISTER: "/register",
   PROFILE: "/profile",
   CALENDAR: "/calendar",
+  TEMPLATES: "/templates",
+  TEMPLATES_UPLOAD: "/templates/upload",
   BOOKINGS: "/bookings",
   EXERCISES: "/exercises",
   USERS: "/users",
