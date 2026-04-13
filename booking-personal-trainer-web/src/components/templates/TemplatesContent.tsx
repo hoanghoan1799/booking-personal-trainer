@@ -135,26 +135,27 @@ export default function TemplatesContent() {
     setIsCreateOpen(false);
   };
 
-  const handleSubmitCreate = () => {
+  const handleSubmitCreate = async () => {
     const name = createForm.name.trim();
     if (!name) return;
-    const created = executeCreateTemplate({
+    const created = await executeCreateTemplate({
       name,
       description: createForm.description,
-      createdBy: currentUserId,
       templateType: createForm.templateType,
       parentTemplateId: null,
     });
     if (createItems.length > 0) {
-      createItems.forEach((item) => {
-        executeAddTemplateItem({
+      await Promise.all(
+        createItems.map((item) =>
+          executeAddTemplateItem({
           templateId: created.id,
           item: {
             ...item,
             templateId: created.id,
           },
-        });
-      });
+          }),
+        ),
+      );
     }
     setIsCreateOpen(false);
   };
@@ -187,15 +188,14 @@ export default function TemplatesContent() {
     setEditingItemId(null);
   };
 
-  const handleSubmitEdit = () => {
+  const handleSubmitEdit = async () => {
     if (!selectedTemplate) return;
     const name = editForm.name.trim();
     if (!name) return;
-    executeUpdateTemplate({
+    await executeUpdateTemplate({
       templateId: selectedTemplate.id,
       name,
       description: editForm.description,
-      createdBy: selectedTemplate.createdBy,
       templateType: editForm.templateType,
       parentTemplateId: null,
     });
@@ -203,7 +203,7 @@ export default function TemplatesContent() {
     setSelectedTemplate(null);
   };
 
-  const handleAddItem = () => {
+  const handleAddItem = async () => {
     if (!selectedTemplate) return;
     const exerciseId = newItemForm.exerciseId.trim();
     if (!exerciseId) return;
@@ -225,7 +225,7 @@ export default function TemplatesContent() {
       createdAtIso: nowIso,
       updatedAtIso: nowIso,
     };
-    executeAddTemplateItem({ templateId: selectedTemplate.id, item });
+    await executeAddTemplateItem({ templateId: selectedTemplate.id, item });
     setSelectedTemplate((prev) => {
       if (!prev) return prev;
       return { ...prev, items: [...prev.items, item] };
@@ -249,7 +249,7 @@ export default function TemplatesContent() {
     setNewItemForm(DEFAULT_ITEM_FORM_STATE);
   };
 
-  const handleSaveEditItem = () => {
+  const handleSaveEditItem = async () => {
     if (!selectedTemplate) return;
     if (!editingItemId) return;
     const exerciseId = newItemForm.exerciseId.trim();
@@ -258,7 +258,7 @@ export default function TemplatesContent() {
     const reps = parseNullableNumber(newItemForm.reps);
     const restSeconds = parseNullableNumber(newItemForm.restSeconds);
     if (sets === null || reps === null || restSeconds === null) return;
-    executeUpdateTemplateItem({
+    await executeUpdateTemplateItem({
       templateId: selectedTemplate.id,
       itemId: editingItemId,
       exerciseId,
@@ -331,7 +331,7 @@ export default function TemplatesContent() {
 
   const handleRemoveItem = (itemId: string) => {
     if (!selectedTemplate) return;
-    executeRemoveTemplateItem({ templateId: selectedTemplate.id, itemId });
+    void executeRemoveTemplateItem({ templateId: selectedTemplate.id, itemId });
     setSelectedTemplate((prev) => {
       if (!prev) return prev;
       return { ...prev, items: prev.items.filter((i) => i.id !== itemId) };
@@ -348,9 +348,9 @@ export default function TemplatesContent() {
     setSelectedTemplate(null);
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (!selectedTemplate) return;
-    executeDeleteTemplate({ templateId: selectedTemplate.id });
+    await executeDeleteTemplate({ templateId: selectedTemplate.id });
     setIsDeleteOpen(false);
     setSelectedTemplate(null);
   };
@@ -401,7 +401,7 @@ export default function TemplatesContent() {
             <Button variant="outline">Upload</Button>
           </Link>
           <Button onClick={handleOpenCreate} aria-label="Create a new template">
-            Create template
+            Create Template
           </Button>
         </div>
       </div>
@@ -539,7 +539,7 @@ export default function TemplatesContent() {
         <div className="space-y-5">
           <div>
             <h4 className="text-lg font-semibold text-gray-800 dark:text-white/90">
-              Create template
+              Create Template
             </h4>
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
               Templates are stored locally in your browser for now.
@@ -668,7 +668,7 @@ export default function TemplatesContent() {
                 />
               </label>
               <label className="sm:col-span-2">
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Rest seconds</span>
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Seconds</span>
                 <input
                   value={createItemForm.restSeconds}
                   onChange={(e) =>
@@ -816,7 +816,7 @@ export default function TemplatesContent() {
             </div>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               <label className="sm:col-span-2">
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Exercise id</span>
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Exercise Name</span>
                 <div className="mt-1 flex items-center gap-2">
                   <div className="flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90">
                     {newItemForm.exerciseId ? (
@@ -876,7 +876,7 @@ export default function TemplatesContent() {
                 />
               </label>
               <label className="sm:col-span-2">
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Rest seconds</span>
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Rest Seconds</span>
                 <input
                   value={newItemForm.restSeconds}
                   onChange={(e) =>

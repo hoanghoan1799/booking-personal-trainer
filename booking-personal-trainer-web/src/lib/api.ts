@@ -25,10 +25,15 @@ async function doFetch<T>(
   options: FetchOptions
 ): Promise<Response> {
   const { auth = true, headers, _isRefresh, ...rest } = options;
+  const isFormDataBody =
+    typeof FormData !== "undefined" && rest.body instanceof FormData;
+  const defaultHeaders: HeadersInit = {
+    ...(isFormDataBody ? {} : { "Content-Type": "application/json" }),
+  };
   return fetch(`${API_URL}${endpoint}`, {
     ...rest,
     headers: {
-      "Content-Type": "application/json",
+      ...defaultHeaders,
       ...(auth && { Authorization: `Bearer ${getAccessToken()}` }),
       ...headers,
     } as HeadersInit,
