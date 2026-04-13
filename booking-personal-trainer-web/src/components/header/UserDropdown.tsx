@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useUser } from "@auth0/nextjs-auth0/client";
 import { useRouter } from "next/navigation";
 import React, { useState } from "react";
 import { useProfile } from "@/hooks/useProfile";
@@ -23,11 +24,14 @@ const getDisplayName = (user: { firstName: string; lastName: string; userName: s
 export default function UserDropdown() {
   const router = useRouter();
   const { user } = useProfile();
+  const { user: auth0User } = useUser();
   const toast = useToast();
   const [isOpen, setIsOpen] = useState(false);
 
-  const displayName = getDisplayName(user);
-  const email = user?.email ?? "";
+  const displayName = user
+    ? getDisplayName(user)
+    : auth0User?.name ?? auth0User?.email ?? "User";
+  const email = user?.email ?? auth0User?.email ?? "";
 
   const toggleDropdown = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
@@ -40,6 +44,10 @@ export default function UserDropdown() {
 
   const handleSignOut = async () => {
     closeDropdown();
+    if (auth0User) {
+      window.location.href = "/auth/logout";
+      return;
+    }
     try {
       await logout();
       toast.success("Signed out successfully");

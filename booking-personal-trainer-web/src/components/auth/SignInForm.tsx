@@ -19,9 +19,11 @@ import {
 import { login } from "@/services/auth/auth.service";
 import { getErrorMessage } from "@/lib/error.utils";
 import { useToast } from "@/context/ToastContext";
+import { useProfile } from "@/hooks/useProfile";
 
 export default function SignInForm() {
   const toast = useToast();
+  const { refetch: refetchProfile } = useProfile();
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter()
 
@@ -37,9 +39,8 @@ export default function SignInForm() {
     try {
       await login(data);
       toast.success("Signed in successfully");
-
-      router.push('/')
-      
+      await refetchProfile();
+      router.push("/");
     } catch (error) {
       toast.error(getErrorMessage(error, "Sign in failed"));
     }
@@ -49,7 +50,7 @@ export default function SignInForm() {
     if (typeof window === "undefined") {
       return;
     }
-    window.location.href = "/api/auth/login?returnTo=/";
+    window.location.href = "/auth/login?returnTo=/";
   };
 
   return (

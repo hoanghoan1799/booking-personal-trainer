@@ -18,10 +18,12 @@ import { register as registerUser } from "@/services/auth/auth.service";
 import { APP_ROUTES } from "@/lib/route.constants";
 import { getErrorMessage } from "@/lib/error.utils";
 import { useToast } from "@/context/ToastContext";
+import { useProfile } from "@/hooks/useProfile";
 import { useRouter } from "next/navigation";
 
 export default function SignUpForm() {
   const toast = useToast();
+  const { refetch: refetchProfile } = useProfile();
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter()
 
@@ -38,9 +40,8 @@ export default function SignUpForm() {
     try {
       await registerUser(data);
       toast.success("Account created successfully");
-      
-      router.push('/')
-
+      await refetchProfile();
+      router.push("/");
     } catch (error) {
       toast.error(getErrorMessage(error, "Registration failed"));
     }
@@ -50,7 +51,7 @@ export default function SignUpForm() {
     if (typeof window === "undefined") {
       return;
     }
-    window.location.href = "/api/auth/login?returnTo=/";
+    window.location.href = "/auth/login?returnTo=/";
   };
 
   return (
