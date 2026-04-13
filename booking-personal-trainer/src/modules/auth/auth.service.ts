@@ -31,15 +31,15 @@ import { RegisterDto } from './dtos/register.dto';
 import { LoginDto, LoginResponseDto } from './dtos/login.dto';
 import { RefreshTokenRequestDto, TokensDto } from './dtos/token.dto';
 import { LogoutDto } from './dtos/logout.dto';
-import { Auth0ExchangeDto } from './dtos/auth0-exchange.dto';
+import { TokenExchangeDto } from './dtos/token-exchange.dto';
 import { ResponseUserDto } from '../user/dtos/response-user.dto';
 
 // Services
 import { UserService } from '../user/user.service';
 import { HashingService } from './services/hashing.service';
 import { RefreshTokenService } from './services/refresh-token.service';
-import { Auth0TokenVerifierService } from './services/auth0-token-verifier.service';
-import type { Auth0VerifiedClaims } from './services/auth0-token-verifier.service';
+import { TokenVerifierService } from './services/token-verifier.service';
+import type { Auth0VerifiedClaims } from './types/auth0-verified-claims.type';
 
 // Repositories
 import { UserProviderRepositoryToken } from '../user/repositories/user-provider.repository.interface';
@@ -65,7 +65,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly hashingService: HashingService,
     private readonly refreshTokenService: RefreshTokenService,
-    private readonly auth0TokenVerifier: Auth0TokenVerifierService,
+    private readonly auth0TokenVerifier: TokenVerifierService,
     @Inject(UserProviderRepositoryToken)
     private readonly userProviderRepository: UserProviderRepository,
   ) {}
@@ -171,9 +171,7 @@ export class AuthService {
       throw new NotFoundException(ERROR_MESSAGES.USER.NOT_FOUND);
     }
     if (!existingUser.password) {
-      throw new BadRequestException(
-        ERROR_MESSAGES.AUTH.LOGIN_USE_AUTH0_NO_PASSWORD,
-      );
+      throw new BadRequestException(ERROR_MESSAGES.AUTH.LOGIN_USE_NO_PASSWORD);
     }
 
     const isPasswordValid: boolean = await this.hashingService.compare(
@@ -340,14 +338,11 @@ export class AuthService {
    * @param dto Request body containing the Auth0 access or ID token.
    * @returns Same shape as email/password login.
    */
-  // TODO: Update naming for exchange api
-  async exchangeAuth0Token(dto: Auth0ExchangeDto): Promise<LoginResponseDto> {
-    const claims = await this.auth0TokenVerifier.verifyAndDecode(
-      dto.auth0Token,
-    );
+  async exchangeToken(dto: TokenExchangeDto): Promise<LoginResponseDto> {
+    const claims = await this.auth0TokenVerifier.verifyAndDecode(dto.token);
     const email = claims.email?.trim().toLowerCase();
     if (!email) {
-      throw new BadRequestException(ERROR_MESSAGES.AUTH.AUTH0_EMAIL_MISSING);
+      throw new BadRequestException(ERROR_MESSAGES.AUTH.EMAIL_MISSING);
     }
     const linked = await this.userProviderRepository.findByProviderIdentity({
       providerName: AUTH0_PROVIDER_NAME,

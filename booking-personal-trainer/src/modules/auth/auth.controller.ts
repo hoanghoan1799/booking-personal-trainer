@@ -45,8 +45,7 @@ import {
   LogoutResponseDto,
 } from './dtos/token.dto';
 import { LogoutDto } from './dtos/logout.dto';
-// TODO: Update naming for exchange api
-import { Auth0ExchangeDto } from './dtos/auth0-exchange.dto';
+import { TokenExchangeDto } from './dtos/token-exchange.dto';
 import {
   ResponseFullUserDto,
   ResponseUserDto,
@@ -224,8 +223,7 @@ export class AuthController {
 
   @Public()
   @HttpCode(HttpStatus.OK)
-  // TODO: Update naming for exchange api
-  @Post('auth0/exchange')
+  @Post('token/exchange')
   @Throttle({
     burst: {
       ttl: RATE_LIMIT_WINDOW_TTL_MILLISECONDS.BURST,
@@ -245,10 +243,10 @@ export class AuthController {
     },
   })
   @ApiOperation({
-    summary: API_DESCRIPTIONS.AUTH.AUTH0_EXCHANGE_SUMMARY,
-    description: API_DESCRIPTIONS.AUTH.AUTH0_EXCHANGE_DESCRIPTION,
+    summary: API_DESCRIPTIONS.AUTH.TOKEN_EXCHANGE_SUMMARY,
+    description: API_DESCRIPTIONS.AUTH.TOKEN_EXCHANGE_DESCRIPTION,
   })
-  @ApiBody({ type: Auth0ExchangeDto })
+  @ApiBody({ type: TokenExchangeDto })
   @ApiResponse({
     status: HttpStatus.OK,
     description: SUCCESS_MESSAGES.USER.LOGGED_IN,
@@ -261,15 +259,14 @@ export class AuthController {
   })
   @ApiResponse({
     status: HttpStatus.UNAUTHORIZED,
-    description: ERROR_MESSAGES.AUTH.INVALID_AUTH0_TOKEN,
+    description: ERROR_MESSAGES.AUTH.INVALID_TOKEN,
   })
   @ApiResponse({
     status: HttpStatus.BAD_REQUEST,
-    description: ERROR_MESSAGES.AUTH.AUTH0_EMAIL_MISSING,
+    description: ERROR_MESSAGES.AUTH.EMAIL_MISSING,
   })
-  // TODO: Update naming for exchange api
-  async exchangeAuth0(
-    @Body() data: Auth0ExchangeDto,
+  async tokenExchange(
+    @Body() data: TokenExchangeDto,
   ): Promise<BaseResponseDto<AuthResponseDataDto>> {
     const {
       accessToken,
@@ -277,7 +274,7 @@ export class AuthController {
       user,
       accessTokenExpiresIn,
       refreshTokenExpiresIn,
-    } = await this.authService.exchangeAuth0Token(data);
+    } = await this.authService.exchangeToken(data);
 
     const responseData: AuthResponseDataDto = {
       user,

@@ -12,7 +12,7 @@ import { HashingService } from './services/hashing.service';
 import { BcryptService } from './services/bcrypt.service';
 import { RefreshTokenService } from './services/refresh-token.service';
 import { AdminSeedService } from './services/admin-seed.service';
-import { Auth0TokenVerifierService } from './services/auth0-token-verifier.service';
+import { TokenVerifierService } from './services/token-verifier.service';
 
 // Controllers
 import { AuthController } from './auth.controller';
@@ -39,7 +39,7 @@ import { RedisModule } from '../redis/redis.module';
   providers: [
     AuthService,
     AdminSeedService,
-    Auth0TokenVerifierService,
+    TokenVerifierService,
     JwtStrategy,
     RefreshTokenService,
     {

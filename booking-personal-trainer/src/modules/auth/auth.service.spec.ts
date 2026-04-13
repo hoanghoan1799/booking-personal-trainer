@@ -1,5 +1,5 @@
-jest.mock('./services/auth0-token-verifier.service', () => ({
-  Auth0TokenVerifierService: class Auth0TokenVerifierService {},
+jest.mock('./services/token-verifier.service', () => ({
+  TokenVerifierService: class TokenVerifierService {},
 }));
 
 import { Test, TestingModule } from '@nestjs/testing';
@@ -25,7 +25,7 @@ import { AuthService } from './auth.service';
 import { UserService } from '../user/user.service';
 import { HashingService } from './services/hashing.service';
 import { RefreshTokenService } from './services/refresh-token.service';
-import { Auth0TokenVerifierService } from './services/auth0-token-verifier.service';
+import { TokenVerifierService } from './services/token-verifier.service';
 import { UserProviderRepositoryToken } from '../user/repositories/user-provider.repository.interface';
 import { LOCAL_PROVIDER_NAME } from './constants/auth0-provider.constant';
 
@@ -102,7 +102,7 @@ describe('AuthService', () => {
         { provide: JwtService, useValue: jwtService },
         { provide: HashingService, useValue: hashingService },
         { provide: RefreshTokenService, useValue: refreshTokenService },
-        { provide: Auth0TokenVerifierService, useValue: auth0TokenVerifier },
+        { provide: TokenVerifierService, useValue: auth0TokenVerifier },
         {
           provide: UserProviderRepositoryToken,
           useValue: userProviderRepository,
@@ -199,7 +199,7 @@ describe('AuthService', () => {
         BadRequestException,
       );
       await expect(service.login(loginData)).rejects.toThrow(
-        ERROR_MESSAGES.AUTH.LOGIN_USE_AUTH0_NO_PASSWORD,
+        ERROR_MESSAGES.AUTH.LOGIN_USE_NO_PASSWORD,
       );
     });
 
