@@ -43,6 +43,14 @@ export class MikroOrmUserRepository implements UserRepository {
     return this.repo.findOne({ id });
   }
 
+  async findByEmail(email: string): Promise<User | null> {
+    return this.repo.findOne({ email });
+  }
+
+  async findByUserName(userName: string): Promise<User | null> {
+    return this.repo.findOne({ userName });
+  }
+
   async findOneByRole(role: UserRole): Promise<User | null> {
     return this.repo.findOne({ role });
   }

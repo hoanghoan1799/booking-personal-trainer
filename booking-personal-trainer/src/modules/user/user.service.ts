@@ -74,6 +74,24 @@ export class UserService {
   }
 
   /**
+   * Finds a user by email only.
+   * @param email The email address.
+   * @returns The user if found, or null.
+   */
+  async findByEmail(email: string): Promise<User | null> {
+    return this.userRepo.findByEmail(email);
+  }
+
+  /**
+   * Finds a user by userName only.
+   * @param userName The username.
+   * @returns The user if found, or null.
+   */
+  async findByUserName(userName: string): Promise<User | null> {
+    return this.userRepo.findByUserName(userName);
+  }
+
+  /**
    * Finds a user by their id.
    * @param id The id of the user to find.
    * @returns The user if found, or null if not found.

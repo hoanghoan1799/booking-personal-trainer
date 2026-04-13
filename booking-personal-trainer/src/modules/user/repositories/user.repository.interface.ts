@@ -46,6 +46,8 @@ export interface FindManyOptions {
 export interface UserRepository {
   create(data: CreateUserData): Promise<User>;
   findById(id: string): Promise<User | null>;
+  findByEmail(email: string): Promise<User | null>;
+  findByUserName(userName: string): Promise<User | null>;
   findOneByRole(role: UserRole): Promise<User | null>;
   findByEmailOrUserName(email: string, userName?: string): Promise<User | null>;
   findAndCount(
