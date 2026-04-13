@@ -48,12 +48,11 @@ export const POST = async (req: NextRequest): Promise<NextResponse> => {
     );
   }
 
-console.log('auth0Token',auth0Token);
 
-  const apiRes = await fetch(`${apiUrl}/api/v1/auth/auth0/exchange`, {
+  const apiRes = await fetch(`${apiUrl}/api/v1/auth/token-exchange`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ auth0Token }),
+    body: JSON.stringify({ token:auth0Token }),
   });
   const payload: unknown = await apiRes.json().catch(() => ({}));
   const response = NextResponse.json(payload, { status: apiRes.status });

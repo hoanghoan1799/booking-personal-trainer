@@ -223,7 +223,7 @@ export class AuthController {
 
   @Public()
   @HttpCode(HttpStatus.OK)
-  @Post('token/exchange')
+  @Post('token-exchange')
   @Throttle({
     burst: {
       ttl: RATE_LIMIT_WINDOW_TTL_MILLISECONDS.BURST,
