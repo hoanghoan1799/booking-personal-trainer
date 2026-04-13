@@ -1,7 +1,7 @@
 import type { User } from "@/types/user.types";
 import { apiFetch } from "@/lib/api";
 import { getApiErrorMessage } from "@/lib/error.utils";
-import { setTokens, clearTokens } from "@/lib/token";
+import { setTokens, clearTokens, setAuthSessionMethod } from "@/lib/token";
 import { getRefreshToken } from "@/lib/token";
 
 interface ApiResponse<T> {
@@ -52,6 +52,7 @@ export async function login(data: LoginBody): Promise<ApiResponse<AuthResponseDa
   const result = (await res.json()) as ApiResponse<AuthResponseData>;
   const { accessToken, refreshToken } = result.data;
   setTokens(accessToken, refreshToken);
+  setAuthSessionMethod("credentials");
   return result;
 }
 
@@ -73,6 +74,7 @@ export async function register(data: RegisterBody): Promise<ApiResponse<AuthResp
   const result = (await res.json()) as ApiResponse<AuthResponseData>;
   const { accessToken, refreshToken } = result.data;
   setTokens(accessToken, refreshToken);
+  setAuthSessionMethod("credentials");
   return result;
 }
 

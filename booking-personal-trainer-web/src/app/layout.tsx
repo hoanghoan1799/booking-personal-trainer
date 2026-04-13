@@ -1,6 +1,7 @@
 import { Outfit } from "next/font/google";
 import "./globals.css";
 import "flatpickr/dist/flatpickr.css";
+import { Auth0SessionProvider } from "@/context/Auth0SessionContext";
 import { ProfileProvider } from "@/context/ProfileContext";
 import { SidebarProvider } from "@/context/SidebarContext";
 import { ThemeProvider } from "@/context/ThemeContext";
@@ -25,10 +26,12 @@ export default async function RootLayout({
         <ThemeProvider>
           <Auth0UserProvider user={session?.user}>
             <ProfileProvider>
-              <ToastProvider>
-                <Auth0BackendSync />
-                <SidebarProvider>{children}</SidebarProvider>
-              </ToastProvider>
+              <Auth0SessionProvider>
+                <ToastProvider>
+                  <Auth0BackendSync />
+                  <SidebarProvider>{children}</SidebarProvider>
+                </ToastProvider>
+              </Auth0SessionProvider>
             </ProfileProvider>
           </Auth0UserProvider>
         </ThemeProvider>

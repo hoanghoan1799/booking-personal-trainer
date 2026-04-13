@@ -1,8 +1,9 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
-import { useUser } from "@auth0/nextjs-auth0/client";
+import { useAuth0User } from "@/hooks/useAuth0User";
+import { setAuth0SignOutPending } from "@/lib/auth0-signout-pending";
+import { getAuthSessionMethod } from "@/lib/token";
 import { useRouter } from "next/navigation";
 import React, { useState } from "react";
 import { useProfile } from "@/hooks/useProfile";
@@ -24,7 +25,7 @@ const getDisplayName = (user: { firstName: string; lastName: string; userName: s
 export default function UserDropdown() {
   const router = useRouter();
   const { user } = useProfile();
-  const { user: auth0User } = useUser();
+  const { user: auth0User } = useAuth0User();
   const toast = useToast();
   const [isOpen, setIsOpen] = useState(false);
 
@@ -44,7 +45,15 @@ export default function UserDropdown() {
 
   const handleSignOut = async () => {
     closeDropdown();
-    if (auth0User) {
+    const sessionMethod = getAuthSessionMethod();
+    const shouldUseAuth0Logout = sessionMethod === "auth0";
+    if (shouldUseAuth0Logout) {
+      setAuth0SignOutPending();
+      try {
+        await logout();
+      } catch {
+        /* tokens cleared in logout(); continue to Auth0 federated logout */
+      }
       window.location.href = "/auth/logout";
       return;
     }

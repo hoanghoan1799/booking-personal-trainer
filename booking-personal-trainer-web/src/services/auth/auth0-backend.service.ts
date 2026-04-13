@@ -1,4 +1,4 @@
-import { setTokens } from "@/lib/token";
+import { setAuthSessionMethod, setTokens } from "@/lib/token";
 import { getApiErrorMessage } from "@/lib/error.utils";
 
 type BackendAuthPayload = {
@@ -41,4 +41,5 @@ export const syncAuth0SessionWithBackend = async (): Promise<void> => {
     throw new Error("Invalid response from backend exchange");
   }
   setTokens(data.accessToken, data.refreshToken);
+  setAuthSessionMethod("auth0");
 };

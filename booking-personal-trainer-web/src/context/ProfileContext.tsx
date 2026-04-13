@@ -9,10 +9,11 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
 } from "react";
 import type { User } from "@/types/user.types";
 import { getProfile } from "@/services/auth/auth.service";
-import { getAccessToken } from "@/lib/token";
+import { getAccessToken, subscribeAccessTokenChange } from "@/lib/token";
 
 type ProfileContextValue = {
   readonly user: User | null;
@@ -24,9 +25,18 @@ type ProfileContextValue = {
 
 const ProfileContext = createContext<ProfileContextValue | null>(null);
 
+const getHasAccessTokenSnapshot = (): boolean => getAccessToken() !== "";
+
+const getHasAccessTokenServerSnapshot = (): boolean => false;
+
 export const ProfileProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
+  const hasAccessToken = useSyncExternalStore(
+    subscribeAccessTokenChange,
+    getHasAccessTokenSnapshot,
+    getHasAccessTokenServerSnapshot,
+  );
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
@@ -62,14 +72,14 @@ export const ProfileProvider: React.FC<{ children: React.ReactNode }> = ({
     if (typeof window === "undefined") {
       return;
     }
-    if (!getAccessToken()) {
+    if (!hasAccessToken) {
       setIsLoading(false);
       setUser(null);
       setError(null);
       return;
     }
     void fetchProfile();
-  }, [fetchProfile]);
+  }, [hasAccessToken, fetchProfile]);
 
   const updateUser = useCallback((updates: Partial<User>) => {
     setUser((prev) => (prev ? { ...prev, ...updates } : null));

@@ -1,6 +1,6 @@
 "use client";
 
-import { useUser } from "@auth0/nextjs-auth0/client";
+import { useAuth0User } from "@/hooks/useAuth0User";
 import { useEffect, useRef } from "react";
 import { useProfile } from "@/hooks/useProfile";
 import { getAccessToken as getBackendAccessToken } from "@/lib/token";
@@ -12,7 +12,7 @@ import { useToast } from "@/context/ToastContext";
  * for application tokens and refetches the profile (Step 2 of Auth0 + API integration).
  */
 export default function Auth0BackendSync(): null {
-  const { user, isLoading: isAuth0Loading } = useUser();
+  const { user, isLoading: isAuth0Loading } = useAuth0User();
   const { refetch: refetchProfile } = useProfile();
   const toast = useToast();
   const failedForSubRef = useRef<string | null>(null);

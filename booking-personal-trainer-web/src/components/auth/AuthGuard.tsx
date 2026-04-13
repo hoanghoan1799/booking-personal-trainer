@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getAccessToken, clearTokens } from "@/lib/token";
-import { useUser } from "@auth0/nextjs-auth0/client";
+import { useAuth0User } from "@/hooks/useAuth0User";
 
 const APP_ROUTES = {
   SIGNIN: "/signin",
@@ -16,7 +16,7 @@ export default function AuthGuard({
 }) {
   const router = useRouter();
   const [isVerified, setIsVerified] = useState(false);
-  const { user, isLoading } = useUser();
+  const { user, isLoading } = useAuth0User();
 
   useEffect(() => {
     if (isLoading) {
