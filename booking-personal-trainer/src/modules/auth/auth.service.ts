@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  Inject,
   Injectable,
   NotFoundException,
   UnauthorizedException,
@@ -30,12 +31,25 @@ import { RegisterDto } from './dtos/register.dto';
 import { LoginDto, LoginResponseDto } from './dtos/login.dto';
 import { RefreshTokenRequestDto, TokensDto } from './dtos/token.dto';
 import { LogoutDto } from './dtos/logout.dto';
+import { Auth0ExchangeDto } from './dtos/auth0-exchange.dto';
 import { ResponseUserDto } from '../user/dtos/response-user.dto';
 
 // Services
 import { UserService } from '../user/user.service';
 import { HashingService } from './services/hashing.service';
 import { RefreshTokenService } from './services/refresh-token.service';
+import { Auth0TokenVerifierService } from './services/auth0-token-verifier.service';
+import type { Auth0VerifiedClaims } from './services/auth0-token-verifier.service';
+
+// Repositories
+import { UserProviderRepositoryToken } from '../user/repositories/user-provider.repository.interface';
+import type { UserProviderRepository } from '../user/repositories/user-provider.repository.interface';
+
+// Constants
+import {
+  AUTH0_PROVIDER_NAME,
+  LOCAL_PROVIDER_NAME,
+} from './constants/auth0-provider.constant';
 
 @Injectable()
 export class AuthService {
@@ -51,6 +65,9 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly hashingService: HashingService,
     private readonly refreshTokenService: RefreshTokenService,
+    private readonly auth0TokenVerifier: Auth0TokenVerifierService,
+    @Inject(UserProviderRepositoryToken)
+    private readonly userProviderRepository: UserProviderRepository,
   ) {}
 
   /**
@@ -94,6 +111,13 @@ export class AuthService {
       role: UserRole.TRAINEE,
       approvalStatus,
       status: UserStatus.ACTIVE,
+    });
+
+    // TODO: check should we use userProviderRepository here inside auth service
+    await this.userProviderRepository.create({
+      userId: newUser.id,
+      providerName: LOCAL_PROVIDER_NAME,
+      providerUserId: email.trim().toLowerCase(),
     });
 
     // Automatically authenticate the newly registered user
@@ -148,7 +172,7 @@ export class AuthService {
     }
     if (!existingUser.password) {
       throw new BadRequestException(
-        ERROR_MESSAGES.VALIDATION.PASSWORD_NOT_MATCH,
+        ERROR_MESSAGES.AUTH.LOGIN_USE_AUTH0_NO_PASSWORD,
       );
     }
 
@@ -162,6 +186,8 @@ export class AuthService {
         ERROR_MESSAGES.VALIDATION.PASSWORD_NOT_MATCH,
       );
     }
+
+    await this.ensureLocalProviderForUser(existingUser);
 
     const payload: JwtAuthPayload = {
       id: existingUser.id,
@@ -310,6 +336,85 @@ export class AuthService {
   }
 
   /**
+   * Verifies an Auth0 JWT, ensures a user and user_providers row exist, then issues app tokens.
+   * @param dto Request body containing the Auth0 access or ID token.
+   * @returns Same shape as email/password login.
+   */
+  // TODO: Update naming for exchange api
+  async exchangeAuth0Token(dto: Auth0ExchangeDto): Promise<LoginResponseDto> {
+    const claims = await this.auth0TokenVerifier.verifyAndDecode(
+      dto.auth0Token,
+    );
+    const email = claims.email?.trim().toLowerCase();
+    if (!email) {
+      throw new BadRequestException(ERROR_MESSAGES.AUTH.AUTH0_EMAIL_MISSING);
+    }
+    const linked = await this.userProviderRepository.findByProviderIdentity({
+      providerName: AUTH0_PROVIDER_NAME,
+      providerUserId: claims.sub,
+    });
+    let user: User;
+    if (linked) {
+      user = await this.userService.findById(linked.user.id);
+    } else {
+      const existingByEmail = await this.userService.findByEmail(email);
+      if (existingByEmail) {
+        await this.userProviderRepository.create({
+          userId: existingByEmail.id,
+          providerName: AUTH0_PROVIDER_NAME,
+          providerUserId: claims.sub,
+        });
+        user = existingByEmail;
+      } else {
+        const { firstName, lastName } = this.splitNameFromAuth0Claims(claims);
+        const userName = await this.pickUniqueUserNameFromEmail(email);
+        user = await this.userService.create({
+          email,
+          userName,
+          firstName,
+          lastName,
+          userType: UserType.TRAINEE,
+          role: UserRole.TRAINEE,
+          approvalStatus: TrainerApprovalStatus.NONE,
+          status: UserStatus.ACTIVE,
+        });
+        await this.userProviderRepository.create({
+          userId: user.id,
+          providerName: AUTH0_PROVIDER_NAME,
+          providerUserId: claims.sub,
+        });
+      }
+    }
+    const payload: JwtAuthPayload = {
+      id: user.id,
+      email: user.email,
+      userName: user.userName,
+      role: user.role,
+    };
+    const {
+      accessToken,
+      refreshToken,
+      accessTokenExpiresIn,
+      refreshTokenExpiresIn,
+    } = await this.createTokens(payload);
+    await this.refreshTokenService.saveRefreshToken({
+      userId: user.id,
+      refreshToken,
+    });
+    const userResponse = plainToInstance(ResponseUserDto, user, {
+      excludeExtraneousValues: true,
+      enableImplicitConversion: true,
+    });
+    return {
+      accessToken,
+      refreshToken,
+      user: userResponse,
+      accessTokenExpiresIn,
+      refreshTokenExpiresIn,
+    };
+  }
+
+  /**
    * Creates and returns an access token and a refresh token using the provided payload.
    * The access token is signed with the payload and expires in the time specified by
    * {@link TOKEN_EXPIRATION.ACCESS}.
@@ -372,5 +477,65 @@ export class AuthService {
       default:
         throw new Error(`Unknown expiration unit: ${unit}`);
     }
+  }
+
+  // TODO: Consider move to helpers/utils
+  private splitNameFromAuth0Claims(claims: Auth0VerifiedClaims): {
+    firstName: string;
+    lastName: string;
+  } {
+    const given = claims.given_name?.trim();
+    const family = claims.family_name?.trim();
+    if (given || family) {
+      return {
+        firstName: given || 'User',
+        lastName: family || '-',
+      };
+    }
+    const full = claims.name?.trim();
+    if (full) {
+      const parts = full.split(/\s+/);
+      const firstName = parts[0] ?? 'User';
+      const lastName = parts.slice(1).join(' ') || '-';
+      return { firstName, lastName };
+    }
+    return { firstName: 'Auth0', lastName: 'User' };
+  }
+
+  // TODO: Consider move to helpers/utils
+  private async pickUniqueUserNameFromEmail(email: string): Promise<string> {
+    const local =
+      (email.split('@')[0] ?? 'user').replace(/[^a-zA-Z0-9_]/g, '_') || 'user';
+    const base = local.slice(0, 24);
+    let candidate = base;
+    for (let i = 0; i < 1000; i += 1) {
+      const existing = await this.userService.findByUserName(candidate);
+      if (!existing) {
+        return candidate;
+      }
+      candidate = `${base}_${i + 1}`;
+    }
+    throw new ConflictException(ERROR_MESSAGES.USER.USERNAME_TAKEN);
+  }
+
+  /**
+   * Records local (email + password) in user_providers when missing.
+   * Backfills users created before multi-provider support; coexists with auth0 rows.
+   */
+  // TODO: Consider move to helpers/utils
+  private async ensureLocalProviderForUser(user: User): Promise<void> {
+    const providerUserId = user.email.trim().toLowerCase();
+    const existing = await this.userProviderRepository.findByProviderIdentity({
+      providerName: LOCAL_PROVIDER_NAME,
+      providerUserId,
+    });
+    if (existing) {
+      return;
+    }
+    await this.userProviderRepository.create({
+      userId: user.id,
+      providerName: LOCAL_PROVIDER_NAME,
+      providerUserId,
+    });
   }
 }

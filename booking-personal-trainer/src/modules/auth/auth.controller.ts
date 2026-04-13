@@ -45,6 +45,8 @@ import {
   LogoutResponseDto,
 } from './dtos/token.dto';
 import { LogoutDto } from './dtos/logout.dto';
+// TODO: Update naming for exchange api
+import { Auth0ExchangeDto } from './dtos/auth0-exchange.dto';
 import {
   ResponseFullUserDto,
   ResponseUserDto,
@@ -208,6 +210,74 @@ export class AuthController {
       accessTokenExpiresIn,
       refreshTokenExpiresIn,
     } = await this.authService.login(data);
+
+    const responseData: AuthResponseDataDto = {
+      user,
+      accessToken,
+      refreshToken,
+      accessTokenExpiresIn,
+      refreshTokenExpiresIn,
+    };
+
+    return BaseResponseDto.ok(responseData);
+  }
+
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  // TODO: Update naming for exchange api
+  @Post('auth0/exchange')
+  @Throttle({
+    burst: {
+      ttl: RATE_LIMIT_WINDOW_TTL_MILLISECONDS.BURST,
+      limit: createRateLimitByIdentityResolver({ ip: 5, token: 8, user: 8 }),
+    },
+    minute: {
+      ttl: RATE_LIMIT_WINDOW_TTL_MILLISECONDS.MINUTE,
+      limit: createRateLimitByIdentityResolver({ ip: 15, token: 30, user: 30 }),
+    },
+    hour: {
+      ttl: RATE_LIMIT_WINDOW_TTL_MILLISECONDS.HOUR,
+      limit: createRateLimitByIdentityResolver({
+        ip: 120,
+        token: 240,
+        user: 240,
+      }),
+    },
+  })
+  @ApiOperation({
+    summary: API_DESCRIPTIONS.AUTH.AUTH0_EXCHANGE_SUMMARY,
+    description: API_DESCRIPTIONS.AUTH.AUTH0_EXCHANGE_DESCRIPTION,
+  })
+  @ApiBody({ type: Auth0ExchangeDto })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: SUCCESS_MESSAGES.USER.LOGGED_IN,
+    schema: {
+      required: ['data'],
+      properties: {
+        data: { $ref: getSchemaPath(AuthResponseDataDto) },
+      },
+    },
+  })
+  @ApiResponse({
+    status: HttpStatus.UNAUTHORIZED,
+    description: ERROR_MESSAGES.AUTH.INVALID_AUTH0_TOKEN,
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: ERROR_MESSAGES.AUTH.AUTH0_EMAIL_MISSING,
+  })
+  // TODO: Update naming for exchange api
+  async exchangeAuth0(
+    @Body() data: Auth0ExchangeDto,
+  ): Promise<BaseResponseDto<AuthResponseDataDto>> {
+    const {
+      accessToken,
+      refreshToken,
+      user,
+      accessTokenExpiresIn,
+      refreshTokenExpiresIn,
+    } = await this.authService.exchangeAuth0Token(data);
 
     const responseData: AuthResponseDataDto = {
       user,

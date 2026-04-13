@@ -11,6 +11,12 @@ export const ERROR_MESSAGES = {
     ACCESS_TOKEN_INVALID: 'Access token is invalid or expired',
     UNAUTHORIZED: 'You are not authorized to perform this action',
     FORBIDDEN: 'You do not have permission to perform this action',
+    INVALID_AUTH0_TOKEN: 'Token is invalid or expired',
+    AUTH0_AUDIENCE_NOT_CONFIGURED:
+      'Auth0 is not configured: set AUTH0_AUDIENCE and/or AUTH0_CLIENT_ID',
+    AUTH0_EMAIL_MISSING: 'Email is required',
+    LOGIN_USE_AUTH0_NO_PASSWORD:
+      'This account has no password (e.g. created via Auth0). Sign in with Auth0 instead.',
   },
 
   USER: {
@@ -119,6 +125,10 @@ export const API_DESCRIPTIONS = {
     LOGIN_SUMMARY: 'Authenticate user (login)',
     LOGIN_DESCRIPTION:
       'Authenticates with email and password. Returns access token, refresh token, and user in the response body.',
+    // TODO: Update naming for exchange api
+    AUTH0_EXCHANGE_SUMMARY: 'Exchange Auth0 JWT for application tokens',
+    AUTH0_EXCHANGE_DESCRIPTION:
+      'Verifies an Auth0 access or ID token (RS256). Requires an email claim on the JWT; links or creates a user and user_providers row, then returns the same tokens as password login.',
     REFRESH_TOKEN_SUMMARY: 'Refresh access token',
     REFRESH_TOKEN_DESCRIPTION:
       'Issues new access and refresh tokens. Requires refresh token in request body.',

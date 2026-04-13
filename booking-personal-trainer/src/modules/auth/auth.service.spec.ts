@@ -1,3 +1,7 @@
+jest.mock('./services/auth0-token-verifier.service', () => ({
+  Auth0TokenVerifierService: class Auth0TokenVerifierService {},
+}));
+
 import { Test, TestingModule } from '@nestjs/testing';
 import {
   BadRequestException,
@@ -21,6 +25,9 @@ import { AuthService } from './auth.service';
 import { UserService } from '../user/user.service';
 import { HashingService } from './services/hashing.service';
 import { RefreshTokenService } from './services/refresh-token.service';
+import { Auth0TokenVerifierService } from './services/auth0-token-verifier.service';
+import { UserProviderRepositoryToken } from '../user/repositories/user-provider.repository.interface';
+import { LOCAL_PROVIDER_NAME } from './constants/auth0-provider.constant';
 
 describe('AuthService', () => {
   let service: AuthService;
@@ -28,6 +35,8 @@ describe('AuthService', () => {
     findByEmailOrUserName: jest.Mock;
     create: jest.Mock;
     findById: jest.Mock;
+    findByEmail: jest.Mock;
+    findByUserName: jest.Mock;
   };
   let jwtService: {
     signAsync: jest.Mock;
@@ -38,6 +47,11 @@ describe('AuthService', () => {
     saveRefreshToken: jest.Mock;
     validateRefreshToken: jest.Mock;
     removeRefreshToken: jest.Mock;
+  };
+  let auth0TokenVerifier: { verifyAndDecode: jest.Mock };
+  let userProviderRepository: {
+    findByProviderIdentity: jest.Mock;
+    create: jest.Mock;
   };
 
   const mockUser = {
@@ -56,6 +70,8 @@ describe('AuthService', () => {
       findByEmailOrUserName: jest.fn(),
       create: jest.fn(),
       findById: jest.fn(),
+      findByEmail: jest.fn(),
+      findByUserName: jest.fn(),
     };
     jwtService = {
       signAsync: jest.fn().mockResolvedValue('mock-token'),
@@ -70,6 +86,14 @@ describe('AuthService', () => {
       validateRefreshToken: jest.fn().mockResolvedValue(true),
       removeRefreshToken: jest.fn().mockResolvedValue(undefined),
     };
+    auth0TokenVerifier = {
+      verifyAndDecode: jest.fn(),
+    };
+    userProviderRepository = {
+      findByProviderIdentity: jest.fn(),
+      create: jest.fn().mockResolvedValue(undefined),
+    };
+    userProviderRepository.findByProviderIdentity.mockResolvedValue(null);
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -78,6 +102,11 @@ describe('AuthService', () => {
         { provide: JwtService, useValue: jwtService },
         { provide: HashingService, useValue: hashingService },
         { provide: RefreshTokenService, useValue: refreshTokenService },
+        { provide: Auth0TokenVerifierService, useValue: auth0TokenVerifier },
+        {
+          provide: UserProviderRepositoryToken,
+          useValue: userProviderRepository,
+        },
       ],
     }).compile();
 
@@ -139,6 +168,11 @@ describe('AuthService', () => {
       expect(actual.user.email).toBe(registerData.email);
       expect(hashingService.hash).toHaveBeenCalledWith(registerData.password);
       expect(userService.create).toHaveBeenCalled();
+      expect(userProviderRepository.create).toHaveBeenCalledWith({
+        userId: mockUser.id,
+        providerName: LOCAL_PROVIDER_NAME,
+        providerUserId: registerData.email.toLowerCase(),
+      });
       expect(refreshTokenService.saveRefreshToken).toHaveBeenCalled();
     });
   });
@@ -152,6 +186,20 @@ describe('AuthService', () => {
       await expect(service.login(loginData)).rejects.toThrow(NotFoundException);
       await expect(service.login(loginData)).rejects.toThrow(
         ERROR_MESSAGES.USER.NOT_FOUND,
+      );
+    });
+
+    it('should throw BadRequestException when account has no password (Auth0-only user)', async () => {
+      userService.findByEmailOrUserName.mockResolvedValue({
+        ...mockUser,
+        password: undefined,
+      });
+
+      await expect(service.login(loginData)).rejects.toThrow(
+        BadRequestException,
+      );
+      await expect(service.login(loginData)).rejects.toThrow(
+        ERROR_MESSAGES.AUTH.LOGIN_USE_AUTH0_NO_PASSWORD,
       );
     });
 
@@ -176,6 +224,17 @@ describe('AuthService', () => {
       expect(actual).toHaveProperty('accessToken');
       expect(actual).toHaveProperty('refreshToken');
       expect(actual.user.email).toBe(loginData.email);
+      expect(
+        userProviderRepository.findByProviderIdentity,
+      ).toHaveBeenCalledWith({
+        providerName: LOCAL_PROVIDER_NAME,
+        providerUserId: loginData.email.toLowerCase(),
+      });
+      expect(userProviderRepository.create).toHaveBeenCalledWith({
+        userId: mockUser.id,
+        providerName: LOCAL_PROVIDER_NAME,
+        providerUserId: loginData.email.toLowerCase(),
+      });
       expect(refreshTokenService.saveRefreshToken).toHaveBeenCalled();
     });
   });
