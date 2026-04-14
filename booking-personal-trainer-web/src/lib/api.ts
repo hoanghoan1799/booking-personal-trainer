@@ -20,6 +20,21 @@ function performLogout(): void {
   }
 }
 
+/**
+ * Parses a successful HTTP response body. Handles 204/205 and empty bodies
+ * (common for DELETE) without calling Response.json() on an empty stream.
+ */
+async function parseSuccessfulJsonBody<T>(res: Response): Promise<T> {
+  if (res.status === 204 || res.status === 205) {
+    return undefined as T;
+  }
+  const text = await res.text();
+  if (!text.trim()) {
+    return undefined as T;
+  }
+  return JSON.parse(text) as T;
+}
+
 async function doFetch<T>(
   endpoint: string,
   options: FetchOptions
@@ -79,7 +94,7 @@ export async function apiFetch<T>(
         throw new Error(message);
       }
 
-      return retryRes.json() as Promise<T>;
+      return parseSuccessfulJsonBody<T>(retryRes);
     } catch (err) {
       refreshPromise = null;
       performLogout();
@@ -95,5 +110,5 @@ export async function apiFetch<T>(
     throw new Error(message);
   }
 
-  return res.json() as Promise<T>;
+  return parseSuccessfulJsonBody<T>(res);
 }

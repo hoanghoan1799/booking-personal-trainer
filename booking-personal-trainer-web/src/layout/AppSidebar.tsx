@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useRef, useState,useCallback } from "react";
+import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
@@ -16,7 +16,7 @@ import {
   PaperPlaneIcon
 } from "../icons/index";
 import { APP_ROUTES } from "@/lib/route.constants";
-import SidebarWidget from "./SidebarWidget";
+import { useProfile } from "@/hooks/useProfile";
 
 type NavItem = {
   name: string;
@@ -25,7 +25,7 @@ type NavItem = {
   subItems?: { name: string; path: string; pro?: boolean; new?: boolean }[];
 };
 
-const navItems: NavItem[] = [
+const baseNavItems: NavItem[] = [
   {
     icon: <GridIcon />,
     name: "Dashboard",
@@ -73,6 +73,23 @@ const navItems: NavItem[] = [
 const AppSidebar: React.FC = () => {
   const { isExpanded, isMobileOpen, isHovered, setIsHovered } = useSidebar();
   const pathname = usePathname();
+  const { user } = useProfile();
+
+  const navItems: NavItem[] = useMemo(() => {
+    const isTrainer = user?.role === "TRAINER";
+    if (!isTrainer) {
+      return baseNavItems;
+    }
+    return [
+      ...baseNavItems.slice(0, 4),
+      {
+        icon: <CalenderIcon />,
+        name: "Schedule",
+        path: APP_ROUTES.SCHEDULE,
+      },
+      ...baseNavItems.slice(4),
+    ];
+  }, [user?.role]);
 
   const renderMenuItems = (
     navItems: NavItem[],

@@ -21,6 +21,7 @@ export const API_ROUTES = {
   BOOKINGS: "/bookings",
   EXERCISES: "/exercises",
   TEMPLATES: "/templates",
+  TRAINERS: "/trainers",
   USERS: "/users",
   WORKOUTS: "/workouts",
 } as const;
@@ -31,6 +32,7 @@ export const API_ENDPOINTS = {
   BOOKINGS: `${API_BASE}${API_ROUTES.BOOKINGS}`,
   EXERCISES: `${API_BASE}${API_ROUTES.EXERCISES}`,
   TEMPLATES: `${API_BASE}${API_ROUTES.TEMPLATES}`,
+  TRAINERS: `${API_BASE}${API_ROUTES.TRAINERS}`,
   USERS: `${API_BASE}${API_ROUTES.USERS}`,
   WORKOUTS: `${API_BASE}${API_ROUTES.WORKOUTS}`,
 } as const;
@@ -43,6 +45,7 @@ export const APP_ROUTES = {
   REGISTER: "/register",
   PROFILE: "/profile",
   CALENDAR: "/calendar",
+  SCHEDULE: "/schedule",
   TEMPLATES: "/templates",
   TEMPLATES_UPLOAD: "/templates/upload",
   BOOKINGS: "/bookings",
