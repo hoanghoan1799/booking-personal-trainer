@@ -1,4 +1,9 @@
-import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 
 // Commons
 import { BaseResponseDto } from '../../common/dtos/base-response.dto';
@@ -15,12 +20,15 @@ import { TrainerTimeOff } from './entities/trainer-time-off.entity';
 
 // DTOs
 import { CreateTrainerTimeOffDto } from './dtos/create-trainer-time-off.dto';
+import { UpdateTrainerTimeOffDto } from './dtos/update-trainer-time-off.dto';
 
 // Repositories
 import {
   TrainerTimeOffRepositoryToken,
   type TrainerTimeOffRepository,
 } from './repositories/trainer-time-off.repository.interface';
+
+import { TrainerScheduleConflictService } from './trainer-schedule-conflict.service';
 
 type GetMyTimeOffResult = BaseResponseDto<TrainerTimeOff[]>;
 
@@ -31,6 +39,7 @@ export class TrainerTimeOffService {
   constructor(
     @Inject(TrainerTimeOffRepositoryToken)
     private readonly timeOffRepo: TrainerTimeOffRepository,
+    private readonly scheduleConflictService: TrainerScheduleConflictService,
   ) {}
 
   private assertValidTimeOffWindow(start: Date, end: Date): void {
@@ -41,6 +50,18 @@ export class TrainerTimeOffService {
     if (durationMs < TrainerTimeOffService.TIME_OFF_MIN_DURATION_MS) {
       throw new BadRequestException(
         ERROR_MESSAGES.TRAINER.TIME_OFF_MIN_THIRTY_MINUTES,
+      );
+    }
+  }
+
+  private assertHasTimeOffUpdateFields(data: UpdateTrainerTimeOffDto): void {
+    if (
+      data.reason === undefined &&
+      data.startTime === undefined &&
+      data.endTime === undefined
+    ) {
+      throw new BadRequestException(
+        ERROR_MESSAGES.TRAINER.TIME_OFF_NOTHING_TO_UPDATE,
       );
     }
   }
@@ -66,11 +87,60 @@ export class TrainerTimeOffService {
     const start: Date = new Date(data.startTime);
     const end: Date = new Date(data.endTime);
     this.assertValidTimeOffWindow(start, end);
+    await this.scheduleConflictService.assertNoOverlap({
+      trainerId: currentUser.id,
+      start,
+      end,
+    });
     return this.timeOffRepo.create({
       trainer: currentUser,
       reason: data.reason,
       startTime: start,
       endTime: end,
     });
+  }
+
+  async updateMyTimeOff(
+    timeOffId: string,
+    data: UpdateTrainerTimeOffDto,
+    currentUser: User,
+  ): Promise<TrainerTimeOff> {
+    this.assertHasTimeOffUpdateFields(data);
+    const timeOff = await this.timeOffRepo.findById(timeOffId);
+    if (!timeOff) {
+      throw new NotFoundException(ERROR_MESSAGES.TRAINER.TIME_OFF_NOT_FOUND);
+    }
+    if (timeOff.trainer.id !== currentUser.id) {
+      throw new NotFoundException(ERROR_MESSAGES.TRAINER.TIME_OFF_NOT_FOUND);
+    }
+    const start: Date = data.startTime
+      ? new Date(data.startTime)
+      : timeOff.startTime;
+    const end: Date = data.endTime ? new Date(data.endTime) : timeOff.endTime;
+    this.assertValidTimeOffWindow(start, end);
+    await this.scheduleConflictService.assertNoOverlap({
+      trainerId: currentUser.id,
+      start,
+      end,
+      excludeTimeOffId: timeOffId,
+    });
+    if (data.reason !== undefined) {
+      timeOff.reason = data.reason;
+    }
+    timeOff.startTime = start;
+    timeOff.endTime = end;
+    await this.timeOffRepo.save(timeOff);
+    return timeOff;
+  }
+
+  async deleteMyTimeOff(timeOffId: string, currentUser: User): Promise<void> {
+    const timeOff = await this.timeOffRepo.findById(timeOffId);
+    if (!timeOff) {
+      throw new NotFoundException(ERROR_MESSAGES.TRAINER.TIME_OFF_NOT_FOUND);
+    }
+    if (timeOff.trainer.id !== currentUser.id) {
+      throw new NotFoundException(ERROR_MESSAGES.TRAINER.TIME_OFF_NOT_FOUND);
+    }
+    await this.timeOffRepo.remove(timeOff);
   }
 }

@@ -32,6 +32,30 @@ export class MikroOrmTrainerTimeOffRepository implements TrainerTimeOffRepositor
     return timeOff;
   }
 
+  async findById(id: string): Promise<TrainerTimeOff | null> {
+    return this.repo.findOne({ id }, { populate: ['trainer'] });
+  }
+
+  /**
+   * Intervals [s1, e1) and [s2, e2) overlap iff s1 < e2 && s2 < e1 (back-to-back allowed).
+   */
+  async findOverlappingForTrainer(
+    trainerId: string,
+    rangeStart: Date,
+    rangeEnd: Date,
+    excludeTimeOffId?: string,
+  ): Promise<TrainerTimeOff | null> {
+    const where: FilterQuery<TrainerTimeOff> = {
+      trainer: trainerId,
+      startTime: { $lt: rangeEnd },
+      endTime: { $gt: rangeStart },
+    };
+    if (excludeTimeOffId !== undefined) {
+      where.id = { $ne: excludeTimeOffId };
+    }
+    return this.repo.findOne(where, { populate: ['trainer'] });
+  }
+
   async findAndCount(
     filter: TrainerTimeOffFindManyFilter,
     options: FindManyOptions,
@@ -43,5 +67,13 @@ export class MikroOrmTrainerTimeOffRepository implements TrainerTimeOffRepositor
       offset: options.offset,
       orderBy: options.orderBy as Record<string, 'ASC' | 'DESC'>,
     });
+  }
+
+  async save(timeOff: TrainerTimeOff): Promise<void> {
+    await this.em.persist(timeOff).flush();
+  }
+
+  async remove(timeOff: TrainerTimeOff): Promise<void> {
+    await this.em.remove(timeOff).flush();
   }
 }

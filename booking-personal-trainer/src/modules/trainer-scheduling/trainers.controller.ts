@@ -43,6 +43,7 @@ import { UpdateTrainerAvailabilityDto } from './dtos/update-trainer-availability
 import { TrainerAvailabilityResponseDto } from './dtos/trainer-availability-response.dto';
 import { UpdateTrainerAvailabilityResponseDto } from './dtos/update-trainer-availability-response.dto';
 import { CreateTrainerTimeOffDto } from './dtos/create-trainer-time-off.dto';
+import { UpdateTrainerTimeOffDto } from './dtos/update-trainer-time-off.dto';
 import { TrainerTimeOffResponseDto } from './dtos/trainer-time-off-response.dto';
 
 // Services
@@ -274,5 +275,64 @@ export class TrainersController {
       req.user,
     );
     return BaseResponseDto.ok(created as unknown as TrainerTimeOffResponseDto);
+  }
+
+  @Patch('me/time-off/:timeOffId')
+  @Serialize(TrainerTimeOffResponseDto)
+  @ApiOperation({
+    summary: API_DESCRIPTIONS.TRAINER_SCHEDULING.UPDATE_MY_TIME_OFF_SUMMARY,
+    description:
+      API_DESCRIPTIONS.TRAINER_SCHEDULING.UPDATE_MY_TIME_OFF_DESCRIPTION,
+  })
+  @ApiParam({ name: 'timeOffId', type: String })
+  @ApiBody({ type: UpdateTrainerTimeOffDto })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: SUCCESS_MESSAGES.TRAINER_SCHEDULING.TIME_OFF_UPDATED,
+    schema: {
+      required: ['data'],
+      properties: {
+        data: { $ref: getSchemaPath(TrainerTimeOffResponseDto) },
+      },
+    },
+  })
+  @ApiResponse({
+    status: HttpStatus.UNAUTHORIZED,
+    description: ERROR_MESSAGES.AUTH.ACCESS_TOKEN_INVALID,
+  })
+  async updateMyTimeOff(
+    @Param('timeOffId') timeOffId: string,
+    @Body() body: UpdateTrainerTimeOffDto,
+    @Req() req: CurrentRequestUser,
+  ): Promise<BaseResponseDto<TrainerTimeOffResponseDto>> {
+    const updated = await this.trainerTimeOffService.updateMyTimeOff(
+      timeOffId,
+      body,
+      req.user,
+    );
+    return BaseResponseDto.ok(updated as unknown as TrainerTimeOffResponseDto);
+  }
+
+  @Delete('me/time-off/:timeOffId')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: API_DESCRIPTIONS.TRAINER_SCHEDULING.DELETE_MY_TIME_OFF_SUMMARY,
+    description:
+      API_DESCRIPTIONS.TRAINER_SCHEDULING.DELETE_MY_TIME_OFF_DESCRIPTION,
+  })
+  @ApiParam({ name: 'timeOffId', type: String })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: SUCCESS_MESSAGES.TRAINER_SCHEDULING.TIME_OFF_DELETED,
+  })
+  @ApiResponse({
+    status: HttpStatus.UNAUTHORIZED,
+    description: ERROR_MESSAGES.AUTH.ACCESS_TOKEN_INVALID,
+  })
+  async deleteMyTimeOff(
+    @Param('timeOffId') timeOffId: string,
+    @Req() req: CurrentRequestUser,
+  ): Promise<void> {
+    await this.trainerTimeOffService.deleteMyTimeOff(timeOffId, req.user);
   }
 }

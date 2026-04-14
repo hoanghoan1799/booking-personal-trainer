@@ -1,20 +1,33 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 
 import { TrainerTimeOffService } from './trainer-time-off.service';
 import { TrainerTimeOffRepositoryToken } from './repositories/trainer-time-off.repository.interface';
+import { TrainerScheduleConflictService } from './trainer-schedule-conflict.service';
 
 describe('TrainerTimeOffService', () => {
   let service: TrainerTimeOffService;
   let timeOffRepository: {
     findAndCount: jest.Mock;
     create: jest.Mock;
+    findById: jest.Mock;
+    save: jest.Mock;
+    remove: jest.Mock;
+  };
+  let scheduleConflictService: {
+    assertNoOverlap: jest.Mock;
   };
 
   beforeEach(async () => {
     timeOffRepository = {
       findAndCount: jest.fn(),
       create: jest.fn(),
+      findById: jest.fn(),
+      save: jest.fn(),
+      remove: jest.fn(),
+    };
+    scheduleConflictService = {
+      assertNoOverlap: jest.fn().mockResolvedValue(undefined),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -23,6 +36,10 @@ describe('TrainerTimeOffService', () => {
         {
           provide: TrainerTimeOffRepositoryToken,
           useValue: timeOffRepository,
+        },
+        {
+          provide: TrainerScheduleConflictService,
+          useValue: scheduleConflictService,
         },
       ],
     }).compile();
@@ -70,6 +87,7 @@ describe('TrainerTimeOffService', () => {
       );
 
       expect(timeOffRepository.create).toHaveBeenCalled();
+      expect(scheduleConflictService.assertNoOverlap).toHaveBeenCalled();
     });
 
     it('should create time off for current user', async () => {
@@ -90,6 +108,69 @@ describe('TrainerTimeOffService', () => {
           trainer: { id: 'trainer-id' },
         }),
       );
+    });
+  });
+
+  describe('updateMyTimeOff', () => {
+    it('should throw BadRequestException when body is empty', async () => {
+      await expect(
+        service.updateMyTimeOff('t1', {}, { id: 'trainer-id' } as any),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('should throw NotFoundException when missing', async () => {
+      timeOffRepository.findById.mockResolvedValue(null);
+
+      await expect(
+        service.updateMyTimeOff('missing', { reason: 'x' }, {
+          id: 'trainer-id',
+        } as any),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it('should update reason only', async () => {
+      timeOffRepository.findById.mockResolvedValue({
+        id: 't1',
+        trainer: { id: 'trainer-id' },
+        reason: 'old',
+        startTime: new Date('2026-02-01T09:00:00.000Z'),
+        endTime: new Date('2026-02-01T10:00:00.000Z'),
+      });
+      timeOffRepository.save.mockResolvedValue(undefined);
+
+      await service.updateMyTimeOff('t1', { reason: 'new' }, {
+        id: 'trainer-id',
+      } as any);
+
+      expect(scheduleConflictService.assertNoOverlap).toHaveBeenCalledWith({
+        trainerId: 'trainer-id',
+        start: new Date('2026-02-01T09:00:00.000Z'),
+        end: new Date('2026-02-01T10:00:00.000Z'),
+        excludeTimeOffId: 't1',
+      });
+      expect(timeOffRepository.save).toHaveBeenCalled();
+    });
+  });
+
+  describe('deleteMyTimeOff', () => {
+    it('should throw NotFoundException when missing', async () => {
+      timeOffRepository.findById.mockResolvedValue(null);
+
+      await expect(
+        service.deleteMyTimeOff('missing', { id: 'trainer-id' } as any),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it('should remove when owner', async () => {
+      timeOffRepository.findById.mockResolvedValue({
+        id: 't1',
+        trainer: { id: 'trainer-id' },
+      });
+      timeOffRepository.remove.mockResolvedValue(undefined);
+
+      await service.deleteMyTimeOff('t1', { id: 'trainer-id' } as any);
+
+      expect(timeOffRepository.remove).toHaveBeenCalled();
     });
   });
 });
