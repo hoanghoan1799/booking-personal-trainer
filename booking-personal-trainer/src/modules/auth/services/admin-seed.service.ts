@@ -43,26 +43,30 @@ export class AdminSeedService implements OnModuleInit {
       return;
     }
 
-    const existedAdmin = await this.userRepo.findOneByRole(UserRole.ADMIN);
+    const existedAdmin = await this.userRepo.findByEmail(adminEmail);
 
     if (existedAdmin) {
+      console.log('Admin already exists');
       return;
     }
 
     const hashedPassword = await this.hashingService.hash(adminPassword);
+    try {
+      await this.userRepo.create({
+        email: adminEmail,
+        password: hashedPassword,
+        role: UserRole.ADMIN,
+        status: UserStatus.ACTIVE,
+        approvalStatus: TrainerApprovalStatus.APPROVED,
+        firstName: 'Hoan',
+        lastName: 'Hoang',
+        userName: 'Hoan Admin',
+        userType: UserType.TRAINER,
+      });
 
-    await this.userRepo.create({
-      email: adminEmail,
-      password: hashedPassword,
-      role: UserRole.ADMIN,
-      status: UserStatus.ACTIVE,
-      approvalStatus: TrainerApprovalStatus.APPROVED,
-      firstName: 'Hoan',
-      lastName: 'Hoang',
-      userName: 'Hoan Admin',
-      userType: UserType.TRAINER,
-    });
-
-    console.log('Default admin created');
+      console.log('Default admin created');
+    } catch (error) {
+      console.error('Failed to create default admin', error);
+    }
   }
 }
