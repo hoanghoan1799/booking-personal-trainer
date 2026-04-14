@@ -24,6 +24,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { RedisModule } from './modules/redis/redis.module';
 import { ExerciseModule } from './modules/exercise/exercise.module';
 import { TemplatesModule } from './modules/templates/templates.module';
+import { TrainerSchedulingModule } from './modules/trainer-scheduling/trainer-scheduling.module';
 
 // Configs
 import { RATE_LIMIT_OPTIONS } from './configs/rate-limit.config';
@@ -53,6 +54,7 @@ import { RATE_LIMIT_OPTIONS } from './configs/rate-limit.config';
     PassportModule,
     ExerciseModule,
     TemplatesModule,
+    TrainerSchedulingModule,
   ],
   controllers: [],
   providers: [

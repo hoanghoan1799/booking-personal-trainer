@@ -117,6 +117,15 @@ export const SUCCESS_MESSAGES = {
     RETRIEVED: 'Workout retrieved successfully',
     DETAIL_UPDATED: 'Workout detail updated successfully',
   },
+  TRAINER_SCHEDULING: {
+    AVAILABILITY_LIST_RETRIEVED:
+      'Trainer availabilities retrieved successfully',
+    AVAILABILITY_CREATED: 'Trainer availability created successfully',
+    AVAILABILITY_UPDATED: 'Trainer availability updated successfully',
+    AVAILABILITY_DELETED: 'Trainer availability deleted successfully',
+    TIME_OFF_LIST_RETRIEVED: 'Trainer time off retrieved successfully',
+    TIME_OFF_CREATED: 'Trainer time off created successfully',
+  },
 } as const;
 
 /** API operation summaries and descriptions for OpenAPI/Swagger documentation. */
@@ -199,6 +208,26 @@ export const API_DESCRIPTIONS = {
       'Updates workout status and/or exercise completion status. Admin or trainer of the workout can update.',
     DELETE_SUMMARY: 'Delete all workouts',
     DELETE_DESCRIPTION: 'Deletes all workouts (admin/trainer only).',
+  },
+  TRAINER_SCHEDULING: {
+    GET_MY_AVAILABILITIES_SUMMARY: 'Get my weekly availability',
+    GET_MY_AVAILABILITIES_DESCRIPTION:
+      'Returns the authenticated trainer weekly availability with pagination meta.',
+    CREATE_MY_AVAILABILITY_SUMMARY: 'Create my availability',
+    CREATE_MY_AVAILABILITY_DESCRIPTION:
+      'Creates a new availability slot for the authenticated trainer.',
+    UPDATE_MY_AVAILABILITY_SUMMARY: 'Update my availability',
+    UPDATE_MY_AVAILABILITY_DESCRIPTION:
+      'Updates an availability slot owned by the authenticated trainer.',
+    DELETE_MY_AVAILABILITY_SUMMARY: 'Delete my availability',
+    DELETE_MY_AVAILABILITY_DESCRIPTION:
+      'Deletes an availability slot owned by the authenticated trainer.',
+    GET_MY_TIME_OFF_SUMMARY: 'Get my time off',
+    GET_MY_TIME_OFF_DESCRIPTION:
+      'Returns the authenticated trainer time off entries with pagination meta.',
+    CREATE_MY_TIME_OFF_SUMMARY: 'Create my time off',
+    CREATE_MY_TIME_OFF_DESCRIPTION:
+      'Creates a new time off entry for the authenticated trainer.',
   },
 } as const;
 
