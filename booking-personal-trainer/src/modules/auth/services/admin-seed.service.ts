@@ -29,8 +29,6 @@ export class AdminSeedService implements OnModuleInit {
   ) {}
 
   async onModuleInit() {
-    if (process.env.NODE_ENV === 'production') return;
-
     const adminEmail = this.configService.get<string>(
       'DEFAULT_ADMIN_EMAIL',
       DEFAULT_ADMIN_EMAIL,
