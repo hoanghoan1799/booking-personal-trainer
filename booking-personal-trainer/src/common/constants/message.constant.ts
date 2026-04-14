@@ -30,7 +30,10 @@ export const ERROR_MESSAGES = {
     TRAINER_NOT_AVAILABLE: 'Trainer is not available',
   },
 
-  TRAINER: {},
+  TRAINER: {
+    AVAILABILITY_NOT_FOUND: 'Trainer availability not found',
+    TIME_OFF_NOT_FOUND: 'Trainer time off not found',
+  },
   TRAINEE: {
     NOT_FOUND: 'Trainee not found',
   },
