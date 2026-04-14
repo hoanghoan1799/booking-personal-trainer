@@ -52,6 +52,19 @@ describe('TrainerAvailabilityService', () => {
       ).rejects.toBeInstanceOf(BadRequestException);
     });
 
+    it('should throw BadRequestException when duration is under 1 hour', async () => {
+      await expect(
+        service.createMyAvailability(
+          {
+            dayOfWeek: 1,
+            startTime: '2026-02-01T09:00:00.000Z',
+            endTime: '2026-02-01T09:30:00.000Z',
+          },
+          { id: 'trainer-id' } as any,
+        ),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
     it('should create availability for current user', async () => {
       availabilityRepository.create.mockResolvedValue({ id: 'a1' });
 
@@ -101,6 +114,26 @@ describe('TrainerAvailabilityService', () => {
           { id: 'trainer-id' } as any,
         ),
       ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it('should throw BadRequestException when updated window is under 1 hour', async () => {
+      availabilityRepository.findById.mockResolvedValue({
+        id: 'a1',
+        trainer: { id: 'trainer-id' },
+        startTime: new Date('2026-02-01T09:00:00.000Z'),
+        endTime: new Date('2026-02-01T11:00:00.000Z'),
+      });
+
+      await expect(
+        service.updateMyAvailability(
+          'a1',
+          {
+            startTime: '2026-02-01T09:00:00.000Z',
+            endTime: '2026-02-01T09:45:00.000Z',
+          },
+          { id: 'trainer-id' } as any,
+        ),
+      ).rejects.toBeInstanceOf(BadRequestException);
     });
   });
 });

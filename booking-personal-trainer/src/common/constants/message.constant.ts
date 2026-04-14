@@ -33,6 +33,8 @@ export const ERROR_MESSAGES = {
   TRAINER: {
     AVAILABILITY_NOT_FOUND: 'Trainer availability not found',
     TIME_OFF_NOT_FOUND: 'Trainer time off not found',
+    AVAILABILITY_MIN_ONE_HOUR: 'Availability must be at least 1 hour.',
+    TIME_OFF_MIN_THIRTY_MINUTES: 'Time off must be at least 30 minutes.',
   },
   TRAINEE: {
     NOT_FOUND: 'Trainee not found',

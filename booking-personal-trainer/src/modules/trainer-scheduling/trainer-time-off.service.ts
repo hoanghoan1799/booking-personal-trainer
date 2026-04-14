@@ -26,10 +26,24 @@ type GetMyTimeOffResult = BaseResponseDto<TrainerTimeOff[]>;
 
 @Injectable()
 export class TrainerTimeOffService {
+  private static readonly TIME_OFF_MIN_DURATION_MS = 30 * 60 * 1000;
+
   constructor(
     @Inject(TrainerTimeOffRepositoryToken)
     private readonly timeOffRepo: TrainerTimeOffRepository,
   ) {}
+
+  private assertValidTimeOffWindow(start: Date, end: Date): void {
+    if (start >= end) {
+      throw new BadRequestException(ERROR_MESSAGES.BOOKING.INVALID_TIME_RANGE);
+    }
+    const durationMs = end.getTime() - start.getTime();
+    if (durationMs < TrainerTimeOffService.TIME_OFF_MIN_DURATION_MS) {
+      throw new BadRequestException(
+        ERROR_MESSAGES.TRAINER.TIME_OFF_MIN_THIRTY_MINUTES,
+      );
+    }
+  }
 
   async getMyTimeOff(currentUser: User): Promise<GetMyTimeOffResult> {
     const page: number = DEFAULT_PAGE;
@@ -51,9 +65,7 @@ export class TrainerTimeOffService {
   ): Promise<TrainerTimeOff> {
     const start: Date = new Date(data.startTime);
     const end: Date = new Date(data.endTime);
-    if (start >= end) {
-      throw new BadRequestException(ERROR_MESSAGES.BOOKING.INVALID_TIME_RANGE);
-    }
+    this.assertValidTimeOffWindow(start, end);
     return this.timeOffRepo.create({
       trainer: currentUser,
       reason: data.reason,

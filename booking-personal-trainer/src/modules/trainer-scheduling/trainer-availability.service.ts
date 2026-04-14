@@ -28,10 +28,24 @@ type GetMyAvailabilitiesResult = BaseResponseDto<TrainerAvailability[]>;
 
 @Injectable()
 export class TrainerAvailabilityService {
+  private static readonly AVAILABILITY_MIN_DURATION_MS = 60 * 60 * 1000;
+
   constructor(
     @Inject(TrainerAvailabilityRepositoryToken)
     private readonly availabilityRepo: TrainerAvailabilityRepository,
   ) {}
+
+  private assertValidAvailabilityWindow(start: Date, end: Date): void {
+    if (start >= end) {
+      throw new BadRequestException(ERROR_MESSAGES.BOOKING.INVALID_TIME_RANGE);
+    }
+    const durationMs = end.getTime() - start.getTime();
+    if (durationMs < TrainerAvailabilityService.AVAILABILITY_MIN_DURATION_MS) {
+      throw new BadRequestException(
+        ERROR_MESSAGES.TRAINER.AVAILABILITY_MIN_ONE_HOUR,
+      );
+    }
+  }
 
   async getMyAvailabilities(
     currentUser: User,
@@ -55,9 +69,7 @@ export class TrainerAvailabilityService {
   ): Promise<TrainerAvailability> {
     const start: Date = new Date(data.startTime);
     const end: Date = new Date(data.endTime);
-    if (start >= end) {
-      throw new BadRequestException(ERROR_MESSAGES.BOOKING.INVALID_TIME_RANGE);
-    }
+    this.assertValidAvailabilityWindow(start, end);
     return this.availabilityRepo.create({
       trainer: currentUser,
       dayOfWeek: data.dayOfWeek,
@@ -88,9 +100,7 @@ export class TrainerAvailabilityService {
     const end: Date = data.endTime
       ? new Date(data.endTime)
       : availability.endTime;
-    if (start >= end) {
-      throw new BadRequestException(ERROR_MESSAGES.BOOKING.INVALID_TIME_RANGE);
-    }
+    this.assertValidAvailabilityWindow(start, end);
     availability.startTime = start;
     availability.endTime = end;
     await this.availabilityRepo.save(availability);
