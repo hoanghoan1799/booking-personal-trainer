@@ -19,6 +19,7 @@ export const API_BASE = `/${API_PREFIX}/${API_VERSION.V1}` as const;
 export const API_ROUTES = {
   AUTH: "/auth",
   BOOKINGS: "/bookings",
+  BOOKING_DISCOVERY: "/booking-discovery",
   EXERCISES: "/exercises",
   TEMPLATES: "/templates",
   TRAINERS: "/trainers",
@@ -30,6 +31,7 @@ export const API_ROUTES = {
 export const API_ENDPOINTS = {
   AUTH: `${API_BASE}${API_ROUTES.AUTH}`,
   BOOKINGS: `${API_BASE}${API_ROUTES.BOOKINGS}`,
+  BOOKING_DISCOVERY: `${API_BASE}${API_ROUTES.BOOKING_DISCOVERY}`,
   EXERCISES: `${API_BASE}${API_ROUTES.EXERCISES}`,
   TEMPLATES: `${API_BASE}${API_ROUTES.TEMPLATES}`,
   TRAINERS: `${API_BASE}${API_ROUTES.TRAINERS}`,
