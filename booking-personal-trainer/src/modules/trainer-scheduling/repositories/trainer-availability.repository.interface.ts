@@ -31,6 +31,12 @@ export interface TrainerAvailabilityRepository {
     filter: TrainerAvailabilityFindManyFilter,
     options: FindManyOptions,
   ): Promise<[TrainerAvailability[], number]>;
+  findOverlappingForTrainer(
+    trainerId: string,
+    rangeStart: Date,
+    rangeEnd: Date,
+    excludeAvailabilityId?: string,
+  ): Promise<TrainerAvailability | null>;
   save(availability: TrainerAvailability): Promise<void>;
   remove(availability: TrainerAvailability): Promise<void>;
 }

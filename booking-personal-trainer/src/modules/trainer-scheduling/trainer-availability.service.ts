@@ -24,6 +24,8 @@ import {
   type TrainerAvailabilityRepository,
 } from './repositories/trainer-availability.repository.interface';
 
+import { TrainerScheduleConflictService } from './trainer-schedule-conflict.service';
+
 type GetMyAvailabilitiesResult = BaseResponseDto<TrainerAvailability[]>;
 
 @Injectable()
@@ -33,6 +35,7 @@ export class TrainerAvailabilityService {
   constructor(
     @Inject(TrainerAvailabilityRepositoryToken)
     private readonly availabilityRepo: TrainerAvailabilityRepository,
+    private readonly scheduleConflictService: TrainerScheduleConflictService,
   ) {}
 
   private assertValidAvailabilityWindow(start: Date, end: Date): void {
@@ -70,6 +73,11 @@ export class TrainerAvailabilityService {
     const start: Date = new Date(data.startTime);
     const end: Date = new Date(data.endTime);
     this.assertValidAvailabilityWindow(start, end);
+    await this.scheduleConflictService.assertNoOverlap({
+      trainerId: currentUser.id,
+      start,
+      end,
+    });
     return this.availabilityRepo.create({
       trainer: currentUser,
       dayOfWeek: data.dayOfWeek,
@@ -101,6 +109,12 @@ export class TrainerAvailabilityService {
       ? new Date(data.endTime)
       : availability.endTime;
     this.assertValidAvailabilityWindow(start, end);
+    await this.scheduleConflictService.assertNoOverlap({
+      trainerId: currentUser.id,
+      start,
+      end,
+      excludeAvailabilityId: availabilityId,
+    });
     availability.startTime = start;
     availability.endTime = end;
     await this.availabilityRepo.save(availability);

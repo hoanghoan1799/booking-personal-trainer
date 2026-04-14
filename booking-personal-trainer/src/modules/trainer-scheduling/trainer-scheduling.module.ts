@@ -10,6 +10,7 @@ import { TrainersController } from './trainers.controller';
 
 // Services
 import { TrainerAvailabilityService } from './trainer-availability.service';
+import { TrainerScheduleConflictService } from './trainer-schedule-conflict.service';
 import { TrainerTimeOffService } from './trainer-time-off.service';
 
 // Repositories
@@ -22,6 +23,7 @@ import { MikroOrmTrainerTimeOffRepository } from './repositories/mikroorm-traine
   imports: [MikroOrmModule.forFeature([TrainerAvailability, TrainerTimeOff])],
   controllers: [TrainersController],
   providers: [
+    TrainerScheduleConflictService,
     TrainerAvailabilityService,
     TrainerTimeOffService,
     {

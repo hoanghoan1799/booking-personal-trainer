@@ -38,6 +38,26 @@ export class MikroOrmTrainerAvailabilityRepository implements TrainerAvailabilit
     return this.repo.findOne({ id }, { populate: ['trainer'] });
   }
 
+  /**
+   * Intervals [s1, e1) and [s2, e2) overlap iff s1 < e2 && s2 < e1 (back-to-back allowed).
+   */
+  async findOverlappingForTrainer(
+    trainerId: string,
+    rangeStart: Date,
+    rangeEnd: Date,
+    excludeAvailabilityId?: string,
+  ): Promise<TrainerAvailability | null> {
+    const where: FilterQuery<TrainerAvailability> = {
+      trainer: trainerId,
+      startTime: { $lt: rangeEnd },
+      endTime: { $gt: rangeStart },
+    };
+    if (excludeAvailabilityId !== undefined) {
+      where.id = { $ne: excludeAvailabilityId };
+    }
+    return this.repo.findOne(where, { populate: ['trainer'] });
+  }
+
   async findAndCount(
     filter: TrainerAvailabilityFindManyFilter,
     options: FindManyOptions,
