@@ -153,55 +153,53 @@ const createEventsForWeek = (input: {
   const weekStart = input.weekStart;
   const weekEnd = addDays(weekStart, 7);
 
-  const availabilityEvents: CalendarEvent[] = input.availabilities
-    .map((a) => {
-      const start = new Date(a.startTime);
-      const end = new Date(a.endTime);
-      if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
-        return null;
-      }
-      if (end.getTime() <= weekStart.getTime() || start.getTime() >= weekEnd.getTime()) {
-        return null;
-      }
-      const dayIndex = getIsoDayOfWeek(start) - 1;
-      const startMinute = getMinutesFromLocalDate(start);
-      const endMinute = getMinutesFromLocalDate(end);
-      return {
-        id: `availability-${a.id}`,
-        entityId: a.id,
-        dayIndex,
-        startMinute,
-        endMinute,
-        label: "Availability",
-        variant: "availability",
-      } satisfies CalendarEvent;
-    })
-    .filter((x): x is CalendarEvent => x !== null);
+  const availabilityEvents: CalendarEvent[] = input.availabilities.flatMap((a) => {
+    const start = new Date(a.startTime);
+    const end = new Date(a.endTime);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+      return [];
+    }
+    if (end.getTime() <= weekStart.getTime() || start.getTime() >= weekEnd.getTime()) {
+      return [];
+    }
+    const dayIndex = getIsoDayOfWeek(start) - 1;
+    const startMinute = getMinutesFromLocalDate(start);
+    const endMinute = getMinutesFromLocalDate(end);
+    const event: CalendarEvent = {
+      id: `availability-${a.id}`,
+      entityId: a.id,
+      dayIndex,
+      startMinute,
+      endMinute,
+      label: "Availability",
+      variant: "availability",
+    };
+    return [event];
+  });
 
-  const bookingEvents: CalendarEvent[] = input.bookings
-    .map((b) => {
-      const start = new Date(b.startTime);
-      const end = new Date(b.endTime);
-      if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
-        return null;
-      }
-      if (end.getTime() <= weekStart.getTime() || start.getTime() >= weekEnd.getTime()) {
-        return null;
-      }
-      const dayIndex = getIsoDayOfWeek(start) - 1;
-      const startMinute = getMinutesFromLocalDate(start);
-      const endMinute = getMinutesFromLocalDate(end);
-      return {
-        id: `booking-${b.id}`,
-        entityId: b.id,
-        dayIndex,
-        startMinute,
-        endMinute,
-        label: `Booking (${b.status})`,
-        variant: "booking",
-      } satisfies CalendarEvent;
-    })
-    .filter((x): x is CalendarEvent => x !== null);
+  const bookingEvents: CalendarEvent[] = input.bookings.flatMap((b) => {
+    const start = new Date(b.startTime);
+    const end = new Date(b.endTime);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+      return [];
+    }
+    if (end.getTime() <= weekStart.getTime() || start.getTime() >= weekEnd.getTime()) {
+      return [];
+    }
+    const dayIndex = getIsoDayOfWeek(start) - 1;
+    const startMinute = getMinutesFromLocalDate(start);
+    const endMinute = getMinutesFromLocalDate(end);
+    const event: CalendarEvent = {
+      id: `booking-${b.id}`,
+      entityId: b.id,
+      dayIndex,
+      startMinute,
+      endMinute,
+      label: `Booking (${b.status})`,
+      variant: "booking",
+    };
+    return [event];
+  });
 
   const timeOffEvents: CalendarEvent[] = input.timeOff
     .flatMap((t) => {
