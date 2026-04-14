@@ -13,6 +13,7 @@ import { User } from '../user/entities/user.entity';
 
 // Services
 import { BookingService } from './booking.service';
+import { BookingAvailabilityService } from './services/booking-availability.service';
 
 // Repositories
 import { BookingRepositoryToken } from './repositories/booking.repository.interface';
@@ -24,7 +25,6 @@ const PAGE_TWO = 2;
 const LIMIT_FIVE = 5;
 const TOTAL_ITEMS_ONE = 1;
 const TOTAL_PAGES_ONE = 1;
-const OVERLAP_COUNT = 1;
 const NO_OVERLAP_COUNT = 0;
 const HOURS_FUTURE_START = 2;
 const HOURS_PAST_OFFSET = -2;
@@ -40,6 +40,9 @@ describe('BookingService', () => {
     save: jest.Mock;
   };
   let userRepo: { findById: jest.Mock };
+  let bookingAvailabilityService: {
+    assertTrainerCanBeBookedForRange: jest.Mock;
+  };
 
   const mockTrainee: User = {
     id: 'trainee-uuid',
@@ -75,6 +78,9 @@ describe('BookingService', () => {
       save: jest.fn().mockResolvedValue(undefined),
     };
     userRepo = { findById: jest.fn() };
+    bookingAvailabilityService = {
+      assertTrainerCanBeBookedForRange: jest.fn().mockResolvedValue(undefined),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -86,6 +92,10 @@ describe('BookingService', () => {
         {
           provide: UserRepositoryToken,
           useValue: userRepo,
+        },
+        {
+          provide: BookingAvailabilityService,
+          useValue: bookingAvailabilityService,
         },
       ],
     }).compile();
@@ -168,7 +178,9 @@ describe('BookingService', () => {
     it('should throw BadRequestException when time slot overlaps', async () => {
       const { startTime, endTime } = createValidFutureDates();
       userRepo.findById.mockResolvedValue(mockTrainer);
-      bookingRepo.countOverlapping.mockResolvedValue(OVERLAP_COUNT);
+      bookingAvailabilityService.assertTrainerCanBeBookedForRange.mockRejectedValue(
+        new BadRequestException(ERROR_MESSAGES.BOOKING.TIME_SLOT_NOT_AVAILABLE),
+      );
 
       await expect(
         service.create(
@@ -187,7 +199,6 @@ describe('BookingService', () => {
     it('should create booking when valid', async () => {
       const { startTime, endTime } = createValidFutureDates();
       userRepo.findById.mockResolvedValue(mockTrainer);
-      bookingRepo.countOverlapping.mockResolvedValue(NO_OVERLAP_COUNT);
       const createdBooking = {
         id: 'booking-uuid',
         trainee: mockTrainee,

@@ -78,6 +78,26 @@ export class MikroOrmBookingRepository implements BookingRepository {
     return this.repo.count(where);
   }
 
+  async findOverlappingForTrainer(
+    trainerId: string,
+    startTime: Date,
+    endTime: Date,
+    excludeStatus?: BookingStatus,
+  ): Promise<Booking[]> {
+    const where: FilterQuery<Booking> = {
+      trainer: trainerId,
+      startTime: { $lt: endTime },
+      endTime: { $gt: startTime },
+    };
+    if (excludeStatus != null) {
+      where.status = { $ne: excludeStatus };
+    }
+    return this.repo.find(where, {
+      populate: ['trainer', 'trainee'],
+      orderBy: { startTime: 'ASC' },
+    });
+  }
+
   async findTraineeIdsByTrainerId(trainerId: string): Promise<string[]> {
     const bookings = await this.em.find(
       Booking,

@@ -17,6 +17,9 @@ import { SortOrder } from '../../common/enums/pagination/pagination.enum';
 import { Booking } from './entities/booking.entity';
 import { User } from '../user/entities/user.entity';
 
+// Services
+import { BookingAvailabilityService } from './services/booking-availability.service';
+
 // DTOs
 import { GetBookingsQueryDto } from './dtos/get-booking.dto';
 import { CreateBookingDto } from './dtos/create-booking.dto';
@@ -37,6 +40,7 @@ export class BookingService {
     private readonly bookingRepo: BookingRepository,
     @Inject(UserRepositoryToken)
     private readonly userRepo: UserRepository,
+    private readonly bookingAvailabilityService: BookingAvailabilityService,
   ) {}
 
   async create(data: CreateBookingDto, currentUser: User): Promise<Booking> {
@@ -72,18 +76,11 @@ export class BookingService {
       throw new BadRequestException(ERROR_MESSAGES.BOOKING.CANNOT_BOOK_SELF);
     }
 
-    const overlap = await this.bookingRepo.countOverlapping(
+    await this.bookingAvailabilityService.assertTrainerCanBeBookedForRange({
       trainerId,
       start,
       end,
-      BookingStatus.REJECTED,
-    );
-
-    if (overlap > 0) {
-      throw new BadRequestException(
-        ERROR_MESSAGES.BOOKING.TIME_SLOT_NOT_AVAILABLE,
-      );
-    }
+    });
 
     const booking = await this.bookingRepo.create({
       trainer,

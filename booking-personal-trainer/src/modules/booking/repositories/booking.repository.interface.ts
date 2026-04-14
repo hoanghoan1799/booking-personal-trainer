@@ -42,6 +42,12 @@ export interface BookingRepository {
     endTime: Date,
     excludeStatus?: BookingStatus,
   ): Promise<number>;
+  findOverlappingForTrainer(
+    trainerId: string,
+    startTime: Date,
+    endTime: Date,
+    excludeStatus?: BookingStatus,
+  ): Promise<Booking[]>;
   findTraineeIdsByTrainerId(trainerId: string): Promise<string[]>;
   save(booking: Booking): Promise<void>;
 }
