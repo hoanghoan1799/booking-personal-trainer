@@ -77,17 +77,19 @@ const AppSidebar: React.FC = () => {
 
   const navItems: NavItem[] = useMemo(() => {
     const isTrainer = user?.role === "TRAINER";
-    if (!isTrainer) {
-      return baseNavItems;
-    }
+    const isTrainee = user?.role === "TRAINEE";
+    const navItemsWithoutTemplates = isTrainee
+      ? baseNavItems.filter((navItem) => navItem.path !== APP_ROUTES.TEMPLATES)
+      : baseNavItems;
+    if (!isTrainer) return navItemsWithoutTemplates;
     return [
-      ...baseNavItems.slice(0, 4),
+      ...navItemsWithoutTemplates.slice(0, 4),
       {
         icon: <CalenderIcon />,
         name: "Schedule",
         path: APP_ROUTES.SCHEDULE,
       },
-      ...baseNavItems.slice(4),
+      ...navItemsWithoutTemplates.slice(4),
     ];
   }, [user?.role]);
 
