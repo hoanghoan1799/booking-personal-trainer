@@ -16,6 +16,7 @@ import { AppModule } from '../app.module';
 // Enums
 import { UserType } from '../common/enums/user/user.enum';
 import { BookingStatus } from '../common/enums/booking/booking.enum';
+import { RolesGuard } from '../common/guards/roles.guard';
 
 const HTTP_STATUS = {
   OK: 200,
@@ -28,6 +29,7 @@ const HTTP_STATUS = {
 const API_VERSION_PATH = '/api/v1';
 const BOOKINGS_PATH = `${API_VERSION_PATH}/bookings`;
 const AUTH_PATH = `${API_VERSION_PATH}/auth`;
+const TRAINERS_PATH = `${API_VERSION_PATH}/trainers`;
 
 const HOURS_OFFSET_FOR_FUTURE_BOOKING = 2;
 const HOURS_DURATION_BOOKING = 1;
@@ -89,6 +91,8 @@ describe('Booking (e2e)', () => {
     })
       .overrideProvider(APP_GUARD)
       .useValue({ canActivate: () => Promise.resolve(true) })
+      .overrideGuard(RolesGuard)
+      .useValue({ canActivate: () => true })
       .compile();
 
     app = moduleFixture.createNestApplication();
@@ -134,6 +138,11 @@ describe('Booking (e2e)', () => {
     };
   };
 
+  const getIsoDayOfWeek = (date: Date): number => {
+    const jsDay = date.getDay();
+    return jsDay === 0 ? 7 : jsDay;
+  };
+
   describe('POST /bookings', () => {
     it('should return 401 when no token', async () => {
       const { startTime, endTime } = futureStartEnd();
@@ -147,6 +156,16 @@ describe('Booking (e2e)', () => {
     it('should create a booking and return 201', async () => {
       const { startTime, endTime } = futureStartEnd();
       const httpServer = app.getHttpServer() as Parameters<typeof request>[0];
+      const startDate = new Date(startTime);
+      await request(httpServer)
+        .post(`${TRAINERS_PATH}/me/availabilities`)
+        .set('Authorization', `Bearer ${trainerToken}`)
+        .send({
+          dayOfWeek: getIsoDayOfWeek(startDate),
+          startTime,
+          endTime,
+        })
+        .expect(HTTP_STATUS.OK);
       const res = await request(httpServer)
         .post(BOOKINGS_PATH)
         .set('Authorization', `Bearer ${traineeToken}`)

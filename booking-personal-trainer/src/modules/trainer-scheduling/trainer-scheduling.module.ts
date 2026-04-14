@@ -35,5 +35,6 @@ import { MikroOrmTrainerTimeOffRepository } from './repositories/mikroorm-traine
       useClass: MikroOrmTrainerTimeOffRepository,
     },
   ],
+  exports: [TrainerAvailabilityRepositoryToken, TrainerTimeOffRepositoryToken],
 })
 export class TrainerSchedulingModule {}

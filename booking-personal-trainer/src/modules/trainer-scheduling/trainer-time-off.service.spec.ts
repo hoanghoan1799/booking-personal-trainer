@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 
@@ -99,6 +100,7 @@ describe('TrainerTimeOffService', () => {
           startTime: '2026-02-01T09:00:00.000Z',
           endTime: '2026-02-01T10:00:00.000Z',
         },
+
         { id: 'trainer-id' } as any,
       );
 

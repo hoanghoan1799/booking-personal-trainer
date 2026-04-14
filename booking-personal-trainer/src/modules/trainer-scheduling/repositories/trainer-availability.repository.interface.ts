@@ -37,6 +37,20 @@ export interface TrainerAvailabilityRepository {
     rangeEnd: Date,
     excludeAvailabilityId?: string,
   ): Promise<TrainerAvailability | null>;
+  findCoveringForTrainer(
+    trainerId: string,
+    rangeStart: Date,
+    rangeEnd: Date,
+  ): Promise<TrainerAvailability | null>;
+  findOverlappingRangesForTrainer(
+    trainerId: string,
+    rangeStart: Date,
+    rangeEnd: Date,
+  ): Promise<TrainerAvailability[]>;
+  findCoveringRanges(
+    rangeStart: Date,
+    rangeEnd: Date,
+  ): Promise<TrainerAvailability[]>;
   save(availability: TrainerAvailability): Promise<void>;
   remove(availability: TrainerAvailability): Promise<void>;
 }

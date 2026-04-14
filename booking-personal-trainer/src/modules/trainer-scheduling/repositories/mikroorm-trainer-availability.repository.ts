@@ -58,6 +58,49 @@ export class MikroOrmTrainerAvailabilityRepository implements TrainerAvailabilit
     return this.repo.findOne(where, { populate: ['trainer'] });
   }
 
+  async findCoveringForTrainer(
+    trainerId: string,
+    rangeStart: Date,
+    rangeEnd: Date,
+  ): Promise<TrainerAvailability | null> {
+    const where: FilterQuery<TrainerAvailability> = {
+      trainer: trainerId,
+      startTime: { $lte: rangeStart },
+      endTime: { $gte: rangeEnd },
+    };
+    return this.repo.findOne(where, { populate: ['trainer'] });
+  }
+
+  async findOverlappingRangesForTrainer(
+    trainerId: string,
+    rangeStart: Date,
+    rangeEnd: Date,
+  ): Promise<TrainerAvailability[]> {
+    const where: FilterQuery<TrainerAvailability> = {
+      trainer: trainerId,
+      startTime: { $lt: rangeEnd },
+      endTime: { $gt: rangeStart },
+    };
+    return this.repo.find(where, {
+      populate: ['trainer'],
+      orderBy: { startTime: 'ASC' },
+    });
+  }
+
+  async findCoveringRanges(
+    rangeStart: Date,
+    rangeEnd: Date,
+  ): Promise<TrainerAvailability[]> {
+    const where: FilterQuery<TrainerAvailability> = {
+      startTime: { $lte: rangeStart },
+      endTime: { $gte: rangeEnd },
+    };
+    return this.repo.find(where, {
+      populate: ['trainer'],
+      orderBy: { startTime: 'ASC' },
+    });
+  }
+
   async findAndCount(
     filter: TrainerAvailabilityFindManyFilter,
     options: FindManyOptions,

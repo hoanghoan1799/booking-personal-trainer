@@ -56,6 +56,22 @@ export class MikroOrmTrainerTimeOffRepository implements TrainerTimeOffRepositor
     return this.repo.findOne(where, { populate: ['trainer'] });
   }
 
+  async findOverlappingRangesForTrainer(
+    trainerId: string,
+    rangeStart: Date,
+    rangeEnd: Date,
+  ): Promise<TrainerTimeOff[]> {
+    const where: FilterQuery<TrainerTimeOff> = {
+      trainer: trainerId,
+      startTime: { $lt: rangeEnd },
+      endTime: { $gt: rangeStart },
+    };
+    return this.repo.find(where, {
+      populate: ['trainer'],
+      orderBy: { startTime: 'ASC' },
+    });
+  }
+
   async findAndCount(
     filter: TrainerTimeOffFindManyFilter,
     options: FindManyOptions,

@@ -35,6 +35,11 @@ export interface TrainerTimeOffRepository {
     rangeEnd: Date,
     excludeTimeOffId?: string,
   ): Promise<TrainerTimeOff | null>;
+  findOverlappingRangesForTrainer(
+    trainerId: string,
+    rangeStart: Date,
+    rangeEnd: Date,
+  ): Promise<TrainerTimeOff[]>;
   save(timeOff: TrainerTimeOff): Promise<void>;
   remove(timeOff: TrainerTimeOff): Promise<void>;
 }
