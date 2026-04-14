@@ -47,6 +47,13 @@ const addDays = (date: Date, days: number): Date => {
   return next;
 };
 
+const toDateTimeLocalFromDate = (d: Date): string => {
+  const pad = (n: number): string => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(
+    d.getHours(),
+  )}:${pad(d.getMinutes())}`;
+};
+
 const formatTimeFromIso = (isoString: string): string => {
   const date = new Date(isoString);
   if (Number.isNaN(date.getTime())) {
@@ -128,6 +135,8 @@ const ScheduleContent: React.FC = () => {
     updateAvailability,
     deleteAvailability,
     createTimeOff,
+    updateTimeOff,
+    deleteTimeOff,
   } = useTrainerSchedule();
   const { bookings } = useBookings();
 
@@ -161,6 +170,11 @@ const ScheduleContent: React.FC = () => {
   );
   const [editingAvailabilityDayLabel, setEditingAvailabilityDayLabel] = useState<string>("");
   const [isDeleteAvailabilityConfirmOpen, setIsDeleteAvailabilityConfirmOpen] =
+    useState<boolean>(false);
+  const [editTimeOffReason, setEditTimeOffReason] = useState<string>("");
+  const [editTimeOffStartDateTime, setEditTimeOffStartDateTime] = useState<string>("");
+  const [editTimeOffEndDateTime, setEditTimeOffEndDateTime] = useState<string>("");
+  const [isDeleteTimeOffConfirmOpen, setIsDeleteTimeOffConfirmOpen] =
     useState<boolean>(false);
 
   const formatDayOfWeek = useCallback((value: number): string => {
@@ -295,6 +309,11 @@ const ScheduleContent: React.FC = () => {
           toast.error("Time off not found");
           return;
         }
+        setEditModalError(null);
+        setEditTimeOffReason(item.reason);
+        setEditTimeOffStartDateTime(toDateTimeLocalFromDate(new Date(item.startTime)));
+        setEditTimeOffEndDateTime(toDateTimeLocalFromDate(new Date(item.endTime)));
+        setIsDeleteTimeOffConfirmOpen(false);
         setEditTarget({ type: "timeOff", id: item.id });
         setIsEditModalOpen(true);
         return;
@@ -420,6 +439,110 @@ const ScheduleContent: React.FC = () => {
       setIsSaving(false);
     }
   }, [deleteAvailability, editTarget, toast]);
+
+  const handleSaveTimeOffEdit = useCallback(async (): Promise<void> => {
+    if (!editTarget || editTarget.type !== "timeOff") {
+      return;
+    }
+    if (!timeOff.some((t) => t.id === editTarget.id)) {
+      setEditModalError("Time off not found.");
+      return;
+    }
+    if (!editTimeOffReason.trim()) {
+      setEditModalError("Reason is required.");
+      return;
+    }
+    if (!editTimeOffStartDateTime || !editTimeOffEndDateTime) {
+      setEditModalError("Start time and end time are required.");
+      return;
+    }
+    const startIso = getIsoFromDateTimeLocal(editTimeOffStartDateTime);
+    const endIso = getIsoFromDateTimeLocal(editTimeOffEndDateTime);
+    if (isInPastOrNow(startIso)) {
+      setEditModalError("Start time cannot be in the past.");
+      return;
+    }
+    if (isInPastOrNow(endIso)) {
+      setEditModalError("End time cannot be in the past.");
+      return;
+    }
+    if (!isValidTimeRange(startIso, endIso)) {
+      setEditModalError("Start time must be before end time.");
+      return;
+    }
+    if (
+      !isDateTimeLocalOnThirtyMinuteStep(editTimeOffStartDateTime) ||
+      !isDateTimeLocalOnThirtyMinuteStep(editTimeOffEndDateTime)
+    ) {
+      setEditModalError("Time must be in 30-minute increments.");
+      return;
+    }
+    const timeOffStartMs = new Date(editTimeOffStartDateTime).getTime();
+    const timeOffEndMs = new Date(editTimeOffEndDateTime).getTime();
+    if (
+      (timeOffEndMs - timeOffStartMs) / 60000 < TIME_OFF_MIN_DURATION_MINUTES
+    ) {
+      setEditModalError("Time off must be at least 30 minutes.");
+      return;
+    }
+    setEditModalError(null);
+    setIsSaving(true);
+    try {
+      await updateTimeOff({
+        timeOffId: editTarget.id,
+        update: {
+          reason: editTimeOffReason.trim(),
+          startTime: startIso,
+          endTime: endIso,
+        },
+      });
+      toast.success("Time off updated");
+      setIsEditModalOpen(false);
+    } catch (err) {
+      setEditModalError(err instanceof Error ? err.message : "Failed to update time off.");
+    } finally {
+      setIsSaving(false);
+    }
+  }, [
+    editTarget,
+    editTimeOffEndDateTime,
+    editTimeOffReason,
+    editTimeOffStartDateTime,
+    getIsoFromDateTimeLocal,
+    isInPastOrNow,
+    isValidTimeRange,
+    timeOff,
+    toast,
+    updateTimeOff,
+  ]);
+
+  const handleRequestDeleteTimeOff = useCallback((): void => {
+    if (!editTarget || editTarget.type !== "timeOff") {
+      return;
+    }
+    setEditModalError(null);
+    setIsDeleteTimeOffConfirmOpen(true);
+  }, [editTarget]);
+
+  const handleConfirmDeleteTimeOff = useCallback(async (): Promise<void> => {
+    if (!editTarget || editTarget.type !== "timeOff") {
+      setIsDeleteTimeOffConfirmOpen(false);
+      return;
+    }
+    setEditModalError(null);
+    setIsSaving(true);
+    try {
+      await deleteTimeOff({ timeOffId: editTarget.id });
+      toast.success("Time off deleted");
+      setIsDeleteTimeOffConfirmOpen(false);
+      setIsEditModalOpen(false);
+    } catch (err) {
+      setIsDeleteTimeOffConfirmOpen(false);
+      setEditModalError(err instanceof Error ? err.message : "Failed to delete time off.");
+    } finally {
+      setIsSaving(false);
+    }
+  }, [deleteTimeOff, editTarget, toast]);
 
   const handleSaveFromModal = useCallback(async (): Promise<void> => {
     if (createMode === "availability") {
@@ -926,6 +1049,7 @@ const ScheduleContent: React.FC = () => {
           setIsEditModalOpen(false);
           setEditModalError(null);
           setIsDeleteAvailabilityConfirmOpen(false);
+          setIsDeleteTimeOffConfirmOpen(false);
         }}
         className="mx-4 w-full max-w-2xl p-5 sm:p-6"
       >
@@ -933,7 +1057,7 @@ const ScheduleContent: React.FC = () => {
           {editTarget?.type === "availability"
             ? "Edit availability"
             : editTarget?.type === "timeOff"
-              ? "Time off"
+              ? "Edit time off"
               : "Booking"}
         </div>
 
@@ -1024,10 +1148,92 @@ const ScheduleContent: React.FC = () => {
         )}
 
         {editTarget?.type === "timeOff" && (
-          <div className="mt-4 text-sm text-gray-500 dark:text-gray-400">
-            Editing/deleting time off isn&apos;t supported by the API yet. You can add a new
-            entry to adjust your schedule.
-          </div>
+          <>
+            <div className="mt-4 grid grid-cols-1 gap-3">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                Reason
+                <input
+                  value={editTimeOffReason}
+                  onChange={(e) => {
+                    setEditModalError(null);
+                    setEditTimeOffReason(e.target.value);
+                  }}
+                  className="mt-2 h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
+                  aria-label="Edit time off reason"
+                />
+              </label>
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                Start
+                <input
+                  value={editTimeOffStartDateTime}
+                  onChange={(e) => {
+                    setEditModalError(null);
+                    setEditTimeOffStartDateTime(e.target.value);
+                  }}
+                  type="datetime-local"
+                  step={SCHEDULE_TIME_INPUT_STEP_SECONDS}
+                  className="mt-2 h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
+                  aria-label="Edit time off start time"
+                />
+              </label>
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                End
+                <input
+                  value={editTimeOffEndDateTime}
+                  onChange={(e) => {
+                    setEditModalError(null);
+                    setEditTimeOffEndDateTime(e.target.value);
+                  }}
+                  type="datetime-local"
+                  step={SCHEDULE_TIME_INPUT_STEP_SECONDS}
+                  className="mt-2 h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
+                  aria-label="Edit time off end time"
+                />
+              </label>
+            </div>
+
+            {editModalError && (
+              <div
+                className="mt-4 text-sm text-error-600 dark:text-error-500"
+                role="alert"
+                aria-live="polite"
+              >
+                {editModalError}
+              </div>
+            )}
+
+            <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-between">
+              <Button
+                variant="outline"
+                onClick={handleRequestDeleteTimeOff}
+                disabled={isSaving}
+                aria-label="Delete time off"
+                className="text-error-600 dark:text-error-500"
+              >
+                Delete
+              </Button>
+              <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setIsEditModalOpen(false);
+                    setEditModalError(null);
+                    setIsDeleteTimeOffConfirmOpen(false);
+                  }}
+                  aria-label="Cancel editing time off"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => void handleSaveTimeOffEdit()}
+                  disabled={isSaving}
+                  aria-label="Save time off"
+                >
+                  {isSaving ? "Saving..." : "Save"}
+                </Button>
+              </div>
+            </div>
+          </>
         )}
 
         {editTarget?.type === "booking" && (
@@ -1043,6 +1249,18 @@ const ScheduleContent: React.FC = () => {
         onConfirm={() => void handleConfirmDeleteAvailability()}
         title="Delete availability"
         message="This will remove this availability slot. You can add a new one from the calendar anytime."
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        variant="danger"
+        isConfirming={isSaving}
+      />
+
+      <ConfirmModal
+        isOpen={isDeleteTimeOffConfirmOpen}
+        onClose={() => setIsDeleteTimeOffConfirmOpen(false)}
+        onConfirm={() => void handleConfirmDeleteTimeOff()}
+        title="Delete time off"
+        message="This will remove this time off block from your schedule."
         confirmLabel="Delete"
         cancelLabel="Cancel"
         variant="danger"

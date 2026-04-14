@@ -8,6 +8,7 @@ import type {
   TrainerAvailability,
   TrainerTimeOff,
   UpdateTrainerAvailabilityInput,
+  UpdateTrainerTimeOffInput,
 } from "./trainer-schedule.types";
 
 function buildQueryString(params: GetPagedInput): string {
@@ -96,5 +97,25 @@ export async function createTimeOff(
     },
   );
   return res.data;
+}
+
+export async function updateTimeOff(input: {
+  timeOffId: string;
+  update: UpdateTrainerTimeOffInput;
+}): Promise<TrainerTimeOff> {
+  const res = await apiFetch<BaseResponseDto<TrainerTimeOff>>(
+    `${getMyTimeOffEndpoint()}/${input.timeOffId}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify(input.update),
+    },
+  );
+  return res.data;
+}
+
+export async function deleteTimeOff(input: { timeOffId: string }): Promise<void> {
+  await apiFetch<unknown>(`${getMyTimeOffEndpoint()}/${input.timeOffId}`, {
+    method: "DELETE",
+  });
 }
 

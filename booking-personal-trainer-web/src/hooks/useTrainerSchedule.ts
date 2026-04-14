@@ -8,14 +8,17 @@ import type {
   TrainerAvailability,
   TrainerTimeOff,
   UpdateTrainerAvailabilityInput,
+  UpdateTrainerTimeOffInput,
 } from "@/services/trainer-schedule/trainer-schedule.types";
 import {
   createAvailability,
   createTimeOff,
   deleteAvailability,
+  deleteTimeOff,
   getMyAvailabilities,
   getMyTimeOff,
   updateAvailability,
+  updateTimeOff,
 } from "@/services/trainer-schedule/trainer-schedule.service";
 
 type UseTrainerScheduleResult = {
@@ -33,6 +36,11 @@ type UseTrainerScheduleResult = {
   }) => Promise<void>;
   readonly deleteAvailability: (input: { availabilityId: string }) => Promise<void>;
   readonly createTimeOff: (input: CreateTrainerTimeOffInput) => Promise<void>;
+  readonly updateTimeOff: (input: {
+    timeOffId: string;
+    update: UpdateTrainerTimeOffInput;
+  }) => Promise<void>;
+  readonly deleteTimeOff: (input: { timeOffId: string }) => Promise<void>;
 };
 
 export const useTrainerSchedule = (): UseTrainerScheduleResult => {
@@ -117,6 +125,25 @@ export const useTrainerSchedule = (): UseTrainerScheduleResult => {
     [fetchAll],
   );
 
+  const handleUpdateTimeOff = useCallback(
+    async (input: {
+      timeOffId: string;
+      update: UpdateTrainerTimeOffInput;
+    }): Promise<void> => {
+      await updateTimeOff(input);
+      await fetchAll();
+    },
+    [fetchAll],
+  );
+
+  const handleDeleteTimeOff = useCallback(
+    async (input: { timeOffId: string }): Promise<void> => {
+      await deleteTimeOff(input);
+      await fetchAll();
+    },
+    [fetchAll],
+  );
+
   return {
     availabilities,
     timeOff,
@@ -127,6 +154,8 @@ export const useTrainerSchedule = (): UseTrainerScheduleResult => {
     updateAvailability: handleUpdateAvailability,
     deleteAvailability: handleDeleteAvailability,
     createTimeOff: handleCreateTimeOff,
+    updateTimeOff: handleUpdateTimeOff,
+    deleteTimeOff: handleDeleteTimeOff,
   };
 };
 

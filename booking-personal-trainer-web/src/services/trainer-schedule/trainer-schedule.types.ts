@@ -50,3 +50,9 @@ export type CreateTrainerTimeOffInput = {
   endTime: string;
 };
 
+export type UpdateTrainerTimeOffInput = {
+  reason?: string;
+  startTime?: string;
+  endTime?: string;
+};
+
