@@ -35,6 +35,10 @@ export const ERROR_MESSAGES = {
     TIME_OFF_NOT_FOUND: 'Trainer time off not found',
     AVAILABILITY_MIN_ONE_HOUR: 'Availability must be at least 1 hour.',
     TIME_OFF_MIN_THIRTY_MINUTES: 'Time off must be at least 30 minutes.',
+    SCHEDULE_SLOT_OVERLAP:
+      'This time range overlaps an existing availability or time off.',
+    TIME_OFF_NOTHING_TO_UPDATE:
+      'Provide at least one field (reason, start time, or end time) to update.',
   },
   TRAINEE: {
     NOT_FOUND: 'Trainee not found',
@@ -127,6 +131,8 @@ export const SUCCESS_MESSAGES = {
     AVAILABILITY_DELETED: 'Trainer availability deleted successfully',
     TIME_OFF_LIST_RETRIEVED: 'Trainer time off retrieved successfully',
     TIME_OFF_CREATED: 'Trainer time off created successfully',
+    TIME_OFF_UPDATED: 'Trainer time off updated successfully',
+    TIME_OFF_DELETED: 'Trainer time off deleted successfully',
   },
 } as const;
 
@@ -230,6 +236,12 @@ export const API_DESCRIPTIONS = {
     CREATE_MY_TIME_OFF_SUMMARY: 'Create my time off',
     CREATE_MY_TIME_OFF_DESCRIPTION:
       'Creates a new time off entry for the authenticated trainer.',
+    UPDATE_MY_TIME_OFF_SUMMARY: 'Update my time off',
+    UPDATE_MY_TIME_OFF_DESCRIPTION:
+      'Updates a time off entry owned by the authenticated trainer.',
+    DELETE_MY_TIME_OFF_SUMMARY: 'Delete my time off',
+    DELETE_MY_TIME_OFF_DESCRIPTION:
+      'Deletes a time off entry owned by the authenticated trainer.',
   },
 } as const;
 
