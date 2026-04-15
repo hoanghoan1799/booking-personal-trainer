@@ -12,10 +12,12 @@ import {
 import {
   WorkoutRepository,
   CreateWorkoutData,
+  CreateWorkoutFromBookingTemplateData,
   WorkoutFindManyFilter,
   FindManyWorkoutOptions,
   ExerciseCompletionItem,
 } from './workout.repository.interface';
+import { ExerciseTemplateItem } from '../../templates/entities/exercise-template-item.entity';
 
 @Injectable()
 export class MikroOrmWorkoutRepository implements WorkoutRepository {
@@ -48,6 +50,49 @@ export class MikroOrmWorkoutRepository implements WorkoutRepository {
           workout,
           exercise,
           order: index + 1,
+          sets: null,
+          reps: null,
+          restSeconds: null,
+          notes: '',
+          isCompleted: false,
+          isDeleted: false,
+        });
+        workout.exercises.add(workoutExercise);
+      });
+      await em.persist(workout).flush();
+      return workout;
+    });
+  }
+
+  async createFromBookingTemplate(
+    data: CreateWorkoutFromBookingTemplateData,
+  ): Promise<Workout> {
+    return this.em.transactional(async (em) => {
+      const workout = em.create(Workout, {
+        booking: data.booking,
+        trainer: data.booking.trainer,
+        trainee: data.booking.trainee,
+        template: data.template,
+        startTime: data.booking.startTime,
+        endTime: data.booking.endTime,
+        status: WorkoutStatus.PENDING,
+      });
+      const items = data.template.items
+        .getItems()
+        .slice()
+        .sort(
+          (a: ExerciseTemplateItem, b: ExerciseTemplateItem) =>
+            a.order - b.order,
+        );
+      items.forEach((item: ExerciseTemplateItem) => {
+        const workoutExercise = em.create(WorkoutExercise, {
+          workout,
+          exercise: item.exercise,
+          order: item.order,
+          sets: item.sets,
+          reps: item.reps,
+          restSeconds: item.restSeconds,
+          notes: item.notes,
           isCompleted: false,
           isDeleted: false,
         });
@@ -62,7 +107,14 @@ export class MikroOrmWorkoutRepository implements WorkoutRepository {
     return this.repo.findOne(
       { id, isDeleted: false },
       {
-        populate: ['trainer', 'trainee', 'exercises', 'exercises.exercise'],
+        populate: [
+          'booking',
+          'template',
+          'trainer',
+          'trainee',
+          'exercises',
+          'exercises.exercise',
+        ],
       },
     );
   }
@@ -87,7 +139,14 @@ export class MikroOrmWorkoutRepository implements WorkoutRepository {
       limit: options.limit,
       offset: options.offset,
       orderBy: options.orderBy,
-      populate: ['trainer', 'trainee', 'exercises', 'exercises.exercise'],
+      populate: [
+        'booking',
+        'template',
+        'trainer',
+        'trainee',
+        'exercises',
+        'exercises.exercise',
+      ],
     });
   }
 
@@ -102,7 +161,16 @@ export class MikroOrmWorkoutRepository implements WorkoutRepository {
   ): Promise<Workout> {
     const workout = await this.repo.findOne(
       { id, isDeleted: false },
-      { populate: ['trainer', 'trainee', 'exercises', 'exercises.exercise'] },
+      {
+        populate: [
+          'booking',
+          'template',
+          'trainer',
+          'trainee',
+          'exercises',
+          'exercises.exercise',
+        ],
+      },
     );
     if (!workout) {
       throw new Error('Workout not found');

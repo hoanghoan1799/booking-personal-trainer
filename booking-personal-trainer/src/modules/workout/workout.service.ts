@@ -8,6 +8,7 @@ import {
 // Commons
 import { ERROR_MESSAGES } from '../../common/constants/message.constant';
 import { UserRole } from '../../common/enums/user/user.enum';
+import { BookingStatus } from '../../common/enums/booking/booking.enum';
 import { BaseResponseDto } from '../../common/dtos/base-response.dto';
 import { SuccessMessageResponse } from '../../common/interfaces/success-message-response.interface';
 
@@ -18,6 +19,7 @@ import { WorkoutResponseDto } from './dtos/workout-response.dto';
 
 // DTOs
 import { CreateWorkoutDto } from './dtos/create-workout.dto';
+import { CreateBookingWorkoutDto } from './dtos/create-booking-workout.dto';
 import { UpdateWorkoutDetailDto } from './dtos/update-workout-detail.dto';
 import { WorkoutsQueryDto } from './dtos/query-workout.dto';
 
@@ -29,6 +31,15 @@ import {
 } from './repositories/workout.repository.interface';
 import { UserRepositoryToken } from '../user/repositories/user.repository.interface';
 import type { UserRepository } from '../user/repositories/user.repository.interface';
+import {
+  BookingRepositoryToken,
+  type BookingRepository,
+} from '../booking/repositories/booking.repository.interface';
+import {
+  TemplatesRepositoryToken,
+  type TemplatesRepository,
+} from '../templates/repositories/templates.repository.interface';
+import { TemplateType } from '../templates/enums/template-type.enum';
 
 @Injectable()
 export class WorkoutService {
@@ -37,6 +48,10 @@ export class WorkoutService {
     private readonly workoutRepo: WorkoutRepository,
     @Inject(UserRepositoryToken)
     private readonly userRepo: UserRepository,
+    @Inject(BookingRepositoryToken)
+    private readonly bookingRepo: BookingRepository,
+    @Inject(TemplatesRepositoryToken)
+    private readonly templatesRepo: TemplatesRepository,
   ) {}
 
   async create(
@@ -61,10 +76,57 @@ export class WorkoutService {
     return this.mapWorkoutToResponseDto(workout);
   }
 
+  async createForBookingFromTemplate(
+    bookingId: string,
+    dto: CreateBookingWorkoutDto,
+    currentUser: { id: string; role: UserRole },
+  ): Promise<WorkoutResponseDto> {
+    if (
+      currentUser.role !== UserRole.ADMIN &&
+      currentUser.role !== UserRole.TRAINER
+    ) {
+      throw new BadRequestException(ERROR_MESSAGES.AUTH.FORBIDDEN);
+    }
+    const booking = await this.bookingRepo.findById(bookingId);
+    if (!booking) {
+      throw new NotFoundException(ERROR_MESSAGES.BOOKING.NOT_FOUND);
+    }
+    const isAdmin = currentUser.role === UserRole.ADMIN;
+    const isTrainerOfBooking = booking.trainer.id === currentUser.id;
+    if (!isAdmin && !isTrainerOfBooking) {
+      throw new BadRequestException(ERROR_MESSAGES.AUTH.FORBIDDEN);
+    }
+    if (booking.status !== BookingStatus.CONFIRMED) {
+      throw new BadRequestException(
+        'Booking must be CONFIRMED to create workout',
+      );
+    }
+    const template = await this.templatesRepo.findTemplateById(dto.templateId);
+    if (!template || template.isDeleted) {
+      throw new NotFoundException('Template not found');
+    }
+    if (
+      template.templateType === TemplateType.TRAINER &&
+      template.createdBy.id !== currentUser.id &&
+      !isAdmin
+    ) {
+      throw new BadRequestException(
+        'Cannot use trainer template you do not own',
+      );
+    }
+    const workout = await this.workoutRepo.createFromBookingTemplate({
+      booking,
+      template,
+    });
+    return this.mapWorkoutToResponseDto(workout);
+  }
+
   private mapWorkoutToResponseDto(workout: Workout): WorkoutResponseDto {
     const items = workout.exercises.getItems();
     return {
       id: workout.id,
+      bookingId: workout.booking?.id ?? null,
+      templateId: workout.template?.id ?? null,
       startTime: workout.startTime,
       endTime: workout.endTime,
       status: workout.status,
@@ -75,6 +137,10 @@ export class WorkoutService {
       exercises: items.map((we) => ({
         id: we.id,
         order: we.order,
+        sets: we.sets,
+        reps: we.reps,
+        restSeconds: we.restSeconds,
+        notes: we.notes,
         isCompleted: we.isCompleted,
         exercise: we.exercise,
       })),

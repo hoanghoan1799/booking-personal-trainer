@@ -12,6 +12,7 @@ import { WorkoutService } from './workout.service';
 
 // Controllers
 import { WorkoutController } from './workout.controller';
+import { BookingWorkoutController } from './booking-workout.controller';
 
 // Repositories
 import { WorkoutRepositoryToken } from './repositories/workout.repository.interface';
@@ -20,14 +21,18 @@ import { MikroOrmWorkoutRepository } from './repositories/mikroorm-workout.repos
 // Modules
 import { UserModule } from '../user/user.module';
 import { ExerciseModule } from '../exercise/exercise.module';
+import { BookingModule } from '../booking/booking.module';
+import { TemplatesModule } from '../templates/templates.module';
 
 @Module({
   imports: [
     ExerciseModule,
     UserModule,
+    BookingModule,
+    TemplatesModule,
     MikroOrmModule.forFeature([Workout, WorkoutExercise, User, Exercise]),
   ],
-  controllers: [WorkoutController],
+  controllers: [WorkoutController, BookingWorkoutController],
   providers: [
     WorkoutService,
     {

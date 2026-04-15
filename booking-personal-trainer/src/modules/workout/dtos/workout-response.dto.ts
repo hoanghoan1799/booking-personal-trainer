@@ -25,6 +25,22 @@ export class WorkoutExerciseResponseDto {
   @Expose()
   order: number;
 
+  @ApiPropertyOptional({ description: 'Sets', nullable: true })
+  @Expose()
+  sets?: number | null;
+
+  @ApiPropertyOptional({ description: 'Reps', nullable: true })
+  @Expose()
+  reps?: number | null;
+
+  @ApiPropertyOptional({ description: 'Rest seconds', nullable: true })
+  @Expose()
+  restSeconds?: number | null;
+
+  @ApiPropertyOptional({ description: 'Notes' })
+  @Expose()
+  notes?: string;
+
   @ApiProperty({
     description: FIELD_DESCRIPTIONS.WORKOUT.IS_COMPLETED,
   })
@@ -47,6 +63,22 @@ export class WorkoutResponseDto {
   })
   @Expose()
   id: string;
+
+  @ApiPropertyOptional({
+    description: 'Booking id',
+    format: API_FORMATS.UUID,
+    nullable: true,
+  })
+  @Expose()
+  bookingId?: string | null;
+
+  @ApiPropertyOptional({
+    description: 'Template id',
+    format: API_FORMATS.UUID,
+    nullable: true,
+  })
+  @Expose()
+  templateId?: string | null;
 
   @ApiProperty({
     description: FIELD_DESCRIPTIONS.WORKOUT.START_TIME,

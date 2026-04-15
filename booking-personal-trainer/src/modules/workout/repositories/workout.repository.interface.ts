@@ -1,6 +1,8 @@
 import { WorkoutStatus } from '../../../common/enums/workout/workout.enum';
 import { User } from '../../user/entities/user.entity';
 import { Workout } from '../entities/workout.entity';
+import { Booking } from '../../booking/entities/booking.entity';
+import { ExerciseTemplate } from '../../templates/entities/exercise-template.entity';
 
 /** Injection token for WorkoutRepository */
 export const WorkoutRepositoryToken = Symbol('WorkoutRepository');
@@ -11,6 +13,11 @@ export interface CreateWorkoutData {
   startTime: Date;
   endTime: Date;
   exerciseIds: string[];
+}
+
+export interface CreateWorkoutFromBookingTemplateData {
+  booking: Booking;
+  template: ExerciseTemplate;
 }
 
 export interface WorkoutFindManyFilter {
@@ -36,6 +43,9 @@ export interface ExerciseCompletionItem {
  */
 export interface WorkoutRepository {
   create(data: CreateWorkoutData): Promise<Workout>;
+  createFromBookingTemplate(
+    data: CreateWorkoutFromBookingTemplateData,
+  ): Promise<Workout>;
   findByIdWithExercises(id: string): Promise<Workout | null>;
   findAndCount(
     filter: WorkoutFindManyFilter,

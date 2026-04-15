@@ -17,6 +17,18 @@ export class WorkoutExercise extends BaseEntity {
   @Property()
   order!: number;
 
+  @Property({ type: 'int', nullable: true })
+  sets: number | null = null;
+
+  @Property({ type: 'int', nullable: true })
+  reps: number | null = null;
+
+  @Property({ type: 'int', nullable: true })
+  restSeconds: number | null = null;
+
+  @Property({ type: 'text', default: '' })
+  notes: string = '';
+
   @Property({ default: false })
   isCompleted = false;
 

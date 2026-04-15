@@ -15,6 +15,8 @@ import { WorkoutStatus } from '../../../common/enums/workout/workout.enum';
 // Entities
 import { User } from '../../../modules/user/entities/user.entity';
 import { WorkoutExercise } from './workout-exercise.entity';
+import { Booking } from '../../booking/entities/booking.entity';
+import { ExerciseTemplate } from '../../templates/entities/exercise-template.entity';
 import { Expose } from 'class-transformer';
 
 @Index({ properties: ['trainer', 'isDeleted'] })
@@ -23,12 +25,20 @@ import { Expose } from 'class-transformer';
 @Entity({ tableName: 'workouts' })
 export class Workout extends BaseEntity {
   @Expose()
+  @ManyToOne(() => Booking, { nullable: true })
+  booking?: Booking | null;
+
+  @Expose()
   @ManyToOne(() => User)
   trainer!: User;
 
   @Expose()
   @ManyToOne(() => User)
   trainee!: User;
+
+  @Expose()
+  @ManyToOne(() => ExerciseTemplate, { nullable: true })
+  template?: ExerciseTemplate | null;
 
   @Expose()
   @OneToMany(() => WorkoutExercise, (we) => we.workout, { orphanRemoval: true })
