@@ -53,6 +53,9 @@ export class User extends BaseEntity {
   @Property({ nullable: true })
   weight?: number;
 
+  @Property({ nullable: true })
+  stripeAccountId?: string | null;
+
   @OneToMany(() => Booking, (booking) => booking.trainer)
   trainerBookings? = new Array<Booking>();
 
