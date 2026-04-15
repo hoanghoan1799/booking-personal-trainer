@@ -32,7 +32,10 @@ export class MikroOrmBookingRepository implements BookingRepository {
   }
 
   async findById(id: string): Promise<Booking | null> {
-    return this.repo.findOne({ id }, { populate: ['trainer', 'trainee'] });
+    return this.repo.findOne(
+      { id },
+      { populate: ['trainer', 'trainee', 'cancelledBy'] },
+    );
   }
 
   async findAndCount(
@@ -50,7 +53,7 @@ export class MikroOrmBookingRepository implements BookingRepository {
       where.status = filter.status;
     }
     return this.repo.findAndCount(where, {
-      populate: ['trainee', 'trainer'],
+      populate: ['trainee', 'trainer', 'cancelledBy'],
       limit: options.limit,
       offset: options.offset,
       orderBy: options.orderBy as Record<string, 'ASC' | 'DESC'>,

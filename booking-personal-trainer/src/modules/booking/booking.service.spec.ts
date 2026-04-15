@@ -324,14 +324,14 @@ describe('BookingService', () => {
       await expect(
         service.updateStatus(
           'missing-id',
-          BookingStatus.CONFIRMED,
+          { status: BookingStatus.CONFIRMED },
           mockTrainee,
         ),
       ).rejects.toThrow(NotFoundException);
       await expect(
         service.updateStatus(
           'missing-id',
-          BookingStatus.CONFIRMED,
+          { status: BookingStatus.CONFIRMED },
           mockTrainee,
         ),
       ).rejects.toThrow(ERROR_MESSAGES.BOOKING.NOT_FOUND);
@@ -348,10 +348,18 @@ describe('BookingService', () => {
       const otherUser = { ...mockTrainee, id: 'other-user-id' } as User;
 
       await expect(
-        service.updateStatus(booking.id, BookingStatus.CONFIRMED, otherUser),
+        service.updateStatus(
+          booking.id,
+          { status: BookingStatus.CONFIRMED },
+          otherUser,
+        ),
       ).rejects.toThrow(BadRequestException);
       await expect(
-        service.updateStatus(booking.id, BookingStatus.CONFIRMED, otherUser),
+        service.updateStatus(
+          booking.id,
+          { status: BookingStatus.CONFIRMED },
+          otherUser,
+        ),
       ).rejects.toThrow(ERROR_MESSAGES.BOOKING.CANNOT_UPDATE_STATUS);
     });
 
@@ -366,7 +374,7 @@ describe('BookingService', () => {
 
       const actual = await service.updateStatus(
         booking.id,
-        BookingStatus.CONFIRMED,
+        { status: BookingStatus.CONFIRMED },
         mockTrainer,
       );
 
@@ -386,7 +394,7 @@ describe('BookingService', () => {
 
       const actual = await service.updateStatus(
         booking.id,
-        BookingStatus.REJECTED,
+        { status: BookingStatus.REJECTED, rejectionReason: 'Not available' },
         adminUser,
       );
 

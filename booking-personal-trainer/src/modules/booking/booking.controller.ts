@@ -196,7 +196,7 @@ export class BookingController {
     return this.bookingService.getOne(id);
   }
 
-  @Roles(UserRole.ADMIN, UserRole.TRAINER)
+  @Roles(UserRole.ADMIN, UserRole.TRAINER, UserRole.TRAINEE)
   @UseGuards(RolesGuard)
   @Patch(':id/status')
   /**
@@ -270,11 +270,7 @@ export class BookingController {
     @Body() body: UpdateBookingStatusDto,
     @Req() req: CurrentRequestUser,
   ): Promise<BaseResponseDto<BookingResponseDto>> {
-    const booking = await this.bookingService.updateStatus(
-      id,
-      body.status,
-      req.user,
-    );
+    const booking = await this.bookingService.updateStatus(id, body, req.user);
     return BaseResponseDto.ok(booking);
   }
 }

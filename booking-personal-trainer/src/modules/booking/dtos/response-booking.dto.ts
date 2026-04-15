@@ -43,6 +43,30 @@ export class BookingResponseDto {
   @Expose()
   status: BookingStatus;
 
+  @ApiPropertyOptional({
+    description: 'Status changed at',
+    type: Date,
+    nullable: true,
+  })
+  @Expose()
+  statusChangedAt?: Date | null;
+
+  @ApiPropertyOptional({
+    description: 'Cancelled by user id',
+    format: API_FORMATS.UUID,
+    nullable: true,
+  })
+  @Expose()
+  cancelledById?: string | null;
+
+  @ApiPropertyOptional({ description: 'Cancellation reason', nullable: true })
+  @Expose()
+  cancellationReason?: string | null;
+
+  @ApiPropertyOptional({ description: 'Rejection reason', nullable: true })
+  @Expose()
+  rejectionReason?: string | null;
+
   @ApiProperty({
     description: FIELD_DESCRIPTIONS.BOOKING.START_TIME,
     type: Date,

@@ -23,6 +23,7 @@ import { BookingAvailabilityService } from './services/booking-availability.serv
 // DTOs
 import { GetBookingsQueryDto } from './dtos/get-booking.dto';
 import { CreateBookingDto } from './dtos/create-booking.dto';
+import { UpdateBookingStatusDto } from './dtos/update-booking-status.dto';
 
 // Repositories
 import {
@@ -146,7 +147,7 @@ export class BookingService {
 
   async updateStatus(
     id: string,
-    status: BookingStatus,
+    dto: UpdateBookingStatusDto,
     currentUser: User,
   ): Promise<Booking> {
     const booking = await this.bookingRepo.findById(id);
@@ -157,14 +158,51 @@ export class BookingService {
 
     const isAdmin = currentUser.role === UserRole.ADMIN;
     const isTrainerOfBooking = booking.trainer.id === currentUser.id;
+    const isTraineeOfBooking = booking.trainee.id === currentUser.id;
 
-    if (!isAdmin && !isTrainerOfBooking) {
-      throw new BadRequestException(
-        ERROR_MESSAGES.BOOKING.CANNOT_UPDATE_STATUS,
-      );
+    const nextStatus = dto.status;
+    const isCancelling = nextStatus === BookingStatus.CANCELLED;
+    const isRejecting = nextStatus === BookingStatus.REJECTED;
+
+    if (isRejecting) {
+      if (!isAdmin && !isTrainerOfBooking) {
+        throw new BadRequestException(
+          ERROR_MESSAGES.BOOKING.CANNOT_UPDATE_STATUS,
+        );
+      }
+      if (!dto.rejectionReason || dto.rejectionReason.trim().length < 3) {
+        throw new BadRequestException('Rejection reason is required');
+      }
     }
 
-    booking.status = status;
+    if (isCancelling) {
+      if (!isAdmin && !isTrainerOfBooking && !isTraineeOfBooking) {
+        throw new BadRequestException(
+          ERROR_MESSAGES.BOOKING.CANNOT_UPDATE_STATUS,
+        );
+      }
+      if (!dto.cancellationReason || dto.cancellationReason.trim().length < 3) {
+        throw new BadRequestException('Cancellation reason is required');
+      }
+    }
+
+    if (!isRejecting && !isCancelling) {
+      if (!isAdmin && !isTrainerOfBooking) {
+        throw new BadRequestException(
+          ERROR_MESSAGES.BOOKING.CANNOT_UPDATE_STATUS,
+        );
+      }
+    }
+
+    booking.status = nextStatus;
+    booking.statusChangedAt = new Date();
+    if (isCancelling) {
+      booking.cancelledBy = currentUser;
+      booking.cancellationReason = (dto.cancellationReason ?? '').trim();
+    }
+    if (isRejecting) {
+      booking.rejectionReason = (dto.rejectionReason ?? '').trim();
+    }
     await this.bookingRepo.save(booking);
 
     return booking;
