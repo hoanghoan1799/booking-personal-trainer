@@ -31,5 +31,6 @@ import { ExerciseModule } from '../exercise/exercise.module';
       useClass: MikroOrmTemplatesRepository,
     },
   ],
+  exports: [TemplatesRepositoryToken, TemplatesService],
 })
 export class TemplatesModule {}

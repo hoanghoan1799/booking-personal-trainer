@@ -21,6 +21,7 @@ describe('TemplatesService', () => {
     createTemplate: jest.Mock;
     findTemplateById: jest.Mock;
     findTemplatesAndCount: jest.Mock;
+    forkTemplate: jest.Mock;
     updateTemplate: jest.Mock;
     softDeleteTemplate: jest.Mock;
     createTemplateItem: jest.Mock;
@@ -34,6 +35,7 @@ describe('TemplatesService', () => {
       createTemplate: jest.fn(),
       findTemplateById: jest.fn(),
       findTemplatesAndCount: jest.fn(),
+      forkTemplate: jest.fn(),
       updateTemplate: jest.fn(),
       softDeleteTemplate: jest.fn(),
       createTemplateItem: jest.fn(),
@@ -65,7 +67,7 @@ describe('TemplatesService', () => {
       );
 
       expect(templatesRepository.findTemplatesAndCount).toHaveBeenCalledWith(
-        expect.objectContaining({ createdById: 'trainer-id' }),
+        expect.objectContaining({ visibleForTrainerId: 'trainer-id' }),
         expect.any(Object),
       );
     });
@@ -157,6 +159,51 @@ describe('TemplatesService', () => {
       expect(actual.createdTemplates).toBe(1);
       expect(actual.createdItems).toBe(1);
       expect(actual.createdTemplateIds).toEqual(['t1']);
+    });
+  });
+
+  describe('fork', () => {
+    it('should fork SYSTEM template into TRAINER template', async () => {
+      const inputTemplateId = 'system-template-id';
+      templatesRepository.findTemplateById.mockResolvedValue({
+        id: inputTemplateId,
+        name: 'Leg day',
+        description: '',
+        createdBy: { id: 'admin-id' },
+        templateType: TemplateType.SYSTEM,
+        parentTemplate: null,
+        isDeleted: false,
+        deletedAt: null,
+        createdAt: new Date('2026-01-01T00:00:00.000Z'),
+        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+        items: createItemsCollection([]),
+      });
+      templatesRepository.forkTemplate.mockResolvedValue({
+        id: 'forked-id',
+        name: 'Leg day (Copy)',
+        description: '',
+        createdBy: { id: 'trainer-id' },
+        templateType: TemplateType.TRAINER,
+        parentTemplate: { id: inputTemplateId },
+        isDeleted: false,
+        deletedAt: null,
+        createdAt: new Date('2026-01-01T00:00:00.000Z'),
+        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+        items: createItemsCollection([]),
+      });
+
+      const actual = await service.fork(inputTemplateId, {
+        id: 'trainer-id',
+        role: UserRole.TRAINER,
+      });
+
+      expect(templatesRepository.forkTemplate).toHaveBeenCalledWith({
+        sourceTemplateId: inputTemplateId,
+        createdById: 'trainer-id',
+      });
+      expect(actual.id).toBe('forked-id');
+      expect(actual.templateType).toBe(TemplateType.TRAINER);
+      expect(actual.parentTemplateId).toBe(inputTemplateId);
     });
   });
 });

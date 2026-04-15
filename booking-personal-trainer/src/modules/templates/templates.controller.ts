@@ -160,6 +160,19 @@ export class TemplatesController {
   }
 
   @Roles(UserRole.ADMIN, UserRole.TRAINER)
+  @Post(':templateId/fork')
+  @Serialize(ExerciseTemplateResponseDto)
+  @ApiOperation({ summary: 'Fork template into a trainer template' })
+  @ApiParam({ name: 'templateId', type: String })
+  async fork(
+    @Param('templateId') templateId: string,
+    @CurrentUser() currentUser: JwtAuthPayload,
+  ): Promise<BaseResponseDto<ExerciseTemplateResponseDto>> {
+    const template = await this.templatesService.fork(templateId, currentUser);
+    return BaseResponseDto.ok(template);
+  }
+
+  @Roles(UserRole.ADMIN, UserRole.TRAINER)
   @Patch(':templateId')
   @Serialize(ExerciseTemplateResponseDto)
   @ApiOperation({ summary: 'Update template' })

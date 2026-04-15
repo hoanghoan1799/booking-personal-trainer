@@ -9,6 +9,7 @@ export interface TemplateFindManyFilter {
   createdById?: string;
   templateType?: TemplateType;
   isDeleted?: boolean;
+  visibleForTrainerId?: string;
 }
 
 export interface FindManyTemplateOptions {
@@ -61,6 +62,10 @@ export interface TemplatesRepository {
     filter: TemplateFindManyFilter,
     options: FindManyTemplateOptions,
   ): Promise<[ExerciseTemplate[], number]>;
+  forkTemplate(params: {
+    sourceTemplateId: string;
+    createdById: string;
+  }): Promise<ExerciseTemplate>;
   updateTemplate(
     id: string,
     data: UpdateTemplateData,

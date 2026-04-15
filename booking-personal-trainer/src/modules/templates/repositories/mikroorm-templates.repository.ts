@@ -8,6 +8,7 @@ import { ExerciseTemplate } from '../entities/exercise-template.entity';
 import { ExerciseTemplateItem } from '../entities/exercise-template-item.entity';
 import { User } from '../../user/entities/user.entity';
 import { Exercise } from '../../exercise/entities/exercise.entity';
+import { TemplateType } from '../enums/template-type.enum';
 
 // Repositories
 import {
@@ -66,9 +67,25 @@ export class MikroOrmTemplatesRepository implements TemplatesRepository {
     filter: TemplateFindManyFilter,
     options: FindManyTemplateOptions,
   ): Promise<[ExerciseTemplate[], number]> {
-    const where: FilterQuery<ExerciseTemplate> = {
-      isDeleted: filter.isDeleted ?? false,
-    };
+    const where: FilterQuery<ExerciseTemplate> =
+      filter.visibleForTrainerId != null
+        ? {
+            isDeleted: filter.isDeleted ?? false,
+            $or: [
+              {
+                templateType: {
+                  $in: [TemplateType.SYSTEM, TemplateType.PUBLIC],
+                },
+              },
+              {
+                templateType: TemplateType.TRAINER,
+                createdBy: filter.visibleForTrainerId,
+              },
+            ],
+          }
+        : {
+            isDeleted: filter.isDeleted ?? false,
+          };
     if (filter.createdById != null) {
       where.createdBy = filter.createdById;
     }
@@ -80,6 +97,63 @@ export class MikroOrmTemplatesRepository implements TemplatesRepository {
       offset: options.offset,
       orderBy: options.orderBy,
       populate: ['createdBy', 'items', 'items.exercise', 'parentTemplate'],
+    });
+  }
+
+  async forkTemplate(params: {
+    sourceTemplateId: string;
+    createdById: string;
+  }): Promise<ExerciseTemplate> {
+    return this.em.transactional(async (em) => {
+      const source = await em.findOne(
+        ExerciseTemplate,
+        { id: params.sourceTemplateId, isDeleted: false },
+        {
+          populate: ['items', 'items.exercise', 'createdBy', 'parentTemplate'],
+        },
+      );
+      if (!source) {
+        throw new Error('Template not found');
+      }
+      const createdBy = em.getReference(User, params.createdById);
+      const forked = em.create(ExerciseTemplate, {
+        name: `${source.name} (Copy)`,
+        description: source.description ?? '',
+        createdBy,
+        templateType: TemplateType.TRAINER,
+        parentTemplate: em.getReference(ExerciseTemplate, source.id),
+        isDeleted: false,
+        deletedAt: null,
+      });
+      await em.persist(forked).flush();
+      const items = source.items
+        .getItems()
+        .slice()
+        .sort((a, b) => a.order - b.order);
+      items.forEach((item) => {
+        const forkedItem = em.create(ExerciseTemplateItem, {
+          template: forked,
+          exercise: em.getReference(Exercise, item.exercise.id),
+          order: item.order,
+          sets: item.sets,
+          reps: item.reps,
+          restSeconds: item.restSeconds,
+          notes: item.notes,
+        });
+        forked.items.add(forkedItem);
+      });
+      await em.persist(forked).flush();
+      const reloaded = await em.findOne(
+        ExerciseTemplate,
+        { id: forked.id },
+        {
+          populate: ['createdBy', 'items', 'items.exercise', 'parentTemplate'],
+        },
+      );
+      if (!reloaded) {
+        throw new Error('Template not found');
+      }
+      return reloaded;
     });
   }
 

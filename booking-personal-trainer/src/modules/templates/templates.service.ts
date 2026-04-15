@@ -63,7 +63,7 @@ export class TemplatesService {
       filter.createdById = query.createdById;
     }
     if (currentUser.role === UserRole.TRAINER) {
-      filter.createdById = currentUser.id;
+      filter.visibleForTrainerId = currentUser.id;
     }
     const [templates, totalItems] =
       await this.templatesRepository.findTemplatesAndCount(filter, {
@@ -109,6 +109,34 @@ export class TemplatesService {
       throw new NotFoundException('Template not found');
     }
     return this.mapTemplateToResponseDto(reloaded);
+  }
+
+  async fork(
+    templateId: string,
+    currentUser: { id: string; role: UserRole },
+  ): Promise<ExerciseTemplateResponseDto> {
+    if (
+      currentUser.role !== UserRole.ADMIN &&
+      currentUser.role !== UserRole.TRAINER
+    ) {
+      throw new BadRequestException('Forbidden');
+    }
+    const existing =
+      await this.templatesRepository.findTemplateById(templateId);
+    if (!existing || existing.isDeleted) {
+      throw new NotFoundException('Template not found');
+    }
+    if (
+      existing.templateType === TemplateType.TRAINER &&
+      existing.createdBy.id === currentUser.id
+    ) {
+      throw new BadRequestException('Cannot fork your own trainer template');
+    }
+    const forked = await this.templatesRepository.forkTemplate({
+      sourceTemplateId: templateId,
+      createdById: currentUser.id,
+    });
+    return this.mapTemplateToResponseDto(forked);
   }
 
   async update(
