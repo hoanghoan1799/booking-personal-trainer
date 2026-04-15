@@ -7,10 +7,12 @@ import {
   createTemplateItem,
   deleteTemplate,
   deleteTemplateItem,
+  forkTemplate,
   getTemplates,
   updateTemplate,
   updateTemplateItem,
 } from "@/services/templates/templates.service";
+import { useProfile } from "./useProfile";
 
 type CreateTemplateParams = {
   name: string;
@@ -56,10 +58,17 @@ function getNowIso(): string {
 }
 
 export function useTemplates() {
+  const { user: currentUser, isLoading: isProfileLoading } = useProfile();
   const [templates, setTemplates] = useState<ExerciseTemplate[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   const executeReload = useCallback(async (): Promise<void> => {
+    const role = currentUser?.role as string | undefined;
+    const canFetch = role === "ADMIN" || role === "TRAINER";
+    if (!canFetch) {
+      setTemplates([]);
+      return;
+    }
     setIsLoading(true);
     try {
       const res = await getTemplates({ limit: 200 });
@@ -67,11 +76,12 @@ export function useTemplates() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [currentUser?.role]);
 
   useEffect(() => {
+    if (isProfileLoading) return;
     void executeReload();
-  }, [executeReload]);
+  }, [executeReload, isProfileLoading]);
 
   const templatesById = useMemo(() => {
     return new Map(templates.map((t) => [t.id, t]));
@@ -125,6 +135,20 @@ export function useTemplates() {
       }
     },
     []
+  );
+
+  const executeForkTemplate = useCallback(
+    async (templateId: string): Promise<ExerciseTemplate> => {
+      setIsLoading(true);
+      try {
+        const forked = await forkTemplate(templateId);
+        setTemplates((prev) => [forked, ...prev]);
+        return forked;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [],
   );
 
   const executeAddTemplateItem = useCallback(
@@ -202,11 +226,12 @@ export function useTemplates() {
   return {
     templates,
     templatesById,
-    isLoading,
+    isLoading: isProfileLoading || isLoading,
     executeReload,
     executeCreateTemplate,
     executeUpdateTemplate,
     executeDeleteTemplate,
+    executeForkTemplate,
     executeAddTemplateItem,
     executeRemoveTemplateItem,
     executeUpdateTemplateItem,

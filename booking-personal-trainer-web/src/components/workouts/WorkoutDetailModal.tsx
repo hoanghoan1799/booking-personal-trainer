@@ -84,7 +84,16 @@ export default function WorkoutDetailModal({
 }: WorkoutDetailModalProps) {
   const [localStatus, setLocalStatus] = useState<WorkoutStatus>("PENDING");
   const [localExercises, setLocalExercises] = useState<
-    { id: string; order: number; isCompleted: boolean; exercise: WorkoutExercise["exercise"] }[]
+    {
+      id: string;
+      order: number;
+      sets?: number | null;
+      reps?: number | null;
+      restSeconds?: number | null;
+      notes?: string;
+      isCompleted: boolean;
+      exercise: WorkoutExercise["exercise"];
+    }[]
   >([]);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -104,6 +113,10 @@ export default function WorkoutDetailModal({
         .map((we) => ({
           id: we.id,
           order: we.order,
+          sets: we.sets ?? null,
+          reps: we.reps ?? null,
+          restSeconds: we.restSeconds ?? null,
+          notes: we.notes ?? "",
           isCompleted: we.isCompleted,
           exercise: we.exercise,
         })),
@@ -298,7 +311,16 @@ export default function WorkoutDetailModal({
                       <span className="font-medium text-gray-500 dark:text-gray-500">
                         {we.order}.
                       </span>
-                      <span>{we.exercise?.name ?? "—"}</span>
+                      <span className="min-w-0 flex-1 truncate">{we.exercise?.name ?? "—"}</span>
+                      <span className="text-xs text-gray-400 dark:text-gray-500">
+                        {[
+                          we.sets != null ? `${we.sets}x` : null,
+                          we.reps != null ? `${we.reps} reps` : null,
+                          we.restSeconds != null ? `${we.restSeconds}s` : null,
+                        ]
+                          .filter(Boolean)
+                          .join(" • ") || "—"}
+                      </span>
                       {we.isCompleted && (
                         <span className="ml-auto text-success-600">✓</span>
                       )}

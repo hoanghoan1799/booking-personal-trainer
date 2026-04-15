@@ -153,6 +153,14 @@ export async function updateTemplate(
   return normalizeTemplate(res.data);
 }
 
+export async function forkTemplate(templateId: string): Promise<ExerciseTemplate> {
+  const res = await apiFetch<ApiResponse<ExerciseTemplate>>(
+    `${API_ENDPOINTS.TEMPLATES}/${templateId}/fork`,
+    { method: "POST" },
+  );
+  return normalizeTemplate(res.data);
+}
+
 export async function deleteTemplate(templateId: string): Promise<void> {
   await apiFetch<ApiResponse<{ message: string }>>(`${API_ENDPOINTS.TEMPLATES}/${templateId}`, {
     method: "DELETE",

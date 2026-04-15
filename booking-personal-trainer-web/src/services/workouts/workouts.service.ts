@@ -6,12 +6,18 @@ import { API_ENDPOINTS } from "@/lib/route.constants";
 export interface WorkoutExercise {
   id: string;
   order: number;
+  sets?: number | null;
+  reps?: number | null;
+  restSeconds?: number | null;
+  notes?: string;
   isCompleted: boolean;
   exercise: Exercise;
 }
 
 export interface Workout {
   id: string;
+  bookingId?: string | null;
+  templateId?: string | null;
   startTime: string;
   endTime: string;
   status: string;
@@ -47,6 +53,10 @@ export interface CreateWorkoutInput {
   exerciseIds: string[];
   startTime: string;
   endTime: string;
+}
+
+export interface CreateWorkoutForBookingFromTemplateInput {
+  templateId: string;
 }
 
 interface ApiResponse<T> {
@@ -100,6 +110,20 @@ export async function createWorkout(
 ): Promise<Workout> {
   const res = await apiFetch<{ data: Workout }>(
     API_ENDPOINTS.WORKOUTS,
+    {
+      method: "POST",
+      body: JSON.stringify(input),
+    },
+  );
+  return res.data;
+}
+
+export async function createWorkoutForBookingFromTemplate(
+  bookingId: string,
+  input: CreateWorkoutForBookingFromTemplateInput,
+): Promise<Workout> {
+  const res = await apiFetch<{ data: Workout }>(
+    `${API_ENDPOINTS.BOOKINGS}/${bookingId}/workouts`,
     {
       method: "POST",
       body: JSON.stringify(input),

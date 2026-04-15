@@ -81,6 +81,7 @@ export default function TemplatesContent() {
     executeCreateTemplate,
     executeUpdateTemplate,
     executeDeleteTemplate,
+    executeForkTemplate,
     executeAddTemplateItem,
     executeRemoveTemplateItem,
     executeUpdateTemplateItem,
@@ -105,6 +106,13 @@ export default function TemplatesContent() {
 
   const { user: currentUser } = useProfile();
   const currentUserId = currentUser?.id ?? "local-user";
+  const canEditTemplate = (t: ExerciseTemplate): boolean => {
+    if (t.templateType !== "TRAINER") return false;
+    return t.createdBy === currentUserId;
+  };
+  const canForkTemplate = (t: ExerciseTemplate): boolean => {
+    return t.templateType === "SYSTEM" || t.templateType === "PUBLIC";
+  };
 
   const { exercises } = useExercises();
   const exerciseNameById = useMemo(() => {
@@ -161,6 +169,7 @@ export default function TemplatesContent() {
   };
 
   const handleOpenEdit = (template: ExerciseTemplate) => {
+    if (!canEditTemplate(template)) return;
     setSelectedTemplate(template);
     setEditForm({
       name: template.name,
@@ -339,8 +348,15 @@ export default function TemplatesContent() {
   };
 
   const handleOpenDelete = (template: ExerciseTemplate) => {
+    if (!canEditTemplate(template)) return;
     setSelectedTemplate(template);
     setIsDeleteOpen(true);
+  };
+
+  const handleForkTemplate = async (template: ExerciseTemplate) => {
+    if (!canForkTemplate(template)) return;
+    const forked = await executeForkTemplate(template.id);
+    handleOpenEdit(forked);
   };
 
   const handleCloseDelete = () => {
@@ -502,29 +518,46 @@ export default function TemplatesContent() {
                     </TableCell>
                     <TableCell className="px-4 py-4 align-top">
                       <div className="flex items-center justify-end gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleOpenEdit(t);
-                          }}
-                          aria-label={`Edit template ${t.name}`}
-                        >
-                          Edit
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleOpenDelete(t);
-                          }}
-                          aria-label={`Delete template ${t.name}`}
-                          className="ring-error-500/30 text-error-600 hover:bg-error-50 dark:hover:bg-error-500/10"
-                        >
-                          Delete
-                        </Button>
+                        {canForkTemplate(t) ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              void handleForkTemplate(t);
+                            }}
+                            aria-label={`Fork template ${t.name}`}
+                          >
+                            Fork
+                          </Button>
+                        ) : null}
+                        {canEditTemplate(t) ? (
+                          <>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenEdit(t);
+                              }}
+                              aria-label={`Edit template ${t.name}`}
+                            >
+                              Edit
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenDelete(t);
+                              }}
+                              aria-label={`Delete template ${t.name}`}
+                              className="ring-error-500/30 text-error-600 hover:bg-error-50 dark:hover:bg-error-500/10"
+                            >
+                              Delete
+                            </Button>
+                          </>
+                        ) : null}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -542,7 +575,7 @@ export default function TemplatesContent() {
               Create Template
             </h4>
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              Templates are stored locally in your browser for now.
+              Create a template and manage its items.
             </p>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
@@ -1091,15 +1124,30 @@ export default function TemplatesContent() {
               Close
             </Button>
             {previewTemplate ? (
-              <Button
-                onClick={() => {
-                  handleClosePreview();
-                  handleOpenEdit(previewTemplate);
-                }}
-                aria-label="Edit from preview"
-              >
-                Edit
-              </Button>
+              <div className="flex items-center gap-2">
+                {canForkTemplate(previewTemplate) ? (
+                  <Button
+                    onClick={() => {
+                      handleClosePreview();
+                      void handleForkTemplate(previewTemplate);
+                    }}
+                    aria-label="Fork from preview"
+                  >
+                    Fork
+                  </Button>
+                ) : null}
+                {canEditTemplate(previewTemplate) ? (
+                  <Button
+                    onClick={() => {
+                      handleClosePreview();
+                      handleOpenEdit(previewTemplate);
+                    }}
+                    aria-label="Edit from preview"
+                  >
+                    Edit
+                  </Button>
+                ) : null}
+              </div>
             ) : null}
           </div>
         </div>
@@ -1112,7 +1160,7 @@ export default function TemplatesContent() {
               Delete template
             </h4>
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              This will remove the template and its attachments from local storage.
+              This will delete the template.
             </p>
           </div>
           <div className="rounded-lg border border-error-500/30 bg-error-50 p-4 text-sm text-error-700 dark:border-error-500/20 dark:bg-error-500/10 dark:text-error-300">

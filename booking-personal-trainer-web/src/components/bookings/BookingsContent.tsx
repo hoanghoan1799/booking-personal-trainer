@@ -7,6 +7,7 @@ import { useProfile } from "@/hooks/useProfile";
 import Badge from "@/components/ui/badge/Badge";
 import Button from "@/components/ui/button/Button";
 import CreateBookingModal from "@/components/users/CreateBookingModal";
+import BookingDetailModal from "@/components/bookings/BookingDetailModal";
 
 function getDisplayName(user: { firstName?: string; lastName?: string; userName: string }) {
   const parts = [user.firstName, user.lastName].filter(Boolean);
@@ -72,6 +73,7 @@ export default function BookingsContent() {
   const { bookings, isLoading, error, refetch } = useBookings();
   const { user, isLoading: isProfileLoading } = useProfile();
   const [isCreateBookingOpen, setIsCreateBookingOpen] = useState<boolean>(false);
+  const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const isTrainee = user?.role === "TRAINEE";
 
   if (isProfileLoading || isLoading) {
@@ -156,7 +158,19 @@ export default function BookingsContent() {
       <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3" role="list">
         {bookings.map((b) => (
           <li key={b.id}>
-            <BookingCard booking={b} />
+            <button
+              type="button"
+              onClick={() => setSelectedBooking(b)}
+              onKeyDown={(e) => {
+                if (e.key !== "Enter" && e.key !== " ") return;
+                e.preventDefault();
+                setSelectedBooking(b);
+              }}
+              className="w-full text-left"
+              aria-label="Open booking details"
+            >
+              <BookingCard booking={b} />
+            </button>
           </li>
         ))}
       </ul>
@@ -166,6 +180,15 @@ export default function BookingsContent() {
         trainer={null}
         onSuccess={() => {
           setIsCreateBookingOpen(false);
+          refetch();
+        }}
+      />
+      <BookingDetailModal
+        isOpen={selectedBooking !== null}
+        booking={selectedBooking}
+        onClose={() => setSelectedBooking(null)}
+        onUpdated={() => {
+          setSelectedBooking(null);
           refetch();
         }}
       />

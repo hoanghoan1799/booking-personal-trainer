@@ -47,6 +47,8 @@ const Calendar: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
   const calendarRef = useRef<FullCalendar>(null);
   const { user: currentUser, isLoading: isProfileLoading } = useProfile();
   const toast = useToast();
@@ -109,6 +111,17 @@ const Calendar: React.FC = () => {
     setSelectedBooking(null);
   };
 
+  const handleOpenRejectModal = () => {
+    if (!selectedBooking) return;
+    setRejectReason("");
+    setIsRejectModalOpen(true);
+  };
+
+  const handleCloseRejectModal = () => {
+    setIsRejectModalOpen(false);
+    setRejectReason("");
+  };
+
   const canUpdateStatus = selectedBooking && currentUser && (
     currentUser.role === "ADMIN" ||
     (currentUser.role === "TRAINER" && selectedBooking.trainer?.id === currentUser.id)
@@ -118,8 +131,13 @@ const Calendar: React.FC = () => {
     if (!selectedBooking || isUpdating) return;
     setIsUpdating(true);
     try {
-      await updateBookingStatus(selectedBooking.id, status);
+      await updateBookingStatus(selectedBooking.id, {
+        status,
+        rejectionReason:
+          status === "REJECTED" ? rejectReason.trim() : undefined,
+      });
       toast.success(status === "CONFIRMED" ? "Booking approved" : "Booking rejected");
+      handleCloseRejectModal();
       handleCloseModal();
       fetchBookings();
     } catch (err) {
@@ -248,7 +266,7 @@ const Calendar: React.FC = () => {
                   </button>
                   <button
                     type="button"
-                    onClick={() => handleUpdateStatus("REJECTED")}
+                    onClick={handleOpenRejectModal}
                     disabled={isUpdating}
                     className="rounded-lg bg-error-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-error-700 disabled:opacity-50"
                     aria-label="Reject booking"
@@ -267,6 +285,53 @@ const Calendar: React.FC = () => {
             </div>
           </div>
         )}
+      </Modal>
+
+      <Modal
+        isOpen={isRejectModalOpen}
+        onClose={handleCloseRejectModal}
+        className="max-w-md p-6"
+      >
+        <div className="space-y-4">
+          <h5 className="text-lg font-semibold text-gray-800 dark:text-white/90">
+            Rejection reason
+          </h5>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Please provide a reason before rejecting this booking.
+          </p>
+          <label>
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              Reason *
+            </span>
+            <textarea
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              aria-label="Rejection reason"
+              placeholder="Write a short reason..."
+              className="mt-1 min-h-24 w-full resize-y rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none ring-brand-500 focus:ring-2 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
+            />
+          </label>
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={handleCloseRejectModal}
+              disabled={isUpdating}
+              className="rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-white/[0.03]"
+              aria-label="Cancel rejection"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => handleUpdateStatus("REJECTED")}
+              disabled={isUpdating || rejectReason.trim().length < 3}
+              className="rounded-lg bg-error-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-error-700 disabled:opacity-50"
+              aria-label="Confirm rejection"
+            >
+              {isUpdating ? "Rejecting…" : "Reject booking"}
+            </button>
+          </div>
+        </div>
       </Modal>
     </div>
   );

@@ -13,6 +13,10 @@ export interface Booking {
   trainer: User;
   trainee: User;
   status: string;
+  statusChangedAt?: string | null;
+  cancelledById?: string | null;
+  cancellationReason?: string | null;
+  rejectionReason?: string | null;
   startTime: string;
   endTime: string;
   createdAt?: string;
@@ -93,13 +97,13 @@ export type BookingStatus = "PENDING" | "CONFIRMED" | "REJECTED" | "CANCELLED";
 
 export async function updateBookingStatus(
   bookingId: string,
-  status: BookingStatus,
+  input: { status: BookingStatus; cancellationReason?: string; rejectionReason?: string },
 ): Promise<Booking> {
   const res = await apiFetch<ApiResponse<Booking>>(
     `${API_ENDPOINTS.BOOKINGS}/${bookingId}/status`,
     {
       method: "PATCH",
-      body: JSON.stringify({ status }),
+      body: JSON.stringify(input),
     },
   );
   return res.data;
