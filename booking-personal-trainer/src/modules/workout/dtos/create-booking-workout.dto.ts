@@ -1,5 +1,12 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsUUID } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import {
+  IsInt,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Min,
+} from 'class-validator';
 
 import { API_FORMATS } from '../../../common/constants/message.constant';
 
@@ -12,4 +19,22 @@ export class CreateBookingWorkoutDto {
   @IsUUID()
   @IsNotEmpty()
   templateId!: string;
+
+  @ApiPropertyOptional({
+    description:
+      'Workout price in cents (quote). If omitted, server uses DEFAULT_WORKOUT_PRICE_CENTS.',
+    minimum: 1,
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  amountCents?: number;
+
+  @ApiPropertyOptional({
+    description: 'Currency for the workout quote. Defaults to USD.',
+    example: 'USD',
+  })
+  @IsOptional()
+  @IsString()
+  currency?: string;
 }

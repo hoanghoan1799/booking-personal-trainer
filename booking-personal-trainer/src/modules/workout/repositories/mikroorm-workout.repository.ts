@@ -103,6 +103,13 @@ export class MikroOrmWorkoutRepository implements WorkoutRepository {
     });
   }
 
+  async findFirstByBookingId(bookingId: string): Promise<Workout | null> {
+    return this.repo.findOne(
+      { booking: bookingId, isDeleted: false },
+      { populate: ['booking', 'trainer', 'trainee'] },
+    );
+  }
+
   async findByIdWithExercises(id: string): Promise<Workout | null> {
     return this.repo.findOne(
       { id, isDeleted: false },

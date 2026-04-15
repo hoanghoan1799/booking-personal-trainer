@@ -225,8 +225,12 @@ export class WorkoutController {
     status: HttpStatus.NOT_FOUND,
     description: ERROR_MESSAGES.WORKOUT.NOT_FOUND,
   })
-  findOne(@Param('id') id: string) {
-    return this.workoutService.findOne(id);
+  async findOne(
+    @Param('id') id: string,
+    @Req() req: CurrentRequestUser,
+  ): Promise<BaseResponseDto<WorkoutResponseDto>> {
+    const workout = await this.workoutService.getOneForUser(id, req.user);
+    return BaseResponseDto.ok(workout);
   }
 
   @Roles(UserRole.ADMIN, UserRole.TRAINER)

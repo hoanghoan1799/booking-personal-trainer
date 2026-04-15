@@ -19,12 +19,14 @@ import { MikroOrmBookingRepository } from './repositories/mikroorm-booking.repos
 // Modules
 import { UserModule } from '../user/user.module';
 import { TrainerSchedulingModule } from '../trainer-scheduling/trainer-scheduling.module';
+import { PaymentsModule } from '../payments/payments.module';
 
 @Module({
   imports: [
     MikroOrmModule.forFeature([Booking]),
     forwardRef(() => UserModule),
     TrainerSchedulingModule,
+    forwardRef(() => PaymentsModule),
   ],
   controllers: [BookingController, BookingDiscoveryController],
   providers: [

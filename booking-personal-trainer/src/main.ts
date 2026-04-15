@@ -19,7 +19,7 @@ import { GLOBAL_PIPE_CONFIG } from './configs/pipe.config';
 
 async function bootstrap() {
   // Create app
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { rawBody: true });
 
   // Run migrations
   const orm = app.get(MikroORM);

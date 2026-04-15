@@ -23,6 +23,8 @@ import { UserModule } from '../user/user.module';
 import { ExerciseModule } from '../exercise/exercise.module';
 import { BookingModule } from '../booking/booking.module';
 import { TemplatesModule } from '../templates/templates.module';
+import { PaymentsModule } from '../payments/payments.module';
+import { BillingModule } from '../billing/billing.module';
 
 @Module({
   imports: [
@@ -30,6 +32,8 @@ import { TemplatesModule } from '../templates/templates.module';
     UserModule,
     BookingModule,
     TemplatesModule,
+    PaymentsModule,
+    BillingModule,
     MikroOrmModule.forFeature([Workout, WorkoutExercise, User, Exercise]),
   ],
   controllers: [WorkoutController, BookingWorkoutController],

@@ -46,6 +46,7 @@ export interface WorkoutRepository {
   createFromBookingTemplate(
     data: CreateWorkoutFromBookingTemplateData,
   ): Promise<Workout>;
+  findFirstByBookingId(bookingId: string): Promise<Workout | null>;
   findByIdWithExercises(id: string): Promise<Workout | null>;
   findAndCount(
     filter: WorkoutFindManyFilter,

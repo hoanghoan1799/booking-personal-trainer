@@ -1,10 +1,14 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   ArrayNotEmpty,
   IsArray,
   IsDateString,
+  IsInt,
   IsNotEmpty,
+  IsOptional,
+  IsString,
   IsUUID,
+  Min,
 } from 'class-validator';
 import {
   API_FORMATS,
@@ -31,6 +35,24 @@ export class CreateWorkoutDto {
   @ArrayNotEmpty()
   @IsUUID('4', { each: true })
   exerciseIds!: string[];
+
+  @ApiPropertyOptional({
+    description:
+      'Workout price in cents (quote). If omitted, server uses DEFAULT_WORKOUT_PRICE_CENTS.',
+    minimum: 1,
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  amountCents?: number;
+
+  @ApiPropertyOptional({
+    description: 'Currency for the workout quote. Defaults to USD.',
+    example: 'USD',
+  })
+  @IsOptional()
+  @IsString()
+  currency?: string;
 
   @ApiProperty({
     description: FIELD_DESCRIPTIONS.WORKOUT.START_TIME,

@@ -40,6 +40,9 @@ import {
   type TemplatesRepository,
 } from '../templates/repositories/templates.repository.interface';
 import { TemplateType } from '../templates/enums/template-type.enum';
+import { WorkoutPaymentPolicyService } from '../payments/workout-payment-policy.service';
+import { WorkoutStatus } from '../../common/enums/workout/workout.enum';
+import { BillingService } from '../billing/billing.service';
 
 @Injectable()
 export class WorkoutService {
@@ -52,6 +55,8 @@ export class WorkoutService {
     private readonly bookingRepo: BookingRepository,
     @Inject(TemplatesRepositoryToken)
     private readonly templatesRepo: TemplatesRepository,
+    private readonly workoutPaymentPolicyService: WorkoutPaymentPolicyService,
+    private readonly billingService: BillingService,
   ) {}
 
   async create(
@@ -72,6 +77,12 @@ export class WorkoutService {
       startTime: new Date(dto.startTime),
       endTime: new Date(dto.endTime),
       exerciseIds: dto.exerciseIds,
+    });
+    await this.createWorkoutBillingQuote({
+      workoutId: workout.id,
+      payerUserId: trainee.id,
+      amountCents: dto.amountCents,
+      currency: dto.currency,
     });
     return this.mapWorkoutToResponseDto(workout);
   }
@@ -118,6 +129,12 @@ export class WorkoutService {
       booking,
       template,
     });
+    await this.createWorkoutBillingQuote({
+      workoutId: workout.id,
+      payerUserId: booking.trainee.id,
+      amountCents: dto.amountCents,
+      currency: dto.currency,
+    });
     return this.mapWorkoutToResponseDto(workout);
   }
 
@@ -145,6 +162,65 @@ export class WorkoutService {
         exercise: we.exercise,
       })),
     };
+  }
+
+  private async mapWorkoutToResponseDtoForUser(
+    workout: Workout,
+    currentUser: User,
+  ): Promise<WorkoutResponseDto> {
+    const base = this.mapWorkoutToResponseDto(workout);
+    const isWorkoutTrainee = workout.trainee.id === currentUser.id;
+    if (!isWorkoutTrainee) {
+      return base;
+    }
+    const isPaid = await this.workoutPaymentPolicyService.isWorkoutPaid({
+      workoutId: workout.id,
+    });
+    if (isPaid) {
+      return base;
+    }
+    return {
+      ...base,
+      exercises: [],
+      totalExercises: undefined,
+      completedExercises: undefined,
+      templateId: null,
+    };
+  }
+
+  private resolveWorkoutPriceCents(input: {
+    readonly amountCents?: number;
+  }): number {
+    if (input.amountCents != null) {
+      return input.amountCents;
+    }
+    const envValue = process.env.DEFAULT_WORKOUT_PRICE_CENTS;
+    if (!envValue) {
+      throw new BadRequestException('amountCents is required');
+    }
+    const parsed = Number(envValue);
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      throw new BadRequestException('DEFAULT_WORKOUT_PRICE_CENTS is invalid');
+    }
+    return parsed;
+  }
+
+  private async createWorkoutBillingQuote(input: {
+    readonly workoutId: string;
+    readonly payerUserId: string;
+    readonly amountCents?: number;
+    readonly currency?: string;
+  }): Promise<void> {
+    const amountCents = this.resolveWorkoutPriceCents({
+      amountCents: input.amountCents,
+    });
+    const draft = await this.billingService.createWorkoutCharge({
+      workoutId: input.workoutId,
+      payerUserId: input.payerUserId,
+      amountCents,
+      currency: input.currency,
+    });
+    await this.billingService.activateCharge(draft.id);
   }
 
   async getAll(
@@ -184,8 +260,10 @@ export class WorkoutService {
       orderBy: { createdAt: 'desc' },
     });
 
-    const mappedData: WorkoutResponseDto[] = data.map((workout) =>
-      this.mapWorkoutToResponseDto(workout),
+    const mappedData: WorkoutResponseDto[] = await Promise.all(
+      data.map((workout) =>
+        this.mapWorkoutToResponseDtoForUser(workout, currentUser),
+      ),
     );
 
     return BaseResponseDto.okWithPagination(mappedData, {
@@ -195,8 +273,21 @@ export class WorkoutService {
     });
   }
 
-  findOne(id: string) {
-    return `This action returns a #${id} workout`;
+  async getOneForUser(
+    id: string,
+    currentUser: User,
+  ): Promise<WorkoutResponseDto> {
+    const workout = await this.workoutRepo.findByIdWithExercises(id);
+    if (!workout) {
+      throw new NotFoundException(ERROR_MESSAGES.WORKOUT.NOT_FOUND);
+    }
+    const isAdmin = currentUser.role === UserRole.ADMIN;
+    const isTrainer = workout.trainer.id === currentUser.id;
+    const isTrainee = workout.trainee.id === currentUser.id;
+    if (!isAdmin && !isTrainer && !isTrainee) {
+      throw new BadRequestException(ERROR_MESSAGES.AUTH.FORBIDDEN);
+    }
+    return this.mapWorkoutToResponseDtoForUser(workout, currentUser);
   }
 
   async updateDetail(
@@ -219,12 +310,21 @@ export class WorkoutService {
       );
     }
 
+    if (dto.status === WorkoutStatus.IN_PROGRESS) {
+      const isPaid = await this.workoutPaymentPolicyService.isWorkoutPaid({
+        workoutId: id,
+      });
+      if (!isPaid) {
+        throw new BadRequestException('Workout must be paid before starting');
+      }
+    }
+
     const updatedWorkout = await this.workoutRepo.updateStatusAndCompletions(
       id,
       dto.status,
       dto.exerciseCompletions,
     );
-    return this.mapWorkoutToResponseDto(updatedWorkout);
+    return this.mapWorkoutToResponseDtoForUser(updatedWorkout, currentUser);
   }
 
   async removeAll(): Promise<SuccessMessageResponse> {

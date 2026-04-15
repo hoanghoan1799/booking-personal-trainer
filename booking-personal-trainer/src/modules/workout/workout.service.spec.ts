@@ -11,6 +11,8 @@ import { WorkoutRepositoryToken } from './repositories/workout.repository.interf
 import { UserRepositoryToken } from '../user/repositories/user.repository.interface';
 import { BookingRepositoryToken } from '../booking/repositories/booking.repository.interface';
 import { TemplatesRepositoryToken } from '../templates/repositories/templates.repository.interface';
+import { WorkoutPaymentPolicyService } from '../payments/workout-payment-policy.service';
+import { BillingService } from '../billing/billing.service';
 
 const createItemsCollection = <T>(items: T[]): { getItems: () => T[] } => ({
   getItems: () => items,
@@ -30,6 +32,11 @@ describe('WorkoutService', () => {
   let bookingRepository: { findById: jest.Mock };
   let templatesRepository: { findTemplateById: jest.Mock };
   let userRepository: { findById: jest.Mock };
+  let workoutPaymentPolicyService: { isWorkoutPaid: jest.Mock };
+  let billingService: {
+    createWorkoutCharge: jest.Mock;
+    activateCharge: jest.Mock;
+  };
 
   beforeEach(async () => {
     workoutRepository = {
@@ -44,6 +51,11 @@ describe('WorkoutService', () => {
     bookingRepository = { findById: jest.fn() };
     templatesRepository = { findTemplateById: jest.fn() };
     userRepository = { findById: jest.fn() };
+    workoutPaymentPolicyService = { isWorkoutPaid: jest.fn() };
+    billingService = {
+      createWorkoutCharge: jest.fn().mockResolvedValue({ id: 'charge-id' }),
+      activateCharge: jest.fn().mockResolvedValue(undefined),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -52,6 +64,11 @@ describe('WorkoutService', () => {
         { provide: BookingRepositoryToken, useValue: bookingRepository },
         { provide: TemplatesRepositoryToken, useValue: templatesRepository },
         { provide: UserRepositoryToken, useValue: userRepository },
+        {
+          provide: WorkoutPaymentPolicyService,
+          useValue: workoutPaymentPolicyService,
+        },
+        { provide: BillingService, useValue: billingService },
       ],
     }).compile();
 
@@ -89,7 +106,7 @@ describe('WorkoutService', () => {
 
       const actual = await service.createForBookingFromTemplate(
         'booking-id',
-        { templateId: 'template-id' },
+        { templateId: 'template-id', amountCents: 2500, currency: 'USD' },
         { id: 'trainer-id', role: UserRole.TRAINER },
       );
 
@@ -100,6 +117,15 @@ describe('WorkoutService', () => {
       expect(actual.id).toBe('workout-id');
       expect(actual.bookingId).toBe('booking-id');
       expect(actual.templateId).toBe('template-id');
+      expect(billingService.createWorkoutCharge).toHaveBeenCalledWith(
+        expect.objectContaining({
+          workoutId: 'workout-id',
+          payerUserId: 'trainee-id',
+          amountCents: 2500,
+          currency: 'USD',
+        }),
+      );
+      expect(billingService.activateCharge).toHaveBeenCalledWith('charge-id');
     });
 
     it('should throw NotFoundException when booking missing', async () => {
@@ -114,18 +140,25 @@ describe('WorkoutService', () => {
       ).rejects.toBeInstanceOf(NotFoundException);
     });
 
-    it('should throw BadRequestException when booking not confirmed', async () => {
+    it('should throw BadRequestException when booking is PENDING', async () => {
       bookingRepository.findById.mockResolvedValue({
         id: 'booking-id',
         status: BookingStatus.PENDING,
         trainer: { id: 'trainer-id' },
         trainee: { id: 'trainee-id' },
       });
+      templatesRepository.findTemplateById.mockResolvedValue({
+        id: 'template-id',
+        templateType: TemplateType.SYSTEM,
+        isDeleted: false,
+        createdBy: { id: 'admin-id' },
+        items: createItemsCollection([]),
+      });
 
       await expect(
         service.createForBookingFromTemplate(
           'booking-id',
-          { templateId: 'template-id' },
+          { templateId: 'template-id', amountCents: 1000 },
           { id: 'trainer-id', role: UserRole.TRAINER },
         ),
       ).rejects.toBeInstanceOf(BadRequestException);
