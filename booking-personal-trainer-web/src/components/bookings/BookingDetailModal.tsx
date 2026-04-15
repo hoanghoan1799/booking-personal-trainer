@@ -75,6 +75,13 @@ export default function BookingDetailModal(props: {
     return isTrainer && booking.trainer?.id === user?.id;
   }, [booking, isAdmin, isTrainer, role, user?.id]);
 
+  const canApprove = useMemo(() => {
+    if (!booking || !role) return false;
+    if (booking.status !== "PENDING") return false;
+    if (isAdmin) return true;
+    return isTrainer && booking.trainer?.id === user?.id;
+  }, [booking, isAdmin, isTrainer, role, user?.id]);
+
   const canCreateWorkout = useMemo(() => {
     if (!booking) return false;
     if (!isTrainer && !isAdmin) return false;
@@ -116,6 +123,23 @@ export default function BookingDetailModal(props: {
       setReason("");
     } catch (err) {
       const msg = getErrorMessage(err, "Failed to update booking");
+      setError(msg);
+      toast.error(msg);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleApprove = async () => {
+    if (!booking) return;
+    setIsSubmitting(true);
+    setError(null);
+    try {
+      await updateBookingStatus(booking.id, { status: "CONFIRMED" });
+      toast.success("Booking approved");
+      props.onUpdated();
+    } catch (err) {
+      const msg = getErrorMessage(err, "Failed to approve booking");
       setError(msg);
       toast.error(msg);
     } finally {
@@ -205,10 +229,25 @@ export default function BookingDetailModal(props: {
             </div>
           ) : null}
 
-          {(canCancel || canReject) ? (
+          {(canApprove || canCancel || canReject) ? (
             <div className="rounded-xl border border-gray-200 p-4 dark:border-gray-800">
               <p className="text-sm font-semibold text-gray-800 dark:text-white/90">Actions</p>
+              {error && mode === "NONE" ? (
+                <p className="mt-2 text-sm text-error-600 dark:text-error-500" role="alert">
+                  {error}
+                </p>
+              ) : null}
               <div className="mt-3 flex flex-wrap items-center gap-2">
+                {canApprove ? (
+                  <Button
+                    onClick={handleApprove}
+                    disabled={isSubmitting}
+                    aria-label="Approve booking"
+                    className="bg-success-600 text-white hover:bg-success-700 disabled:bg-success-300"
+                  >
+                    {isSubmitting ? "Approving…" : "Approve booking"}
+                  </Button>
+                ) : null}
                 {canCancel ? (
                   <Button
                     variant="outline"

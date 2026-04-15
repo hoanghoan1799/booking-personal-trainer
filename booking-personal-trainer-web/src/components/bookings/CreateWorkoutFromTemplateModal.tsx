@@ -5,11 +5,12 @@ import type { Booking } from "@/services/bookings/bookings.service";
 import type { ExerciseTemplate, ExerciseTemplateItem } from "@/types/template.types";
 import { createWorkoutForBookingFromTemplate } from "@/services/workouts/workouts.service";
 import { createTemplate, createTemplateItem } from "@/services/templates/templates.service";
+import { fetchAllExercises } from "@/services/exercises/exercises.service";
+import { normalizeCurrencyCode, parseMajorUnitsToCents } from "@/lib/price-major-to-cents";
 import { getErrorMessage } from "@/lib/error.utils";
 import { useToast } from "@/context/ToastContext";
 import { Modal } from "@/components/ui/modal";
 import Button from "@/components/ui/button/Button";
-import { useExercises } from "@/hooks/useExercises";
 import ExercisePickerModal from "@/components/templates/ExercisePickerModal";
 import type { Exercise } from "@/services/exercises/exercises.service";
 
@@ -74,8 +75,11 @@ export default function CreateWorkoutFromTemplateModal({
   });
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [priceMajorInput, setPriceMajorInput] = useState<string>("");
+  const [currencyInput, setCurrencyInput] = useState<string>("USD");
+  const [catalogExercises, setCatalogExercises] = useState<Exercise[]>([]);
+  const [catalogLoading, setCatalogLoading] = useState<boolean>(false);
   const toast = useToast();
-  const { exercises } = useExercises({ limit: 200 });
 
   useEffect(() => {
     if (!isOpen) return;
@@ -91,7 +95,38 @@ export default function CreateWorkoutFromTemplateModal({
       restSeconds: "",
       notes: "",
     });
+    setPriceMajorInput("");
+    setCurrencyInput("USD");
     setError(null);
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setCatalogExercises([]);
+      setCatalogLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setCatalogLoading(true);
+    void fetchAllExercises()
+      .then((rows) => {
+        if (!cancelled) {
+          setCatalogExercises(rows);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setCatalogExercises([]);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setCatalogLoading(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [isOpen]);
 
   const templateOptions: Option[] = useMemo(() => {
@@ -128,17 +163,31 @@ export default function CreateWorkoutFromTemplateModal({
   }, [selectedTemplate]);
 
   const exerciseNameById = useMemo(() => {
-    return new Map(exercises.map((e) => [e.id, e.name]));
-  }, [exercises]);
+    return new Map(catalogExercises.map((e) => [e.id, e.name]));
+  }, [catalogExercises]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!booking?.id || !templateId) return;
+    const amountCents = parseMajorUnitsToCents(priceMajorInput);
+    if (amountCents == null) {
+      setError("Enter a valid price in dollars (e.g. 50 for $50.00). Minimum $0.01.");
+      return;
+    }
+    const currency = normalizeCurrencyCode(currencyInput);
+    if (currency == null) {
+      setError("Enter a 3-letter currency code, for example USD.");
+      return;
+    }
     setIsSubmitting(true);
     setError(null);
     try {
       if (!isCustomizing) {
-        await createWorkoutForBookingFromTemplate(booking.id, { templateId });
+        await createWorkoutForBookingFromTemplate(booking.id, {
+          templateId,
+          amountCents,
+          currency,
+        });
         toast.success("Workout created from template");
         onSuccess();
         onClose();
@@ -205,6 +254,8 @@ export default function CreateWorkoutFromTemplateModal({
 
       await createWorkoutForBookingFromTemplate(booking.id, {
         templateId: clonedTemplate.id,
+        amountCents,
+        currency,
       });
 
       toast.success("Workout created from customized template");
@@ -240,6 +291,9 @@ export default function CreateWorkoutFromTemplateModal({
   };
 
   const handleSelectExerciseToAdd = (exercise: Exercise) => {
+    setCatalogExercises((prev) =>
+      prev.some((e) => e.id === exercise.id) ? prev : [...prev, exercise],
+    );
     setAddingItemForm((prev) => ({ ...prev, exerciseId: exercise.id }));
     setIsExercisePickerOpen(false);
   };
@@ -313,6 +367,47 @@ export default function CreateWorkoutFromTemplateModal({
               </option>
             ))}
           </select>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label>
+            <span className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
+              Workout price (dollars) *
+            </span>
+            <input
+              value={priceMajorInput}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (v === "" || /^\d*(\.\d{0,2})?$/.test(v)) {
+                  setPriceMajorInput(v);
+                }
+              }}
+              type="text"
+              inputMode="decimal"
+              placeholder="e.g. 50"
+              className={selectClass}
+              required
+              aria-label="Workout price in dollars"
+            />
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              Enter dollars (50 = $50.00). Converted to cents for the trainee billing quote.
+            </p>
+          </label>
+          <label>
+            <span className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
+              Currency *
+            </span>
+            <input
+              value={currencyInput}
+              onChange={(e) => setCurrencyInput(e.target.value.toUpperCase().replace(/[^A-Z]/g, "").slice(0, 3))}
+              type="text"
+              maxLength={3}
+              placeholder="USD"
+              className={selectClass}
+              required
+              aria-label="Billing currency code"
+            />
+          </label>
         </div>
 
         {selectedTemplate ? (
@@ -408,7 +503,7 @@ export default function CreateWorkoutFromTemplateModal({
 
             <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-900/40">
               <p className="text-sm font-semibold text-gray-800 dark:text-white/90">
-                Customize items (snapshot fields)
+                Customize items
               </p>
               <div className="mt-3 space-y-2">
                 {editableItems.length === 0 ? (
@@ -620,7 +715,18 @@ export default function CreateWorkoutFromTemplateModal({
           <Button type="button" variant="outline" size="sm" onClick={onClose} disabled={isSubmitting}>
             Cancel
           </Button>
-          <Button type="submit" size="sm" disabled={!booking?.id || !templateId || isSubmitting}>
+          <Button
+            type="submit"
+            size="sm"
+            disabled={
+              !booking?.id ||
+              !templateId ||
+              isSubmitting ||
+              catalogLoading ||
+              parseMajorUnitsToCents(priceMajorInput) == null ||
+              normalizeCurrencyCode(currencyInput) == null
+            }
+          >
             {isSubmitting ? "Creating..." : "Create"}
           </Button>
         </div>
@@ -630,6 +736,8 @@ export default function CreateWorkoutFromTemplateModal({
         selectedExerciseId={addingItemForm.exerciseId || null}
         onClose={() => setIsExercisePickerOpen(false)}
         onSelect={handleSelectExerciseToAdd}
+        exercisesOverride={catalogExercises}
+        exercisesOverrideLoading={catalogLoading}
       />
     </Modal>
   );

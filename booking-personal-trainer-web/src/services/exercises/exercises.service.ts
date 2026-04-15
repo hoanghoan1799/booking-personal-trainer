@@ -81,6 +81,25 @@ export async function getExercises(
   };
 }
 
+const FETCH_ALL_EXERCISES_PAGE_SIZE = 100 as const;
+
+/**
+ * Loads every exercise page from the API (for pickers / name resolution).
+ */
+export const fetchAllExercises = async (): Promise<Exercise[]> => {
+  const aggregated: Exercise[] = [];
+  let page = 1;
+  for (;;) {
+    const res = await getExercises({ page, limit: FETCH_ALL_EXERCISES_PAGE_SIZE });
+    aggregated.push(...res.exercises);
+    const totalPages = Math.max(1, res.meta.totalPages);
+    if (page >= totalPages) {
+      return aggregated;
+    }
+    page += 1;
+  }
+};
+
 export async function createExercise(
   input: CreateExerciseInput,
 ): Promise<Exercise> {

@@ -53,10 +53,14 @@ export interface CreateWorkoutInput {
   exerciseIds: string[];
   startTime: string;
   endTime: string;
+  amountCents?: number;
+  currency?: string;
 }
 
 export interface CreateWorkoutForBookingFromTemplateInput {
   templateId: string;
+  amountCents?: number;
+  currency?: string;
 }
 
 interface ApiResponse<T> {

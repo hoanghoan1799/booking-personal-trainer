@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type {
   Workout,
   WorkoutExercise,
@@ -8,6 +8,8 @@ import type {
 } from "@/services/workouts/workouts.service";
 import { Modal } from "@/components/ui/modal";
 import Badge from "@/components/ui/badge/Badge";
+import { useProfile } from "@/hooks/useProfile";
+import TraineeWorkoutPaymentSection from "@/components/workouts/TraineeWorkoutPaymentSection";
 
 const WORKOUT_STATUSES: WorkoutStatus[] = ["PENDING", "IN_PROGRESS", "DONE"];
 
@@ -73,6 +75,7 @@ interface WorkoutDetailModalProps {
       exerciseCompletions: { workoutExerciseId: string; isCompleted: boolean }[];
     },
   ) => Promise<Workout | void>;
+  onAfterPaymentSuccess?: () => void | Promise<void>;
 }
 
 export default function WorkoutDetailModal({
@@ -81,7 +84,9 @@ export default function WorkoutDetailModal({
   workout,
   canUpdate = false,
   onSave,
+  onAfterPaymentSuccess,
 }: WorkoutDetailModalProps) {
+  const { user: currentUser } = useProfile();
   const [localStatus, setLocalStatus] = useState<WorkoutStatus>("PENDING");
   const [localExercises, setLocalExercises] = useState<
     {
@@ -98,15 +103,22 @@ export default function WorkoutDetailModal({
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  const workoutId = workout?.id ?? null;
-  const workoutStatus = (workout?.status as WorkoutStatus | undefined) ?? null;
-  const workoutExercises = workout?.exercises ?? null;
+  const isTraineePayer = useMemo(() => {
+    if (!workout || !currentUser) return false;
+    if (currentUser.role !== "TRAINEE") return false;
+    return workout.trainee?.id === currentUser.id;
+  }, [currentUser, workout]);
 
   useEffect(() => {
-    if (!workoutId || !workoutStatus || !workoutExercises) return;
+    if (!workout) {
+      setLocalExercises([]);
+      setLocalStatus("PENDING");
+      return;
+    }
+    const status = (workout.status as WorkoutStatus) ?? "PENDING";
     setSaveError(null);
-    setLocalStatus(workoutStatus ?? "PENDING");
-    const arr = toExercisesArray(workoutExercises);
+    setLocalStatus(status);
+    const arr = toExercisesArray(workout.exercises ?? []);
     setLocalExercises(
       arr
         .sort((a, b) => a.order - b.order)
@@ -121,7 +133,7 @@ export default function WorkoutDetailModal({
           exercise: we.exercise,
         })),
     );
-  }, [workoutId, workoutStatus, workoutExercises]);
+  }, [workout]);
 
   if (!workout) return null;
 
@@ -130,7 +142,7 @@ export default function WorkoutDetailModal({
   const completed = localExercises.filter((e) => e.isCompleted).length;
   const total = localExercises.length;
 
-  const initialExercises = toExercisesArray(workout.exercises).sort(
+  const initialExercises = toExercisesArray(workout.exercises ?? []).sort(
     (a, b) => a.order - b.order,
   );
   const statusChanged = localStatus !== (workout.status as WorkoutStatus);
@@ -262,6 +274,22 @@ export default function WorkoutDetailModal({
             {saveError}
           </div>
         )}
+        {isTraineePayer && !canUpdate && localExercises.length === 0 ? (
+          <div
+            className="rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-700 dark:border-gray-800 dark:bg-gray-900/40 dark:text-gray-300"
+            role="status"
+          >
+            Preview only: exercise details unlock after you complete payment for this workout.
+          </div>
+        ) : null}
+        {isTraineePayer && !canUpdate ? (
+          <TraineeWorkoutPaymentSection
+            workoutId={workout.id}
+            onPaid={() => {
+              void Promise.resolve(onAfterPaymentSuccess?.());
+            }}
+          />
+        ) : null}
         {localExercises.length > 0 && (
           <div>
             <div className="mb-2 flex items-center justify-between">

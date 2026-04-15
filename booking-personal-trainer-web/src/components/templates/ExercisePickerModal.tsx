@@ -11,6 +11,10 @@ type ExercisePickerModalProps = {
   selectedExerciseId: string | null;
   onClose: () => void;
   onSelect: (exercise: Exercise) => void;
+  /** When set, uses this list instead of the default hook (e.g. full catalog for name resolution). */
+  exercisesOverride?: Exercise[];
+  /** When using exercisesOverride, set true while the parent is still loading. */
+  exercisesOverrideLoading?: boolean;
 };
 
 function groupExercisesByMuscleGroup(exercises: Exercise[]): Record<string, Exercise[]> {
@@ -22,7 +26,16 @@ function groupExercisesByMuscleGroup(exercises: Exercise[]): Record<string, Exer
 }
 
 export default function ExercisePickerModal(props: ExercisePickerModalProps) {
-  const { exercises, isLoading, error, canView } = useExercises();
+  const hook = useExercises({ limit: 500 });
+  const useOverride = props.exercisesOverride !== undefined;
+  const exercises: Exercise[] = useOverride
+    ? (props.exercisesOverride ?? [])
+    : hook.exercises;
+  const isLoading = useOverride
+    ? Boolean(props.exercisesOverrideLoading)
+    : hook.isLoading;
+  const error = useOverride ? null : hook.error;
+  const canView = useOverride ? true : hook.canView;
   const [search, setSearch] = useState("");
 
   const filtered = useMemo(() => {

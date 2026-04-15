@@ -8,6 +8,7 @@ import { getUsers } from "@/services/users/users.service";
 import { getBookings } from "@/services/bookings/bookings.service";
 import { getExercises } from "@/services/exercises/exercises.service";
 import {
+  getWorkout,
   updateWorkoutDetail,
   type Workout,
 } from "@/services/workouts/workouts.service";
@@ -118,6 +119,18 @@ export default function WorkoutsContent() {
     setSelectedWorkout(null);
   };
 
+  const handleAfterPaymentSuccess = async () => {
+    await refetch();
+    if (selectedWorkout) {
+      try {
+        const fresh = await getWorkout(selectedWorkout.id);
+        setSelectedWorkout(fresh);
+      } catch {
+        /* ignore refresh errors */
+      }
+    }
+  };
+
   if (!canView) {
     return (
       <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -193,6 +206,7 @@ export default function WorkoutsContent() {
         workout={selectedWorkout}
         canUpdate={selectedWorkout ? canUpdateWorkout(selectedWorkout) : false}
         onSave={handleSaveWorkout}
+        onAfterPaymentSuccess={handleAfterPaymentSuccess}
       />
       <CreateWorkoutModal
         isOpen={createModalOpen}
