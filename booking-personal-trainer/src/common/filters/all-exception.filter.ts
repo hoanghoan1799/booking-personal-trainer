@@ -34,10 +34,23 @@ export class AllExceptionsFilter implements ExceptionFilter {
     statusCode: number,
   ): Record<string, unknown> {
     if (!(exception instanceof HttpException)) {
+      const isProduction = process.env.NODE_ENV === 'production';
+      const message =
+        exception instanceof Error ? exception.message : String(exception);
       return {
         statusCode,
         error: ERROR_MESSAGES.SYSTEM.INTERNAL_SERVER_ERROR,
-        message: ERROR_MESSAGES.SYSTEM.INTERNAL_SERVER_ERROR,
+        message: isProduction
+          ? ERROR_MESSAGES.SYSTEM.INTERNAL_SERVER_ERROR
+          : message,
+        ...(isProduction
+          ? {}
+          : {
+              debug: {
+                name: exception instanceof Error ? exception.name : undefined,
+                stack: exception instanceof Error ? exception.stack : undefined,
+              },
+            }),
       };
     }
     const response = exception.getResponse();
