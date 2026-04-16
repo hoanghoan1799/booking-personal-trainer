@@ -13,6 +13,7 @@ import { BookingRepositoryToken } from '../booking/repositories/booking.reposito
 import { TemplatesRepositoryToken } from '../templates/repositories/templates.repository.interface';
 import { WorkoutPaymentPolicyService } from '../payments/workout-payment-policy.service';
 import { BillingService } from '../billing/billing.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 const createItemsCollection = <T>(items: T[]): { getItems: () => T[] } => ({
   getItems: () => items,
@@ -37,6 +38,7 @@ describe('WorkoutService', () => {
     createWorkoutCharge: jest.Mock;
     activateCharge: jest.Mock;
   };
+  let notificationsService: { createAndPublishToUsers: jest.Mock };
 
   beforeEach(async () => {
     workoutRepository = {
@@ -56,6 +58,9 @@ describe('WorkoutService', () => {
       createWorkoutCharge: jest.fn().mockResolvedValue({ id: 'charge-id' }),
       activateCharge: jest.fn().mockResolvedValue(undefined),
     };
+    notificationsService = {
+      createAndPublishToUsers: jest.fn().mockResolvedValue([]),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -69,6 +74,7 @@ describe('WorkoutService', () => {
           useValue: workoutPaymentPolicyService,
         },
         { provide: BillingService, useValue: billingService },
+        { provide: NotificationsService, useValue: notificationsService },
       ],
     }).compile();
 

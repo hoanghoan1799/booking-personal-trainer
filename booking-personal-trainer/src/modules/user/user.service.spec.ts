@@ -23,6 +23,7 @@ import { UserService } from './user.service';
 // Repositories
 import { UserRepositoryToken } from './repositories/user.repository.interface';
 import { BookingRepositoryToken } from '../booking/repositories/booking.repository.interface';
+import { NotificationsService } from '../notifications/notifications.service';
 
 const DEFAULT_PAGE = 1;
 const DEFAULT_LIMIT_TRAINEES = 20;
@@ -40,6 +41,7 @@ describe('UserService', () => {
     save: jest.Mock;
   };
   let bookingRepo: { findTraineeIdsByTrainerId: jest.Mock };
+  let notificationsService: { createAndPublishToUsers: jest.Mock };
 
   const mockUser = {
     id: 'user-uuid',
@@ -61,6 +63,9 @@ describe('UserService', () => {
     bookingRepo = {
       findTraineeIdsByTrainerId: jest.fn().mockResolvedValue([]),
     };
+    notificationsService = {
+      createAndPublishToUsers: jest.fn().mockResolvedValue([]),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -72,6 +77,10 @@ describe('UserService', () => {
         {
           provide: BookingRepositoryToken,
           useValue: bookingRepo,
+        },
+        {
+          provide: NotificationsService,
+          useValue: notificationsService,
         },
       ],
     }).compile();

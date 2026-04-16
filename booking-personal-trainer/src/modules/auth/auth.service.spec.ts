@@ -28,6 +28,7 @@ import { RefreshTokenService } from './services/refresh-token.service';
 import { TokenVerifierService } from './services/token-verifier.service';
 import { UserProviderRepositoryToken } from '../user/repositories/user-provider.repository.interface';
 import { LOCAL_PROVIDER_NAME } from './constants/auth0-provider.constant';
+import { NotificationsService } from '../notifications/notifications.service';
 
 describe('AuthService', () => {
   let service: AuthService;
@@ -53,6 +54,7 @@ describe('AuthService', () => {
     findByProviderIdentity: jest.Mock;
     create: jest.Mock;
   };
+  let notificationsService: { notifyAdmins: jest.Mock };
 
   const mockUser = {
     id: 'user-uuid',
@@ -94,6 +96,9 @@ describe('AuthService', () => {
       create: jest.fn().mockResolvedValue(undefined),
     };
     userProviderRepository.findByProviderIdentity.mockResolvedValue(null);
+    notificationsService = {
+      notifyAdmins: jest.fn().mockResolvedValue(undefined),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -103,6 +108,7 @@ describe('AuthService', () => {
         { provide: HashingService, useValue: hashingService },
         { provide: RefreshTokenService, useValue: refreshTokenService },
         { provide: TokenVerifierService, useValue: auth0TokenVerifier },
+        { provide: NotificationsService, useValue: notificationsService },
         {
           provide: UserProviderRepositoryToken,
           useValue: userProviderRepository,

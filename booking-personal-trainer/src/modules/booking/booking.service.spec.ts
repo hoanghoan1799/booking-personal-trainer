@@ -14,6 +14,7 @@ import { User } from '../user/entities/user.entity';
 // Services
 import { BookingService } from './booking.service';
 import { BookingAvailabilityService } from './services/booking-availability.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 // Repositories
 import { BookingRepositoryToken } from './repositories/booking.repository.interface';
@@ -42,6 +43,10 @@ describe('BookingService', () => {
   let userRepo: { findById: jest.Mock };
   let bookingAvailabilityService: {
     assertTrainerCanBeBookedForRange: jest.Mock;
+  };
+  let notificationsService: {
+    notifyAdmins: jest.Mock;
+    createAndPublishToUsers: jest.Mock;
   };
 
   const mockTrainee: User = {
@@ -81,6 +86,10 @@ describe('BookingService', () => {
     bookingAvailabilityService = {
       assertTrainerCanBeBookedForRange: jest.fn().mockResolvedValue(undefined),
     };
+    notificationsService = {
+      notifyAdmins: jest.fn().mockResolvedValue(undefined),
+      createAndPublishToUsers: jest.fn().mockResolvedValue([]),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -96,6 +105,10 @@ describe('BookingService', () => {
         {
           provide: BookingAvailabilityService,
           useValue: bookingAvailabilityService,
+        },
+        {
+          provide: NotificationsService,
+          useValue: notificationsService,
         },
       ],
     }).compile();

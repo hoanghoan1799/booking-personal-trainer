@@ -6,6 +6,7 @@ import { StripeWebhookService } from './stripe-webhook.service';
 import { PaymentRepositoryToken } from './repositories/payment.repository.interface';
 import { PaymentStatus } from '../../common/enums/billing/billing.enum';
 import { PlatformWorkoutSettlementService } from './platform-workout-settlement.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 describe('StripeWebhookService', () => {
   let service: StripeWebhookService;
@@ -15,6 +16,10 @@ describe('StripeWebhookService', () => {
   };
   let platformSettlement: {
     applyTrainerShareTransferForPaidPayment: jest.Mock;
+  };
+  let notificationsService: {
+    createAndPublishToUsers: jest.Mock;
+    notifyAdmins: jest.Mock;
   };
 
   beforeEach(async () => {
@@ -27,6 +32,10 @@ describe('StripeWebhookService', () => {
         .fn()
         .mockResolvedValue(undefined),
     };
+    notificationsService = {
+      createAndPublishToUsers: jest.fn().mockResolvedValue([]),
+      notifyAdmins: jest.fn().mockResolvedValue(undefined),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -36,6 +45,10 @@ describe('StripeWebhookService', () => {
           provide: PlatformWorkoutSettlementService,
           useValue: platformSettlement,
         },
+        {
+          provide: NotificationsService,
+          useValue: notificationsService,
+        },
       ],
     }).compile();
 
@@ -43,7 +56,14 @@ describe('StripeWebhookService', () => {
   });
 
   it('should mark payment PAID on payment_intent.succeeded', async () => {
-    const payment = { status: PaymentStatus.PROCESSING } as any;
+    const payment = {
+      id: 'payment_1',
+      status: PaymentStatus.PROCESSING,
+      amountCents: 5000,
+      currency: 'USD',
+      payer: { id: 'trainee_1', userName: 'trainee' },
+      metadata: { trainerUserId: 'trainer_1', workoutId: 'workout_1' },
+    } as any;
     paymentRepo.findByProviderPaymentIntentId.mockResolvedValue(payment);
 
     const event = {
@@ -58,5 +78,6 @@ describe('StripeWebhookService', () => {
     expect(
       platformSettlement.applyTrainerShareTransferForPaidPayment,
     ).toHaveBeenCalledWith(payment);
+    expect(notificationsService.notifyAdmins).toHaveBeenCalled();
   });
 });
