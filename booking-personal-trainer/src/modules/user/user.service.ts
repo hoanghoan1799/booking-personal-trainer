@@ -19,6 +19,9 @@ import {
 
 // Types
 import type { JwtAuthPayload } from '../auth/types/jwt-auth.type';
+import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationType } from '../notifications/enums/notification-type.enum';
+import { NotificationTemplates } from '../notifications/constants/notification-template.constant';
 
 // Entities
 import { User } from './entities/user.entity';
@@ -49,6 +52,7 @@ export class UserService {
     private readonly userRepo: UserRepository,
     @Inject(BookingRepositoryToken)
     private readonly bookingRepo: BookingRepository,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   /**
@@ -238,6 +242,18 @@ export class UserService {
         targetUser.approvalStatus = TrainerApprovalStatus.REJECTED;
       }
       await this.userRepo.save(targetUser);
+      await this.notificationsService.createAndPublishToUsers({
+        notifications: [
+          {
+            recipientUserId: targetUser.id,
+            type: NotificationType.UserRoleUpdated,
+            ...NotificationTemplates.userRoleUpdated({
+              role: targetUser.role,
+            }),
+            data: { userId: targetUser.id, role: targetUser.role },
+          },
+        ],
+      });
       return BaseResponseDto.ok(targetUser);
     }
 
@@ -248,6 +264,19 @@ export class UserService {
     targetUser.role = data.role;
     targetUser.approvalStatus = TrainerApprovalStatus.NONE;
     await this.userRepo.save(targetUser);
+
+    await this.notificationsService.createAndPublishToUsers({
+      notifications: [
+        {
+          recipientUserId: targetUser.id,
+          type: NotificationType.UserRoleUpdated,
+          ...NotificationTemplates.userRoleUpdated({
+            role: targetUser.role,
+          }),
+          data: { userId: targetUser.id, role: targetUser.role },
+        },
+      ],
+    });
 
     return BaseResponseDto.ok(targetUser);
   }

@@ -25,6 +25,7 @@ import { BookingModule } from '../booking/booking.module';
 import { TemplatesModule } from '../templates/templates.module';
 import { PaymentsModule } from '../payments/payments.module';
 import { BillingModule } from '../billing/billing.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { BillingModule } from '../billing/billing.module';
     TemplatesModule,
     PaymentsModule,
     BillingModule,
+    NotificationsModule,
     MikroOrmModule.forFeature([Workout, WorkoutExercise, User, Exercise]),
   ],
   controllers: [WorkoutController, BookingWorkoutController],

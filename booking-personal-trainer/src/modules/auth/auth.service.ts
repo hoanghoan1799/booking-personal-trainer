@@ -40,6 +40,9 @@ import { HashingService } from './services/hashing.service';
 import { RefreshTokenService } from './services/refresh-token.service';
 import { TokenVerifierService } from './services/token-verifier.service';
 import type { Auth0VerifiedClaims } from './types/auth0-verified-claims.type';
+import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationType } from '../notifications/enums/notification-type.enum';
+import { NotificationTemplates } from '../notifications/constants/notification-template.constant';
 
 // Repositories
 import { UserProviderRepositoryToken } from '../user/repositories/user-provider.repository.interface';
@@ -66,6 +69,7 @@ export class AuthService {
     private readonly hashingService: HashingService,
     private readonly refreshTokenService: RefreshTokenService,
     private readonly auth0TokenVerifier: TokenVerifierService,
+    private readonly notificationsService: NotificationsService,
     @Inject(UserProviderRepositoryToken)
     private readonly userProviderRepository: UserProviderRepository,
   ) {}
@@ -111,6 +115,18 @@ export class AuthService {
       role: UserRole.TRAINEE,
       approvalStatus,
       status: UserStatus.ACTIVE,
+    });
+    await this.notificationsService.notifyAdmins({
+      type: NotificationType.AdminNewUserRegistered,
+      ...NotificationTemplates.adminNewUserRegistered({
+        userName: newUser.userName,
+        source: 'LOCAL',
+      }),
+      data: {
+        userId: newUser.id,
+        email: newUser.email,
+        userType: newUser.userType,
+      },
     });
 
     // TODO: check should we use userProviderRepository here inside auth service
@@ -372,6 +388,14 @@ export class AuthService {
           role: UserRole.TRAINEE,
           approvalStatus: TrainerApprovalStatus.NONE,
           status: UserStatus.ACTIVE,
+        });
+        await this.notificationsService.notifyAdmins({
+          type: NotificationType.AdminNewUserRegistered,
+          ...NotificationTemplates.adminNewUserRegistered({
+            userName: user.userName,
+            source: 'AUTH0',
+          }),
+          data: { userId: user.id, email: user.email, userType: user.userType },
         });
         await this.userProviderRepository.create({
           userId: user.id,

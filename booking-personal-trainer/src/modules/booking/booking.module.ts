@@ -20,6 +20,7 @@ import { MikroOrmBookingRepository } from './repositories/mikroorm-booking.repos
 import { UserModule } from '../user/user.module';
 import { TrainerSchedulingModule } from '../trainer-scheduling/trainer-scheduling.module';
 import { PaymentsModule } from '../payments/payments.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { PaymentsModule } from '../payments/payments.module';
     forwardRef(() => UserModule),
     TrainerSchedulingModule,
     forwardRef(() => PaymentsModule),
+    NotificationsModule,
   ],
   controllers: [BookingController, BookingDiscoveryController],
   providers: [

@@ -7,6 +7,9 @@ import { PaymentStatus } from '../../common/enums/billing/billing.enum';
 import type { PaymentRepository } from './repositories/payment.repository.interface';
 import { PaymentRepositoryToken } from './repositories/payment.repository.interface';
 import { PlatformWorkoutSettlementService } from './platform-workout-settlement.service';
+import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationType } from '../notifications/enums/notification-type.enum';
+import { NotificationTemplates } from '../notifications/constants/notification-template.constant';
 
 const STRIPE_PAYMENT_INTENT_SUCCEEDED = 'payment_intent.succeeded' as const;
 const STRIPE_PAYMENT_INTENT_FAILED = 'payment_intent.payment_failed' as const;
@@ -19,6 +22,7 @@ export class StripeWebhookService {
     @Inject(PaymentRepositoryToken)
     private readonly paymentRepo: PaymentRepository,
     private readonly platformWorkoutSettlementService: PlatformWorkoutSettlementService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async handleEvent(event: {
@@ -63,6 +67,51 @@ export class StripeWebhookService {
     await this.platformWorkoutSettlementService.applyTrainerShareTransferForPaidPayment(
       payment,
     );
+    const metadata =
+      (payment.metadata as Record<string, unknown> | null | undefined) ?? null;
+    const trainerUserId =
+      metadata && typeof metadata.trainerUserId === 'string'
+        ? metadata.trainerUserId
+        : null;
+    const workoutId =
+      metadata && typeof metadata.workoutId === 'string'
+        ? metadata.workoutId
+        : null;
+    if (trainerUserId) {
+      await this.notificationsService.createAndPublishToUsers({
+        notifications: [
+          {
+            recipientUserId: trainerUserId,
+            type: NotificationType.TrainerTraineePaidForWorkout,
+            ...NotificationTemplates.trainerTraineePaidForWorkout({
+              traineeUserName: payment.payer.userName,
+            }),
+            data: {
+              workoutId,
+              trainerUserId,
+              traineeId: payment.payer.id,
+              amountCents: payment.amountCents,
+              currency: payment.currency,
+              paymentId: payment.id,
+            },
+          },
+        ],
+      });
+    }
+    await this.notificationsService.notifyAdmins({
+      type: NotificationType.AdminTraineePaidForWorkout,
+      ...NotificationTemplates.adminTraineePaidForWorkout({
+        traineeUserName: payment.payer.userName,
+      }),
+      data: {
+        workoutId,
+        trainerUserId,
+        traineeId: payment.payer.id,
+        amountCents: payment.amountCents,
+        currency: payment.currency,
+        paymentId: payment.id,
+      },
+    });
   }
 
   private async handlePaymentIntentFailed(paymentIntent: {

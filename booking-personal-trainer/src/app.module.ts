@@ -27,6 +27,7 @@ import { TemplatesModule } from './modules/templates/templates.module';
 import { TrainerSchedulingModule } from './modules/trainer-scheduling/trainer-scheduling.module';
 import { BillingModule } from './modules/billing/billing.module';
 import { PaymentsModule } from './modules/payments/payments.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
 
 // Configs
 import { RATE_LIMIT_OPTIONS } from './configs/rate-limit.config';
@@ -59,6 +60,7 @@ import { RATE_LIMIT_OPTIONS } from './configs/rate-limit.config';
     TrainerSchedulingModule,
     BillingModule,
     PaymentsModule,
+    NotificationsModule,
   ],
   controllers: [],
   providers: [

@@ -20,11 +20,13 @@ import { AuthController } from './auth.controller';
 // Modules
 import { UserModule } from '../user/user.module';
 import { RedisModule } from '../redis/redis.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
     UserModule,
     RedisModule,
+    NotificationsModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],

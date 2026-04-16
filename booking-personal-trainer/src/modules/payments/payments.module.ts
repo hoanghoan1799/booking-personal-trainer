@@ -24,6 +24,7 @@ import { MikroOrmPaymentRepository } from './repositories/mikroorm-payment.repos
 import { TrainerStripeConnectService } from './trainer-stripe-connect.service';
 import { PlatformWorkoutSettlementService } from './platform-workout-settlement.service';
 import { UserModule } from '../user/user.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 import { AdminEarningsController } from './admin-earnings.controller';
 import { AdminEarningsService } from './admin-earnings.service';
 import { TrainerPayoutsController } from './trainer-payouts.controller';
@@ -35,6 +36,7 @@ import { TrainerPayoutsService } from './trainer-payouts.service';
     StripeModule,
     forwardRef(() => BillingModule),
     forwardRef(() => UserModule),
+    NotificationsModule,
   ],
   controllers: [
     WorkoutPaymentsController,

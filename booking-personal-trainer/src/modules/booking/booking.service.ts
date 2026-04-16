@@ -19,6 +19,9 @@ import { User } from '../user/entities/user.entity';
 
 // Services
 import { BookingAvailabilityService } from './services/booking-availability.service';
+import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationType } from '../notifications/enums/notification-type.enum';
+import { NotificationTemplates } from '../notifications/constants/notification-template.constant';
 
 // DTOs
 import { GetBookingsQueryDto } from './dtos/get-booking.dto';
@@ -42,6 +45,7 @@ export class BookingService {
     @Inject(UserRepositoryToken)
     private readonly userRepo: UserRepository,
     private readonly bookingAvailabilityService: BookingAvailabilityService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async create(data: CreateBookingDto, currentUser: User): Promise<Booking> {
@@ -89,6 +93,41 @@ export class BookingService {
       startTime: start,
       endTime: end,
       status: BookingStatus.PENDING,
+    });
+
+    await this.notificationsService.notifyAdmins({
+      type: NotificationType.AdminTraineeBookedTrainer,
+      ...NotificationTemplates.adminTraineeBookedTrainer({
+        traineeUserName: currentUser.userName,
+        trainerUserName: trainer.userName,
+      }),
+      data: {
+        bookingId: booking.id,
+        traineeId: currentUser.id,
+        trainerId: trainer.id,
+        startTime: booking.startTime,
+        endTime: booking.endTime,
+      },
+    });
+
+    await this.notificationsService.createAndPublishToUsers({
+      notifications: [
+        {
+          recipientUserId: trainer.id,
+          type: NotificationType.TrainerNewBooking,
+          ...NotificationTemplates.trainerNewBooking({
+            traineeUserName: currentUser.userName,
+            trainerUserName: trainer.userName,
+          }),
+          data: {
+            bookingId: booking.id,
+            traineeId: currentUser.id,
+            trainerId: trainer.id,
+            startTime: booking.startTime,
+            endTime: booking.endTime,
+          },
+        },
+      ],
     });
 
     return booking;
@@ -204,6 +243,92 @@ export class BookingService {
       booking.rejectionReason = (dto.rejectionReason ?? '').trim();
     }
     await this.bookingRepo.save(booking);
+
+    if (
+      nextStatus === BookingStatus.CONFIRMED &&
+      (isAdmin || isTrainerOfBooking)
+    ) {
+      await this.notificationsService.createAndPublishToUsers({
+        notifications: [
+          {
+            recipientUserId: booking.trainee.id,
+            type: NotificationType.TraineeBookingApproved,
+            ...NotificationTemplates.traineeBookingApproved({
+              traineeUserName: booking.trainee.userName,
+              trainerUserName: booking.trainer.userName,
+            }),
+            data: { bookingId: booking.id, status: nextStatus },
+          },
+        ],
+      });
+    }
+
+    if (
+      nextStatus === BookingStatus.REJECTED &&
+      (isAdmin || isTrainerOfBooking)
+    ) {
+      await this.notificationsService.createAndPublishToUsers({
+        notifications: [
+          {
+            recipientUserId: booking.trainee.id,
+            type: NotificationType.TraineeBookingRejected,
+            ...NotificationTemplates.traineeBookingRejected({
+              traineeUserName: booking.trainee.userName,
+              trainerUserName: booking.trainer.userName,
+              rejectionReason: booking.rejectionReason ?? null,
+            }),
+            data: {
+              bookingId: booking.id,
+              status: nextStatus,
+              rejectionReason: booking.rejectionReason ?? null,
+            },
+          },
+        ],
+      });
+    }
+
+    if (nextStatus === BookingStatus.CANCELLED) {
+      if (isTrainerOfBooking) {
+        await this.notificationsService.createAndPublishToUsers({
+          notifications: [
+            {
+              recipientUserId: booking.trainee.id,
+              type: NotificationType.TraineeBookingCancelledByTrainer,
+              ...NotificationTemplates.traineeBookingCancelledByTrainer({
+                traineeUserName: booking.trainee.userName,
+                trainerUserName: booking.trainer.userName,
+                cancellationReason: booking.cancellationReason ?? null,
+              }),
+              data: {
+                bookingId: booking.id,
+                status: nextStatus,
+                cancellationReason: booking.cancellationReason ?? null,
+              },
+            },
+          ],
+        });
+      }
+      if (isTraineeOfBooking) {
+        await this.notificationsService.createAndPublishToUsers({
+          notifications: [
+            {
+              recipientUserId: booking.trainer.id,
+              type: NotificationType.TrainerBookingCancelledByTrainee,
+              ...NotificationTemplates.trainerBookingCancelledByTrainee({
+                traineeUserName: booking.trainee.userName,
+                trainerUserName: booking.trainer.userName,
+                cancellationReason: booking.cancellationReason ?? null,
+              }),
+              data: {
+                bookingId: booking.id,
+                status: nextStatus,
+                cancellationReason: booking.cancellationReason ?? null,
+              },
+            },
+          ],
+        });
+      }
+    }
 
     return booking;
   }

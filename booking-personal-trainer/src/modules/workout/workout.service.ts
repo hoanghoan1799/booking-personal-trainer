@@ -43,6 +43,9 @@ import { TemplateType } from '../templates/enums/template-type.enum';
 import { WorkoutPaymentPolicyService } from '../payments/workout-payment-policy.service';
 import { WorkoutStatus } from '../../common/enums/workout/workout.enum';
 import { BillingService } from '../billing/billing.service';
+import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationType } from '../notifications/enums/notification-type.enum';
+import { NotificationTemplates } from '../notifications/constants/notification-template.constant';
 
 @Injectable()
 export class WorkoutService {
@@ -57,6 +60,7 @@ export class WorkoutService {
     private readonly templatesRepo: TemplatesRepository,
     private readonly workoutPaymentPolicyService: WorkoutPaymentPolicyService,
     private readonly billingService: BillingService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async create(
@@ -83,6 +87,18 @@ export class WorkoutService {
       payerUserId: trainee.id,
       amountCents: dto.amountCents,
       currency: dto.currency,
+    });
+    await this.notificationsService.createAndPublishToUsers({
+      notifications: [
+        {
+          recipientUserId: trainee.id,
+          type: NotificationType.TraineeWorkoutCreated,
+          ...NotificationTemplates.traineeWorkoutCreated({
+            trainerUserName: trainer.userName,
+          }),
+          data: { workoutId: workout.id, trainerId: trainer.id },
+        },
+      ],
     });
     return this.mapWorkoutToResponseDto(workout);
   }
@@ -134,6 +150,18 @@ export class WorkoutService {
       payerUserId: booking.trainee.id,
       amountCents: dto.amountCents,
       currency: dto.currency,
+    });
+    await this.notificationsService.createAndPublishToUsers({
+      notifications: [
+        {
+          recipientUserId: booking.trainee.id,
+          type: NotificationType.TraineeWorkoutCreated,
+          ...NotificationTemplates.traineeWorkoutCreated({
+            trainerUserName: booking.trainer.userName,
+          }),
+          data: { workoutId: workout.id, trainerId: booking.trainer.id },
+        },
+      ],
     });
     return this.mapWorkoutToResponseDto(workout);
   }
