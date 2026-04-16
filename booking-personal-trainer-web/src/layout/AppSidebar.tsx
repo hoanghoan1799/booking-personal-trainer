@@ -13,7 +13,8 @@ import {
   HorizontaLDots,
   TaskIcon,
   UserCircleIcon,
-  PaperPlaneIcon
+  PaperPlaneIcon,
+  DollarLineIcon
 } from "../icons/index";
 import { APP_ROUTES } from "@/lib/route.constants";
 import { useProfile } from "@/hooks/useProfile";
@@ -78,18 +79,53 @@ const AppSidebar: React.FC = () => {
   const navItems: NavItem[] = useMemo(() => {
     const isTrainer = user?.role === "TRAINER";
     const isTrainee = user?.role === "TRAINEE";
+    const isAdmin = user?.role === "ADMIN";
     const navItemsWithoutTemplates = isTrainee
       ? baseNavItems.filter((navItem) => navItem.path !== APP_ROUTES.TEMPLATES)
       : baseNavItems;
-    if (!isTrainer) return navItemsWithoutTemplates;
+    const baseWithRoleItems: NavItem[] = (() => {
+      if (!isTrainer) return navItemsWithoutTemplates;
+      return [
+        ...navItemsWithoutTemplates.slice(0, 4),
+        {
+          icon: <CalenderIcon />,
+          name: "Schedule",
+          path: APP_ROUTES.SCHEDULE,
+        },
+        ...navItemsWithoutTemplates.slice(4),
+      ];
+    })();
+    if (isTrainer) {
+      const workoutIndex = baseWithRoleItems.findIndex(
+        (navItem) => navItem.path === APP_ROUTES.WORKOUTS,
+      );
+      const insertIndex =
+        workoutIndex >= 0 ? workoutIndex + 1 : baseWithRoleItems.length;
+      const withPayouts: NavItem[] = [
+        ...baseWithRoleItems.slice(0, insertIndex),
+        {
+          icon: <DollarLineIcon />,
+          name: "Payouts",
+          path: APP_ROUTES.PAYOUTS,
+        },
+        ...baseWithRoleItems.slice(insertIndex),
+      ];
+      if (!isAdmin) return withPayouts;
+      return withPayouts;
+    }
+    if (!isAdmin) return baseWithRoleItems;
+    const workoutIndex = baseWithRoleItems.findIndex(
+      (navItem) => navItem.path === APP_ROUTES.WORKOUTS,
+    );
+    const insertIndex = workoutIndex >= 0 ? workoutIndex + 1 : baseWithRoleItems.length;
     return [
-      ...navItemsWithoutTemplates.slice(0, 4),
+      ...baseWithRoleItems.slice(0, insertIndex),
       {
-        icon: <CalenderIcon />,
-        name: "Schedule",
-        path: APP_ROUTES.SCHEDULE,
+        icon: <DollarLineIcon />,
+        name: "Finance",
+        path: APP_ROUTES.FINANCE,
       },
-      ...navItemsWithoutTemplates.slice(4),
+      ...baseWithRoleItems.slice(insertIndex),
     ];
   }, [user?.role]);
 
@@ -256,7 +292,7 @@ const AppSidebar: React.FC = () => {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setOpenSubmenu(null);
     }
-  }, [pathname,isActive]);
+  }, [isActive, navItems, pathname]);
 
   useEffect(() => {
     // Set the height of the submenu items when the submenu is opened

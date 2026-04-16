@@ -6,6 +6,7 @@ import { useProfile } from "@/hooks/useProfile";
 import UserAddressCard from "./UserAddressCard";
 import UserInfoCard from "./UserInfoCard";
 import UserMetaCard from "./UserMetaCard";
+import TrainerStripeConnectCard from "./TrainerStripeConnectCard";
 
 export default function ProfileContent() {
   const { user, isLoading, error, refetch, updateUser } = useProfile();
@@ -47,6 +48,12 @@ export default function ProfileContent() {
             user={user}
             onProfileUpdated={(updatedUser) => {
               updateUser(updatedUser);
+            }}
+          />
+          <TrainerStripeConnectCard
+            user={user}
+            onConnected={(stripeAccountId) => {
+              updateUser({ stripeAccountId });
             }}
           />
           <UserAddressCard />

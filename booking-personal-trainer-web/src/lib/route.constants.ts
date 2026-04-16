@@ -54,5 +54,7 @@ export const APP_ROUTES = {
   EXERCISES: "/exercises",
   USERS: "/users",
   WORKOUTS: "/workouts",
+  FINANCE: "/finance",
+  PAYOUTS: "/payouts",
   ERROR_404: "/error-404",
 } as const;

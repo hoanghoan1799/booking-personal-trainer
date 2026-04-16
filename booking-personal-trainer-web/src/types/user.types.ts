@@ -8,6 +8,7 @@ export interface User {
   userType: string;
   approvalStatus: string;
   status: string;
+  stripeAccountId?: string | null;
   age?: number;
   height?: number;
   weight?: number;
