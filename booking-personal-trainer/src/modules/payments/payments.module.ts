@@ -24,6 +24,10 @@ import { MikroOrmPaymentRepository } from './repositories/mikroorm-payment.repos
 import { TrainerStripeConnectService } from './trainer-stripe-connect.service';
 import { PlatformWorkoutSettlementService } from './platform-workout-settlement.service';
 import { UserModule } from '../user/user.module';
+import { AdminEarningsController } from './admin-earnings.controller';
+import { AdminEarningsService } from './admin-earnings.service';
+import { TrainerPayoutsController } from './trainer-payouts.controller';
+import { TrainerPayoutsService } from './trainer-payouts.service';
 
 @Module({
   imports: [
@@ -36,6 +40,8 @@ import { UserModule } from '../user/user.module';
     WorkoutPaymentsController,
     StripeWebhookController,
     TrainerStripeConnectController,
+    AdminEarningsController,
+    TrainerPayoutsController,
   ],
   providers: [
     PaymentsService,
@@ -43,6 +49,8 @@ import { UserModule } from '../user/user.module';
     WorkoutPaymentPolicyService,
     TrainerStripeConnectService,
     PlatformWorkoutSettlementService,
+    AdminEarningsService,
+    TrainerPayoutsService,
     {
       provide: PaymentRepositoryToken,
       useClass: MikroOrmPaymentRepository,
