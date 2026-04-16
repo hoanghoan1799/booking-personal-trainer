@@ -6,6 +6,7 @@ import { ProfileProvider } from "@/context/ProfileContext";
 import { SidebarProvider } from "@/context/SidebarContext";
 import { ThemeProvider } from "@/context/ThemeContext";
 import { ToastProvider } from "@/context/ToastContext";
+import { NotificationsProvider } from "@/context/NotificationsContext";
 import Auth0UserProvider from "@/components/providers/Auth0UserProvider";
 import Auth0BackendSync from "@/components/providers/Auth0BackendSync";
 import { auth0 } from "@/lib/auth0";
@@ -29,7 +30,9 @@ export default async function RootLayout({
               <Auth0SessionProvider>
                 <ToastProvider>
                   <Auth0BackendSync />
-                  <SidebarProvider>{children}</SidebarProvider>
+                  <NotificationsProvider>
+                    <SidebarProvider>{children}</SidebarProvider>
+                  </NotificationsProvider>
                 </ToastProvider>
               </Auth0SessionProvider>
             </ProfileProvider>

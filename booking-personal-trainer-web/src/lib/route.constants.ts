@@ -25,6 +25,7 @@ export const API_ROUTES = {
   TRAINERS: "/trainers",
   USERS: "/users",
   WORKOUTS: "/workouts",
+  NOTIFICATIONS: "/notifications",
 } as const;
 
 /** Full API endpoint paths for fetch calls */
@@ -37,6 +38,7 @@ export const API_ENDPOINTS = {
   TRAINERS: `${API_BASE}${API_ROUTES.TRAINERS}`,
   USERS: `${API_BASE}${API_ROUTES.USERS}`,
   WORKOUTS: `${API_BASE}${API_ROUTES.WORKOUTS}`,
+  NOTIFICATIONS: `${API_BASE}${API_ROUTES.NOTIFICATIONS}`,
 } as const;
 
 /** App (frontend) routes for navigation */
@@ -56,5 +58,6 @@ export const APP_ROUTES = {
   WORKOUTS: "/workouts",
   FINANCE: "/finance",
   PAYOUTS: "/payouts",
+  NOTIFICATIONS: "/notifications",
   ERROR_404: "/error-404",
 } as const;
