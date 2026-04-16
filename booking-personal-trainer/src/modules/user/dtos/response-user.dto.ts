@@ -99,4 +99,11 @@ export class ResponseFullUserDto extends ResponseUserDto {
   @ApiPropertyOptional({ description: FIELD_DESCRIPTIONS.USER.WEIGHT })
   @Expose()
   weight?: number;
+
+  @ApiPropertyOptional({
+    description: 'Stripe Connect account id for trainer payouts.',
+    nullable: true,
+  })
+  @Expose()
+  stripeAccountId?: string | null;
 }
