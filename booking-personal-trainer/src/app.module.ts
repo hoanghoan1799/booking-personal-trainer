@@ -5,6 +5,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { PassportModule } from '@nestjs/passport';
 import { redisStore } from 'cache-manager-redis-store';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { BullModule } from '@nestjs/bullmq';
 
 // Constants
 import {
@@ -36,6 +37,17 @@ import { RATE_LIMIT_OPTIONS } from './configs/rate-limit.config';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
+    }),
+    BullModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: (configService: ConfigService) => ({
+        connection: {
+          host: configService.get<string>('REDIS_HOST', DEFAULT_HOST),
+          port: configService.get<number>('REDIS_PORT', DEFAULT_REDIS_PORT),
+          password: configService.get<string>('REDIS_PASSWORD') || undefined,
+        },
+      }),
+      inject: [ConfigService],
     }),
     ThrottlerModule.forRoot(RATE_LIMIT_OPTIONS),
     CacheModule.registerAsync({
