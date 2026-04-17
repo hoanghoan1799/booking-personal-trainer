@@ -21,6 +21,7 @@ import { UserModule } from '../user/user.module';
 import { TrainerSchedulingModule } from '../trainer-scheduling/trainer-scheduling.module';
 import { PaymentsModule } from '../payments/payments.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { EmailModule } from '../email/email.module';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
     TrainerSchedulingModule,
     forwardRef(() => PaymentsModule),
     NotificationsModule,
+    EmailModule,
   ],
   controllers: [BookingController, BookingDiscoveryController],
   providers: [

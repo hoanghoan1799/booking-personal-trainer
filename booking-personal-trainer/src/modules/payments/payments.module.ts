@@ -25,6 +25,7 @@ import { TrainerStripeConnectService } from './trainer-stripe-connect.service';
 import { PlatformWorkoutSettlementService } from './platform-workout-settlement.service';
 import { UserModule } from '../user/user.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { EmailModule } from '../email/email.module';
 import { AdminEarningsController } from './admin-earnings.controller';
 import { AdminEarningsService } from './admin-earnings.service';
 import { TrainerPayoutsController } from './trainer-payouts.controller';
@@ -37,6 +38,7 @@ import { TrainerPayoutsService } from './trainer-payouts.service';
     forwardRef(() => BillingModule),
     forwardRef(() => UserModule),
     NotificationsModule,
+    EmailModule,
   ],
   controllers: [
     WorkoutPaymentsController,

@@ -20,12 +20,14 @@ import { MikroOrmUserProviderRepository } from './repositories/mikroorm-user-pro
 // Modules
 import { BookingModule } from '../booking/booking.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { EmailModule } from '../email/email.module';
 
 @Module({
   imports: [
     MikroOrmModule.forFeature([User, UserProvider]),
     forwardRef(() => BookingModule),
     forwardRef(() => NotificationsModule),
+    EmailModule,
   ],
   controllers: [UserController],
   providers: [
