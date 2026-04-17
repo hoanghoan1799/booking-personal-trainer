@@ -5,7 +5,7 @@ import { EMAIL_QUEUE_NAME } from './constants/email-queue.constant';
 import { EmailProcessor } from './email.processor';
 import { EmailService } from './email.service';
 import { EmailSenderToken } from './email.types';
-import { NodemailerEmailSender } from './senders/nodemailer-email.sender';
+import { ResendEmailSender } from './senders/resend-email.sender';
 
 @Module({
   imports: [
@@ -24,7 +24,7 @@ import { NodemailerEmailSender } from './senders/nodemailer-email.sender';
     EmailProcessor,
     {
       provide: EmailSenderToken,
-      useClass: NodemailerEmailSender,
+      useClass: ResendEmailSender,
     },
   ],
   exports: [EmailService],
