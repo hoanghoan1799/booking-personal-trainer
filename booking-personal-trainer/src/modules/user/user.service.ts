@@ -22,6 +22,8 @@ import type { JwtAuthPayload } from '../auth/types/jwt-auth.type';
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationType } from '../notifications/enums/notification-type.enum';
 import { NotificationTemplates } from '../notifications/constants/notification-template.constant';
+import { EmailService } from '../email/email.service';
+import { EmailTemplates } from '../email/constants/email-template.constant';
 
 // Entities
 import { User } from './entities/user.entity';
@@ -53,6 +55,7 @@ export class UserService {
     @Inject(BookingRepositoryToken)
     private readonly bookingRepo: BookingRepository,
     private readonly notificationsService: NotificationsService,
+    private readonly emailService: EmailService,
   ) {}
 
   /**
@@ -254,6 +257,21 @@ export class UserService {
           },
         ],
       });
+      const frontendUrl: string = (process.env.FRONTEND_URL ?? '').replace(
+        /\/$/,
+        '',
+      );
+      const roleEmail = EmailTemplates.userRoleUpdated({
+        userName: targetUser.userName,
+        newRole: targetUser.role,
+        profileUrl: `${frontendUrl}/profile`,
+      });
+      await this.emailService.send({
+        to: targetUser.email,
+        subject: roleEmail.subject,
+        text: roleEmail.text,
+        html: roleEmail.html,
+      });
       return BaseResponseDto.ok(targetUser);
     }
 
@@ -276,6 +294,21 @@ export class UserService {
           data: { userId: targetUser.id, role: targetUser.role },
         },
       ],
+    });
+    const frontendUrl: string = (process.env.FRONTEND_URL ?? '').replace(
+      /\/$/,
+      '',
+    );
+    const roleUpdatedEmail = EmailTemplates.userRoleUpdated({
+      userName: targetUser.userName,
+      newRole: targetUser.role,
+      profileUrl: `${frontendUrl}/profile`,
+    });
+    await this.emailService.send({
+      to: targetUser.email,
+      subject: roleUpdatedEmail.subject,
+      text: roleUpdatedEmail.text,
+      html: roleUpdatedEmail.html,
     });
 
     return BaseResponseDto.ok(targetUser);

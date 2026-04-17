@@ -3,6 +3,7 @@ import {
   ConflictException,
   Inject,
   Injectable,
+  Logger,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -43,10 +44,17 @@ import type { Auth0VerifiedClaims } from './types/auth0-verified-claims.type';
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationType } from '../notifications/enums/notification-type.enum';
 import { NotificationTemplates } from '../notifications/constants/notification-template.constant';
+import { EmailService } from '../email/email.service';
+import { EmailTemplates } from '../email/constants/email-template.constant';
+import { collectAdminEmailAddresses } from '../email/helpers/collect-admin-email-addresses.helper';
+import { AUTH_PROVIDER_METHOD } from './constants/auth-provider-method.constant';
+import type { AuthProviderMethod } from './types/auth-provider-method.type';
 
 // Repositories
 import { UserProviderRepositoryToken } from '../user/repositories/user-provider.repository.interface';
 import type { UserProviderRepository } from '../user/repositories/user-provider.repository.interface';
+import { UserRepositoryToken } from '../user/repositories/user.repository.interface';
+import type { UserRepository } from '../user/repositories/user.repository.interface';
 
 // Constants
 import {
@@ -56,6 +64,8 @@ import {
 
 @Injectable()
 export class AuthService {
+  private readonly logger: Logger = new Logger(AuthService.name);
+
   /**
    * Initializes a new instance of the AuthService.
    * @param {UserService} userService - The user service used to interact with the user database.
@@ -70,6 +80,9 @@ export class AuthService {
     private readonly refreshTokenService: RefreshTokenService,
     private readonly auth0TokenVerifier: TokenVerifierService,
     private readonly notificationsService: NotificationsService,
+    private readonly emailService: EmailService,
+    @Inject(UserRepositoryToken)
+    private readonly userRepo: UserRepository,
     @Inject(UserProviderRepositoryToken)
     private readonly userProviderRepository: UserProviderRepository,
   ) {}
@@ -116,17 +129,12 @@ export class AuthService {
       approvalStatus,
       status: UserStatus.ACTIVE,
     });
-    await this.notificationsService.notifyAdmins({
-      type: NotificationType.AdminNewUserRegistered,
-      ...NotificationTemplates.adminNewUserRegistered({
-        userName: newUser.userName,
-        source: 'LOCAL',
-      }),
-      data: {
-        userId: newUser.id,
-        email: newUser.email,
-        userType: newUser.userType,
-      },
+    await this.notifyAdminsAboutNewUserRegistration({
+      userName: newUser.userName,
+      source: AUTH_PROVIDER_METHOD.Local,
+      userId: newUser.id,
+      email: newUser.email,
+      userType: newUser.userType,
     });
 
     // TODO: check should we use userProviderRepository here inside auth service
@@ -168,6 +176,69 @@ export class AuthService {
       accessTokenExpiresIn,
       refreshTokenExpiresIn,
     };
+  }
+
+  /**
+   * Publishes admin notifications and enqueues the admin email for a new user.
+   * Does not throw: registration must succeed even when Redis or the email queue is unavailable.
+   */
+  private async notifyAdminsAboutNewUserRegistration(input: {
+    readonly userName: string;
+    readonly source: AuthProviderMethod;
+    readonly userId: string;
+    readonly email: string;
+    readonly userType: UserType;
+  }): Promise<void> {
+    try {
+      await this.notificationsService.notifyAdmins({
+        type: NotificationType.AdminNewUserRegistered,
+        ...NotificationTemplates.adminNewUserRegistered({
+          userName: input.userName,
+          source: input.source,
+        }),
+        data: {
+          userId: input.userId,
+          email: input.email,
+          userType: input.userType,
+        },
+      });
+      const adminEmails = await collectAdminEmailAddresses(this.userRepo);
+      if (adminEmails.length === 0) {
+        this.logger.warn(
+          `Skipping admin email: no ADMIN recipients found (${input.source}).`,
+        );
+        return;
+      }
+      const frontendUrl: string = (process.env.FRONTEND_URL ?? '').replace(
+        /\/$/,
+        '',
+      );
+      const template = EmailTemplates.adminNewUserRegistered({
+        userName: input.userName,
+        userEmail: input.email,
+        registeredAt: new Date(),
+        userUrl: `${frontendUrl}/admin/users/${input.userId}`,
+        authProvider: input.source,
+        source: input.source,
+      });
+      const { jobId } = await this.emailService.send({
+        to: adminEmails,
+        subject: template.subject,
+        text: template.text,
+        html: template.html,
+      });
+      this.logger.log(
+        `Admin email enqueued (${input.source}) jobId=${jobId ?? 'null'} recipients=${adminEmails.length}`,
+      );
+    } catch (err: unknown) {
+      const message: string = err instanceof Error ? err.message : String(err);
+      const stack: string | undefined =
+        err instanceof Error ? err.stack : undefined;
+      this.logger.error(
+        `Failed to notify admins after new user registration (${input.source}): ${message}`,
+        stack,
+      );
+    }
   }
 
   /**
@@ -389,13 +460,12 @@ export class AuthService {
           approvalStatus: TrainerApprovalStatus.NONE,
           status: UserStatus.ACTIVE,
         });
-        await this.notificationsService.notifyAdmins({
-          type: NotificationType.AdminNewUserRegistered,
-          ...NotificationTemplates.adminNewUserRegistered({
-            userName: user.userName,
-            source: 'AUTH0',
-          }),
-          data: { userId: user.id, email: user.email, userType: user.userType },
+        await this.notifyAdminsAboutNewUserRegistration({
+          userName: user.userName,
+          source: AUTH_PROVIDER_METHOD.Auth0,
+          userId: user.id,
+          email: user.email,
+          userType: user.userType,
         });
         await this.userProviderRepository.create({
           userId: user.id,

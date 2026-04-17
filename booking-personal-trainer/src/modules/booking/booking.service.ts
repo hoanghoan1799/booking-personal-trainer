@@ -22,6 +22,9 @@ import { BookingAvailabilityService } from './services/booking-availability.serv
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationType } from '../notifications/enums/notification-type.enum';
 import { NotificationTemplates } from '../notifications/constants/notification-template.constant';
+import { EmailService } from '../email/email.service';
+import { EmailTemplates } from '../email/constants/email-template.constant';
+import { collectAdminEmailAddresses } from '../email/helpers/collect-admin-email-addresses.helper';
 
 // DTOs
 import { GetBookingsQueryDto } from './dtos/get-booking.dto';
@@ -46,7 +49,22 @@ export class BookingService {
     private readonly userRepo: UserRepository,
     private readonly bookingAvailabilityService: BookingAvailabilityService,
     private readonly notificationsService: NotificationsService,
+    private readonly emailService: EmailService,
   ) {}
+
+  private buildBookingTimeRange(input: {
+    readonly startTime?: Date | null;
+    readonly endTime?: Date | null;
+  }): string {
+    const startIso: string | null =
+      input.startTime instanceof Date ? input.startTime.toISOString() : null;
+    const endIso: string | null =
+      input.endTime instanceof Date ? input.endTime.toISOString() : null;
+    if (!startIso || !endIso) {
+      return 'Not provided';
+    }
+    return `${startIso} - ${endIso}`;
+  }
 
   async create(data: CreateBookingDto, currentUser: User): Promise<Booking> {
     const { trainerId, startTime, endTime } = data;
@@ -94,6 +112,15 @@ export class BookingService {
       endTime: end,
       status: BookingStatus.PENDING,
     });
+    const frontendUrl: string = (process.env.FRONTEND_URL ?? '').replace(
+      /\/$/,
+      '',
+    );
+    const bookingTime: string = this.buildBookingTimeRange({
+      startTime: booking.startTime,
+      endTime: booking.endTime,
+    });
+    const bookingUrl: string = `${frontendUrl}/bookings/${booking.id}`;
 
     await this.notificationsService.notifyAdmins({
       type: NotificationType.AdminTraineeBookedTrainer,
@@ -108,6 +135,19 @@ export class BookingService {
         startTime: booking.startTime,
         endTime: booking.endTime,
       },
+    });
+    const adminEmails = await collectAdminEmailAddresses(this.userRepo);
+    const adminBookingEmail = EmailTemplates.adminTraineeBookedTrainer({
+      traineeName: currentUser.userName,
+      trainerName: trainer.userName,
+      bookingTime,
+      bookingUrl,
+    });
+    await this.emailService.send({
+      to: adminEmails,
+      subject: adminBookingEmail.subject,
+      text: adminBookingEmail.text,
+      html: adminBookingEmail.html,
     });
 
     await this.notificationsService.createAndPublishToUsers({
@@ -128,6 +168,31 @@ export class BookingService {
           },
         },
       ],
+    });
+    const trainerNewBookingEmail = EmailTemplates.trainerNewBooking({
+      traineeName: currentUser.userName,
+      trainerName: trainer.userName,
+      bookingTime,
+      bookingUrl,
+    });
+    await this.emailService.send({
+      to: trainer.email,
+      subject: trainerNewBookingEmail.subject,
+      text: trainerNewBookingEmail.text,
+      html: trainerNewBookingEmail.html,
+    });
+    const traineeBookingRequestEmail =
+      EmailTemplates.traineeNewBookingRequestCreated({
+        traineeName: currentUser.userName,
+        trainerName: trainer.userName,
+        bookingTime,
+        bookingUrl,
+      });
+    await this.emailService.send({
+      to: currentUser.email,
+      subject: traineeBookingRequestEmail.subject,
+      text: traineeBookingRequestEmail.text,
+      html: traineeBookingRequestEmail.html,
     });
 
     return booking;
@@ -261,6 +326,21 @@ export class BookingService {
           },
         ],
       });
+      const approvedEmail = EmailTemplates.traineeBookingApproved({
+        traineeName: booking.trainee.userName,
+        trainerName: booking.trainer.userName,
+        bookingTime: this.buildBookingTimeRange({
+          startTime: booking.startTime,
+          endTime: booking.endTime,
+        }),
+        bookingUrl: `${(process.env.FRONTEND_URL ?? '').replace(/\/$/, '')}/bookings/${booking.id}`,
+      });
+      await this.emailService.send({
+        to: booking.trainee.email,
+        subject: approvedEmail.subject,
+        text: approvedEmail.text,
+        html: approvedEmail.html,
+      });
     }
 
     if (
@@ -285,6 +365,22 @@ export class BookingService {
           },
         ],
       });
+      const rejectedEmail = EmailTemplates.traineeBookingRejected({
+        traineeName: booking.trainee.userName,
+        trainerName: booking.trainer.userName,
+        bookingTime: this.buildBookingTimeRange({
+          startTime: booking.startTime,
+          endTime: booking.endTime,
+        }),
+        bookingUrl: `${(process.env.FRONTEND_URL ?? '').replace(/\/$/, '')}/bookings/${booking.id}`,
+        rejectionReason: booking.rejectionReason ?? null,
+      });
+      await this.emailService.send({
+        to: booking.trainee.email,
+        subject: rejectedEmail.subject,
+        text: rejectedEmail.text,
+        html: rejectedEmail.html,
+      });
     }
 
     if (nextStatus === BookingStatus.CANCELLED) {
@@ -307,6 +403,23 @@ export class BookingService {
             },
           ],
         });
+        const cancelledByTrainerEmail =
+          EmailTemplates.traineeBookingCancelledByTrainer({
+            traineeName: booking.trainee.userName,
+            trainerName: booking.trainer.userName,
+            bookingTime: this.buildBookingTimeRange({
+              startTime: booking.startTime,
+              endTime: booking.endTime,
+            }),
+            bookingUrl: `${(process.env.FRONTEND_URL ?? '').replace(/\/$/, '')}/bookings/${booking.id}`,
+            cancellationReason: booking.cancellationReason ?? null,
+          });
+        await this.emailService.send({
+          to: booking.trainee.email,
+          subject: cancelledByTrainerEmail.subject,
+          text: cancelledByTrainerEmail.text,
+          html: cancelledByTrainerEmail.html,
+        });
       }
       if (isTraineeOfBooking) {
         await this.notificationsService.createAndPublishToUsers({
@@ -326,6 +439,23 @@ export class BookingService {
               },
             },
           ],
+        });
+        const cancelledByTraineeEmail =
+          EmailTemplates.trainerBookingCancelledByTrainee({
+            traineeName: booking.trainee.userName,
+            trainerName: booking.trainer.userName,
+            bookingTime: this.buildBookingTimeRange({
+              startTime: booking.startTime,
+              endTime: booking.endTime,
+            }),
+            bookingUrl: `${(process.env.FRONTEND_URL ?? '').replace(/\/$/, '')}/bookings/${booking.id}`,
+            cancellationReason: booking.cancellationReason ?? null,
+          });
+        await this.emailService.send({
+          to: booking.trainer.email,
+          subject: cancelledByTraineeEmail.subject,
+          text: cancelledByTraineeEmail.text,
+          html: cancelledByTraineeEmail.html,
         });
       }
     }

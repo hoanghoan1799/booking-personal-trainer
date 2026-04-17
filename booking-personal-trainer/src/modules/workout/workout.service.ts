@@ -46,6 +46,8 @@ import { BillingService } from '../billing/billing.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationType } from '../notifications/enums/notification-type.enum';
 import { NotificationTemplates } from '../notifications/constants/notification-template.constant';
+import { EmailService } from '../email/email.service';
+import { EmailTemplates } from '../email/constants/email-template.constant';
 
 @Injectable()
 export class WorkoutService {
@@ -61,6 +63,7 @@ export class WorkoutService {
     private readonly workoutPaymentPolicyService: WorkoutPaymentPolicyService,
     private readonly billingService: BillingService,
     private readonly notificationsService: NotificationsService,
+    private readonly emailService: EmailService,
   ) {}
 
   async create(
@@ -99,6 +102,24 @@ export class WorkoutService {
           data: { workoutId: workout.id, trainerId: trainer.id },
         },
       ],
+    });
+    const frontendUrl: string = (process.env.FRONTEND_URL ?? '').replace(
+      /\/$/,
+      '',
+    );
+    const workoutTitle: string = workout.template?.name ?? 'Workout';
+    const workoutUrl: string = `${frontendUrl}/workouts/${workout.id}`;
+    const workoutCreatedEmail = EmailTemplates.traineeWorkoutCreated({
+      traineeName: trainee.userName,
+      trainerName: trainer.userName,
+      workoutTitle,
+      workoutUrl,
+    });
+    await this.emailService.send({
+      to: trainee.email,
+      subject: workoutCreatedEmail.subject,
+      text: workoutCreatedEmail.text,
+      html: workoutCreatedEmail.html,
     });
     return this.mapWorkoutToResponseDto(workout);
   }
@@ -162,6 +183,24 @@ export class WorkoutService {
           data: { workoutId: workout.id, trainerId: booking.trainer.id },
         },
       ],
+    });
+    const frontendUrl: string = (process.env.FRONTEND_URL ?? '').replace(
+      /\/$/,
+      '',
+    );
+    const workoutTitle: string = workout.template?.name ?? 'Workout';
+    const workoutUrl: string = `${frontendUrl}/workouts/${workout.id}`;
+    const bookingWorkoutEmail = EmailTemplates.traineeWorkoutCreated({
+      traineeName: booking.trainee.userName,
+      trainerName: booking.trainer.userName,
+      workoutTitle,
+      workoutUrl,
+    });
+    await this.emailService.send({
+      to: booking.trainee.email,
+      subject: bookingWorkoutEmail.subject,
+      text: bookingWorkoutEmail.text,
+      html: bookingWorkoutEmail.html,
     });
     return this.mapWorkoutToResponseDto(workout);
   }

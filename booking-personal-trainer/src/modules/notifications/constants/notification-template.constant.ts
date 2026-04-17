@@ -1,4 +1,5 @@
 import { NotificationType } from '../enums/notification-type.enum';
+import type { AuthProviderMethod } from '../../auth/types/auth-provider-method.type';
 
 export type NotificationTemplate = {
   readonly title: string;
@@ -7,7 +8,7 @@ export type NotificationTemplate = {
 
 type NewUserRegisteredProps = {
   readonly userName: string;
-  readonly source?: 'LOCAL' | 'AUTH0';
+  readonly source?: AuthProviderMethod;
 };
 
 type BookingProps = {

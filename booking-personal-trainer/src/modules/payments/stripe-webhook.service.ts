@@ -10,6 +10,11 @@ import { PlatformWorkoutSettlementService } from './platform-workout-settlement.
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationType } from '../notifications/enums/notification-type.enum';
 import { NotificationTemplates } from '../notifications/constants/notification-template.constant';
+import { UserRepositoryToken } from '../user/repositories/user.repository.interface';
+import type { UserRepository } from '../user/repositories/user.repository.interface';
+import { EmailService } from '../email/email.service';
+import { EmailTemplates } from '../email/constants/email-template.constant';
+import { collectAdminEmailAddresses } from '../email/helpers/collect-admin-email-addresses.helper';
 
 const STRIPE_PAYMENT_INTENT_SUCCEEDED = 'payment_intent.succeeded' as const;
 const STRIPE_PAYMENT_INTENT_FAILED = 'payment_intent.payment_failed' as const;
@@ -23,6 +28,9 @@ export class StripeWebhookService {
     private readonly paymentRepo: PaymentRepository,
     private readonly platformWorkoutSettlementService: PlatformWorkoutSettlementService,
     private readonly notificationsService: NotificationsService,
+    @Inject(UserRepositoryToken)
+    private readonly userRepo: UserRepository,
+    private readonly emailService: EmailService,
   ) {}
 
   async handleEvent(event: {
@@ -97,6 +105,32 @@ export class StripeWebhookService {
           },
         ],
       });
+      const trainerUser = await this.userRepo.findById(trainerUserId);
+      const frontendUrl: string = (process.env.FRONTEND_URL ?? '').replace(
+        /\/$/,
+        '',
+      );
+      const trainerName: string = trainerUser?.userName ?? 'Unknown';
+      const amount: string =
+        `${(payment.amountCents / 100).toFixed(2)} ${String(
+          payment.currency ?? '',
+        ).toUpperCase()}`.trim();
+      const trainerPaidEmail = EmailTemplates.trainerTraineePaidForWorkout({
+        traineeName: payment.payer.userName,
+        trainerName,
+        amount,
+        workoutTitle: workoutId ? `Workout ${workoutId}` : 'Workout',
+        paidAt: (payment.paidAt ?? new Date()).toISOString(),
+        paymentUrl: `${frontendUrl}/trainer/payments/${payment.id}`,
+      });
+      if (trainerUser) {
+        await this.emailService.send({
+          to: trainerUser.email,
+          subject: trainerPaidEmail.subject,
+          text: trainerPaidEmail.text,
+          html: trainerPaidEmail.html,
+        });
+      }
     }
     await this.notificationsService.notifyAdmins({
       type: NotificationType.AdminTraineePaidForWorkout,
@@ -111,6 +145,32 @@ export class StripeWebhookService {
         currency: payment.currency,
         paymentId: payment.id,
       },
+    });
+    const adminEmails = await collectAdminEmailAddresses(this.userRepo);
+    const frontendUrl: string = (process.env.FRONTEND_URL ?? '').replace(
+      /\/$/,
+      '',
+    );
+    const trainerUser = trainerUserId
+      ? await this.userRepo.findById(trainerUserId)
+      : null;
+    const trainerName: string = trainerUser?.userName ?? 'Unknown';
+    const amount: string = `${(payment.amountCents / 100).toFixed(2)} ${String(
+      payment.currency ?? '',
+    ).toUpperCase()}`.trim();
+    const adminPaidEmail = EmailTemplates.adminTraineePaidForWorkout({
+      traineeName: payment.payer.userName,
+      trainerName,
+      amount,
+      workoutTitle: workoutId ? `Workout ${workoutId}` : 'Workout',
+      paidAt: (payment.paidAt ?? new Date()).toISOString(),
+      paymentUrl: `${frontendUrl}/admin/payments/${payment.id}`,
+    });
+    await this.emailService.send({
+      to: adminEmails,
+      subject: adminPaidEmail.subject,
+      text: adminPaidEmail.text,
+      html: adminPaidEmail.html,
     });
   }
 
