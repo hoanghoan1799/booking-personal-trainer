@@ -15,6 +15,7 @@ import { User } from '../user/entities/user.entity';
 import { BookingService } from './booking.service';
 import { BookingAvailabilityService } from './services/booking-availability.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { EmailService } from '../email/email.service';
 
 // Repositories
 import { BookingRepositoryToken } from './repositories/booking.repository.interface';
@@ -40,7 +41,7 @@ describe('BookingService', () => {
     findAndCount: jest.Mock;
     save: jest.Mock;
   };
-  let userRepo: { findById: jest.Mock };
+  let userRepo: { findById: jest.Mock; findAndCount: jest.Mock };
   let bookingAvailabilityService: {
     assertTrainerCanBeBookedForRange: jest.Mock;
   };
@@ -48,6 +49,7 @@ describe('BookingService', () => {
     notifyAdmins: jest.Mock;
     createAndPublishToUsers: jest.Mock;
   };
+  let emailService: { send: jest.Mock };
 
   const mockTrainee: User = {
     id: 'trainee-uuid',
@@ -82,13 +84,19 @@ describe('BookingService', () => {
       findAndCount: jest.fn(),
       save: jest.fn().mockResolvedValue(undefined),
     };
-    userRepo = { findById: jest.fn() };
+    userRepo = {
+      findById: jest.fn(),
+      findAndCount: jest.fn().mockResolvedValue([[], 0]),
+    };
     bookingAvailabilityService = {
       assertTrainerCanBeBookedForRange: jest.fn().mockResolvedValue(undefined),
     };
     notificationsService = {
       notifyAdmins: jest.fn().mockResolvedValue(undefined),
       createAndPublishToUsers: jest.fn().mockResolvedValue([]),
+    };
+    emailService = {
+      send: jest.fn().mockResolvedValue({ messageId: 'mock-message-id' }),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -109,6 +117,10 @@ describe('BookingService', () => {
         {
           provide: NotificationsService,
           useValue: notificationsService,
+        },
+        {
+          provide: EmailService,
+          useValue: emailService,
         },
       ],
     }).compile();

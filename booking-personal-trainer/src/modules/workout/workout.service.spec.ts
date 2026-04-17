@@ -14,6 +14,7 @@ import { TemplatesRepositoryToken } from '../templates/repositories/templates.re
 import { WorkoutPaymentPolicyService } from '../payments/workout-payment-policy.service';
 import { BillingService } from '../billing/billing.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { EmailService } from '../email/email.service';
 
 const createItemsCollection = <T>(items: T[]): { getItems: () => T[] } => ({
   getItems: () => items,
@@ -39,6 +40,7 @@ describe('WorkoutService', () => {
     activateCharge: jest.Mock;
   };
   let notificationsService: { createAndPublishToUsers: jest.Mock };
+  let emailService: { send: jest.Mock };
 
   beforeEach(async () => {
     workoutRepository = {
@@ -61,6 +63,9 @@ describe('WorkoutService', () => {
     notificationsService = {
       createAndPublishToUsers: jest.fn().mockResolvedValue([]),
     };
+    emailService = {
+      send: jest.fn().mockResolvedValue({ messageId: 'mock-message-id' }),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -75,6 +80,7 @@ describe('WorkoutService', () => {
         },
         { provide: BillingService, useValue: billingService },
         { provide: NotificationsService, useValue: notificationsService },
+        { provide: EmailService, useValue: emailService },
       ],
     }).compile();
 
@@ -88,8 +94,12 @@ describe('WorkoutService', () => {
         status: BookingStatus.CONFIRMED,
         startTime: new Date('2026-01-01T10:00:00.000Z'),
         endTime: new Date('2026-01-01T11:00:00.000Z'),
-        trainer: { id: 'trainer-id' },
-        trainee: { id: 'trainee-id' },
+        trainer: { id: 'trainer-id', userName: 'trainer' },
+        trainee: {
+          id: 'trainee-id',
+          userName: 'trainee',
+          email: 'trainee@test.com',
+        },
       });
       templatesRepository.findTemplateById.mockResolvedValue({
         id: 'template-id',

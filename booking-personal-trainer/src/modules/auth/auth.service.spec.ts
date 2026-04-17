@@ -6,6 +6,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import {
   BadRequestException,
   ConflictException,
+  InternalServerErrorException,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -29,6 +30,8 @@ import { TokenVerifierService } from './services/token-verifier.service';
 import { UserProviderRepositoryToken } from '../user/repositories/user-provider.repository.interface';
 import { LOCAL_PROVIDER_NAME } from './constants/auth0-provider.constant';
 import { NotificationsService } from '../notifications/notifications.service';
+import { UserRepositoryToken } from '../user/repositories/user.repository.interface';
+import { EmailService } from '../email/email.service';
 
 describe('AuthService', () => {
   let service: AuthService;
@@ -55,6 +58,8 @@ describe('AuthService', () => {
     create: jest.Mock;
   };
   let notificationsService: { notifyAdmins: jest.Mock };
+  let userRepo: { findAndCount: jest.Mock };
+  let emailService: { send: jest.Mock };
 
   const mockUser = {
     id: 'user-uuid',
@@ -99,6 +104,12 @@ describe('AuthService', () => {
     notificationsService = {
       notifyAdmins: jest.fn().mockResolvedValue(undefined),
     };
+    userRepo = {
+      findAndCount: jest.fn().mockResolvedValue([[], 0]),
+    };
+    emailService = {
+      send: jest.fn().mockResolvedValue({ messageId: 'mock-message-id' }),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -113,6 +124,8 @@ describe('AuthService', () => {
           provide: UserProviderRepositoryToken,
           useValue: userProviderRepository,
         },
+        { provide: UserRepositoryToken, useValue: userRepo },
+        { provide: EmailService, useValue: emailService },
       ],
     }).compile();
 
@@ -179,6 +192,20 @@ describe('AuthService', () => {
         providerName: LOCAL_PROVIDER_NAME,
         providerUserId: registerData.email.toLowerCase(),
       });
+      expect(refreshTokenService.saveRefreshToken).toHaveBeenCalled();
+    });
+
+    it('should create user and return tokens when admin notify or email fails', async () => {
+      userService.findByEmailOrUserName.mockResolvedValue(null);
+      userService.create.mockResolvedValue({ ...mockUser, ...registerData });
+      emailService.send.mockRejectedValue(
+        new InternalServerErrorException('Failed to enqueue email: Redis down'),
+      );
+
+      const actual = await service.register(registerData);
+
+      expect(actual).toHaveProperty('accessToken');
+      expect(userProviderRepository.create).toHaveBeenCalled();
       expect(refreshTokenService.saveRefreshToken).toHaveBeenCalled();
     });
   });

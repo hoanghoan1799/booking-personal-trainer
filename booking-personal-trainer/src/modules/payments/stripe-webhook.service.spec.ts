@@ -7,6 +7,8 @@ import { PaymentRepositoryToken } from './repositories/payment.repository.interf
 import { PaymentStatus } from '../../common/enums/billing/billing.enum';
 import { PlatformWorkoutSettlementService } from './platform-workout-settlement.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { UserRepositoryToken } from '../user/repositories/user.repository.interface';
+import { EmailService } from '../email/email.service';
 
 describe('StripeWebhookService', () => {
   let service: StripeWebhookService;
@@ -21,6 +23,8 @@ describe('StripeWebhookService', () => {
     createAndPublishToUsers: jest.Mock;
     notifyAdmins: jest.Mock;
   };
+  let userRepo: { findById: jest.Mock; findAndCount: jest.Mock };
+  let emailService: { send: jest.Mock };
 
   beforeEach(async () => {
     paymentRepo = {
@@ -36,6 +40,16 @@ describe('StripeWebhookService', () => {
       createAndPublishToUsers: jest.fn().mockResolvedValue([]),
       notifyAdmins: jest.fn().mockResolvedValue(undefined),
     };
+    userRepo = {
+      findById: jest.fn().mockResolvedValue({
+        id: 'trainer_1',
+        email: 'trainer@test.com',
+      }),
+      findAndCount: jest.fn().mockResolvedValue([[], 0]),
+    };
+    emailService = {
+      send: jest.fn().mockResolvedValue({ messageId: 'mock-message-id' }),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -49,6 +63,8 @@ describe('StripeWebhookService', () => {
           provide: NotificationsService,
           useValue: notificationsService,
         },
+        { provide: UserRepositoryToken, useValue: userRepo },
+        { provide: EmailService, useValue: emailService },
       ],
     }).compile();
 
