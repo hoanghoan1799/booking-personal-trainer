@@ -2,6 +2,10 @@ import { Injectable } from '@nestjs/common';
 import { EntityManager, FilterQuery } from '@mikro-orm/core';
 
 import { PaymentStatus } from '../../../common/enums/billing/billing.enum';
+import {
+  parseInstantToUtcDate,
+  parseUtcIsoToDate,
+} from '../../../common/utils/date-time/utc-date-time.helper';
 
 import { PaymentSplitAggregationHelper } from '../../payments/helpers/payment-split-aggregation.helper';
 import { Payment } from '../../payments/entities/payment.entity';
@@ -20,6 +24,15 @@ type MutableBucketTotals = {
 @Injectable()
 export class RevenueReportService {
   constructor(private readonly em: EntityManager) {}
+
+  /**
+   * MikroORM / drivers sometimes hydrate timestamps as strings; bucket math needs a Date.
+   */
+  private parsePaymentEventInstant(
+    value: Date | string | null | undefined,
+  ): Date | null {
+    return parseInstantToUtcDate(value);
+  }
 
   /**
    * Aggregates paid/refunded payments into calendar buckets (UTC).
@@ -56,10 +69,10 @@ export class RevenueReportService {
       if (!isPaid && !isRefunded) {
         continue;
       }
-      const eventDate: Date | null = isPaid
-        ? (payment.paidAt ?? null)
-        : (payment.refundedAt ?? null);
-      if (!eventDate) {
+      const eventDate: Date | null = this.parsePaymentEventInstant(
+        isPaid ? payment.paidAt : payment.refundedAt,
+      );
+      if (eventDate == null) {
         continue;
       }
       const currency: string = (payment.currency ?? 'USD').toUpperCase();
@@ -94,7 +107,7 @@ export class RevenueReportService {
     for (const [key, totals] of bucketMap) {
       const currency: string = key.split(':')[0] ?? 'USD';
       const bucketStartIso: string = key.slice(currency.length + 1);
-      const bucketStart: Date = new Date(bucketStartIso);
+      const bucketStart: Date = parseUtcIsoToDate(bucketStartIso);
       const bucketEnd: Date = ReportPeriodBucketHelper.getBucketEndExclusiveUtc(
         bucketStart,
         bucket,

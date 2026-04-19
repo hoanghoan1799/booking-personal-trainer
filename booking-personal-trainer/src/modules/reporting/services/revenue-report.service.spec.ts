@@ -115,4 +115,29 @@ describe('RevenueReportService', () => {
     });
     expect(actual[0]?.gmvNetCents).toBe(5000);
   });
+
+  it('buckets payments when paidAt is an ISO string', async () => {
+    const payments = [
+      {
+        status: PaymentStatus.PAID,
+        amountCents: 4000,
+        currency: 'USD',
+        paidAt: '2026-03-10T12:00:00.000Z',
+        refundedAt: null,
+        metadata: {
+          trainerUserId: 't1',
+          platformFeeCents: 400,
+          trainerShareCents: 3600,
+        },
+        createdAt: new Date(),
+      },
+    ];
+    em.find.mockResolvedValue(payments as unknown as Payment[]);
+    const actual = await service.getRevenueBuckets({
+      query: { bucket: ReportBucket.MONTH },
+      trainerUserIdFilter: null,
+    });
+    expect(actual).toHaveLength(1);
+    expect(actual[0]?.bucketStart).toBe('2026-03-01T00:00:00.000Z');
+  });
 });

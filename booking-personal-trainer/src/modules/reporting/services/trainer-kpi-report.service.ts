@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { EntityManager, FilterQuery } from '@mikro-orm/core';
 
+import dayjs from '../../../common/utils/date-time/utc-dayjs';
 import { BookingStatus } from '../../../common/enums/booking/booking.enum';
 import { PaymentStatus } from '../../../common/enums/billing/billing.enum';
 import { WorkoutStatus } from '../../../common/enums/workout/workout.enum';
@@ -109,8 +110,9 @@ export class TrainerKpiReportService {
       }
       const row: MutableTrainerKpi = ensureRow(workout.trainer.id);
       row.workoutsDoneCount += 1;
-      const durationMs: number =
-        workout.endTime.getTime() - workout.startTime.getTime();
+      const durationMs: number = dayjs
+        .utc(workout.endTime)
+        .diff(dayjs.utc(workout.startTime));
       if (durationMs > 0) {
         row.deliveredMilliseconds += durationMs;
       }
