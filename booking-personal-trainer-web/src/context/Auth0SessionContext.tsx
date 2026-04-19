@@ -8,10 +8,10 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
-  useSyncExternalStore,
 } from "react";
 import { AUTH0_PROFILE_ROUTE } from "@/lib/auth0-profile-route";
 import {
@@ -45,10 +45,6 @@ const fetchAuth0Profile = async (
   return res.json() as Promise<User>;
 };
 
-const getHasBackendSessionSnapshot = (): boolean => getAccessToken() !== "";
-
-const getHasBackendSessionServerSnapshot = (): boolean => false;
-
 type Auth0SessionContextValue = {
   readonly user: User | null;
   readonly isLoading: boolean;
@@ -64,11 +60,8 @@ export const Auth0SessionProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const pathname = usePathname();
-  const hasBackendSession = useSyncExternalStore(
-    subscribeAccessTokenChange,
-    getHasBackendSessionSnapshot,
-    getHasBackendSessionServerSnapshot,
-  );
+
+  const [hasBackendSession, setHasBackendSession] = useState(false);
   const isPublic = isPublicAuthPath(pathname);
   const [, setSignOutPendingTtlBump] = useState(0);
   useEffect(() => {
@@ -87,6 +80,15 @@ export const Auth0SessionProvider: React.FC<{ children: React.ReactNode }> = ({
     }, AUTH0_SIGNOUT_PENDING_TTL_MS + 150);
     return () => window.clearTimeout(id);
   }, [auth0SignOutPending]);
+
+  useLayoutEffect(() => {
+    const sync = (): void => {
+      setHasBackendSession(getAccessToken() !== "");
+    };
+    sync();
+    return subscribeAccessTokenChange(sync);
+  }, []);
+
   const shouldFetch =
     !isPublic && !hasBackendSession && !auth0SignOutPending;
   const [user, setUser] = useState<User | null>(null);
