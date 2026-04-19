@@ -2,7 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { Booking } from "@/services/bookings/bookings.service";
-import type { ExerciseTemplate, ExerciseTemplateItem } from "@/types/template.types";
+import type { User } from "@/types/user.types";
+import type { ExerciseTemplate } from "@/types/template.types";
+import { formatInstantUtc } from "@/lib/date-time/utc-date-time.helper";
 import { createWorkoutForBookingFromTemplate } from "@/services/workouts/workouts.service";
 import { createTemplate, createTemplateItem } from "@/services/templates/templates.service";
 import { fetchAllExercises } from "@/services/exercises/exercises.service";
@@ -19,7 +21,10 @@ type Option = { value: string; label: string };
 interface CreateWorkoutFromTemplateModalProps {
   isOpen: boolean;
   onClose: () => void;
-  booking: Booking | null;
+  /** When set (e.g. booking detail), this booking is used directly. */
+  booking?: Booking | null;
+  /** Confirmed bookings for choosing trainee + session on the workouts page. */
+  confirmedBookings?: readonly Booking[];
   templates: ExerciseTemplate[];
   onSuccess: () => void;
 }
@@ -47,13 +52,22 @@ function parseNullableNumber(value: string): number | null {
   return n;
 }
 
+function getTraineeDisplayName(user: User): string {
+  const parts = [user.firstName, user.lastName].filter(Boolean);
+  return parts.length > 0 ? parts.join(" ") : user.userName;
+}
+
 export default function CreateWorkoutFromTemplateModal({
   isOpen,
   onClose,
-  booking,
+  booking = null,
+  confirmedBookings = [],
   templates,
   onSuccess,
 }: CreateWorkoutFromTemplateModalProps) {
+  const hasExplicitBooking = Boolean(booking?.id);
+  const [selectedTraineeId, setSelectedTraineeId] = useState<string>("");
+  const [selectedBookingId, setSelectedBookingId] = useState<string>("");
   const [templateId, setTemplateId] = useState<string>("");
   const [isCustomizing, setIsCustomizing] = useState<boolean>(false);
   const [templateName, setTemplateName] = useState<string>("");
@@ -83,6 +97,8 @@ export default function CreateWorkoutFromTemplateModal({
 
   useEffect(() => {
     if (!isOpen) return;
+    setSelectedTraineeId("");
+    setSelectedBookingId("");
     setTemplateId("");
     setIsCustomizing(false);
     setTemplateName("");
@@ -99,6 +115,55 @@ export default function CreateWorkoutFromTemplateModal({
     setCurrencyInput("USD");
     setError(null);
   }, [isOpen]);
+
+  const traineeOptionsStandalone: Option[] = useMemo(() => {
+    const map = new Map<string, User>();
+    for (const b of confirmedBookings) {
+      if (b.trainee?.id && !map.has(b.trainee.id)) {
+        map.set(b.trainee.id, b.trainee);
+      }
+    }
+    return Array.from(map.entries())
+      .map(([value, u]) => ({
+        value,
+        label: getTraineeDisplayName(u),
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [confirmedBookings]);
+
+  useEffect(() => {
+    if (!isOpen || hasExplicitBooking) return;
+    if (traineeOptionsStandalone.length !== 1 || selectedTraineeId) return;
+    setSelectedTraineeId(traineeOptionsStandalone[0].value);
+  }, [isOpen, hasExplicitBooking, traineeOptionsStandalone, selectedTraineeId]);
+
+  const bookingsForSelectedTrainee: Booking[] = useMemo(() => {
+    if (!selectedTraineeId) return [];
+    return confirmedBookings
+      .filter((b) => b.trainee?.id === selectedTraineeId)
+      .slice()
+      .sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
+  }, [confirmedBookings, selectedTraineeId]);
+
+  useEffect(() => {
+    if (hasExplicitBooking) return;
+    if (!selectedTraineeId) {
+      setSelectedBookingId("");
+      return;
+    }
+    setSelectedBookingId((prev) => {
+      if (prev && bookingsForSelectedTrainee.some((b) => b.id === prev)) {
+        return prev;
+      }
+      return bookingsForSelectedTrainee[0]?.id ?? "";
+    });
+  }, [hasExplicitBooking, selectedTraineeId, bookingsForSelectedTrainee]);
+
+  const effectiveBooking: Booking | null = useMemo(() => {
+    if (booking?.id) return booking;
+    if (!selectedBookingId) return null;
+    return confirmedBookings.find((b) => b.id === selectedBookingId) ?? null;
+  }, [booking, selectedBookingId, confirmedBookings]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -168,7 +233,7 @@ export default function CreateWorkoutFromTemplateModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!booking?.id || !templateId) return;
+    if (!effectiveBooking?.id || !templateId) return;
     const amountCents = parseMajorUnitsToCents(priceMajorInput);
     if (amountCents == null) {
       setError("Enter a valid price in dollars (e.g. 50 for $50.00). Minimum $0.01.");
@@ -183,7 +248,7 @@ export default function CreateWorkoutFromTemplateModal({
     setError(null);
     try {
       if (!isCustomizing) {
-        await createWorkoutForBookingFromTemplate(booking.id, {
+        await createWorkoutForBookingFromTemplate(effectiveBooking.id, {
           templateId,
           amountCents,
           currency,
@@ -252,7 +317,7 @@ export default function CreateWorkoutFromTemplateModal({
         ),
       );
 
-      await createWorkoutForBookingFromTemplate(booking.id, {
+      await createWorkoutForBookingFromTemplate(effectiveBooking.id, {
         templateId: clonedTemplate.id,
         amountCents,
         currency,
@@ -338,9 +403,84 @@ export default function CreateWorkoutFromTemplateModal({
         Create workout from template
       </h3>
       <p className="mb-4 text-sm text-gray-500 dark:text-gray-400">
-        This will snapshot template items into the workout.
+        {hasExplicitBooking
+          ? "This will snapshot template items into the workout."
+          : "This will snapshot template items into the workout. Choose a trainee and a confirmed session; start and end times follow that booking."}
       </p>
       <form onSubmit={handleSubmit} className="space-y-4">
+        {!hasExplicitBooking ? (
+          <div className="space-y-4 rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-900/40">
+            {confirmedBookings.length === 0 ? (
+              <p className="text-sm text-gray-600 dark:text-gray-300" role="status">
+                You need at least one confirmed booking before you can create a workout from a
+                template. Create a booking and confirm it first.
+              </p>
+            ) : (
+              <>
+                <div>
+                  <label
+                    htmlFor="standalone-trainee"
+                    className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                  >
+                    Trainee *
+                  </label>
+                  <select
+                    id="standalone-trainee"
+                    value={selectedTraineeId}
+                    onChange={(e) => setSelectedTraineeId(e.target.value)}
+                    className={selectClass}
+                    required
+                    aria-label="Select trainee for workout"
+                  >
+                    <option value="">Select trainee</option>
+                    {traineeOptionsStandalone.map((o) => (
+                      <option
+                        key={o.value}
+                        value={o.value}
+                        className="bg-white text-gray-900 dark:bg-gray-900 dark:text-white"
+                      >
+                        {o.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {selectedTraineeId ? (
+                  <div>
+                    <label
+                      htmlFor="standalone-booking"
+                      className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                    >
+                      Confirmed session *
+                    </label>
+                    <select
+                      id="standalone-booking"
+                      value={selectedBookingId}
+                      onChange={(e) => setSelectedBookingId(e.target.value)}
+                      className={selectClass}
+                      required
+                      aria-label="Select confirmed booking session"
+                    >
+                      <option value="">Select session</option>
+                      {bookingsForSelectedTrainee.map((b) => (
+                        <option
+                          key={b.id}
+                          value={b.id}
+                          className="bg-white text-gray-900 dark:bg-gray-900 dark:text-white"
+                        >
+                          {formatInstantUtc(b.startTime, "ddd D MMM YYYY, HH:mm")} →{" "}
+                          {formatInstantUtc(b.endTime, "HH:mm")}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                      Workout start and end times match this booking.
+                    </p>
+                  </div>
+                ) : null}
+              </>
+            )}
+          </div>
+        ) : null}
         <div>
           <label
             htmlFor="template-id"
@@ -719,12 +859,16 @@ export default function CreateWorkoutFromTemplateModal({
             type="submit"
             size="sm"
             disabled={
-              !booking?.id ||
+              !effectiveBooking?.id ||
               !templateId ||
               isSubmitting ||
               catalogLoading ||
               parseMajorUnitsToCents(priceMajorInput) == null ||
-              normalizeCurrencyCode(currencyInput) == null
+              normalizeCurrencyCode(currencyInput) == null ||
+              (!hasExplicitBooking &&
+                (confirmedBookings.length === 0 ||
+                  !selectedTraineeId ||
+                  !selectedBookingId))
             }
           >
             {isSubmitting ? "Creating..." : "Create"}

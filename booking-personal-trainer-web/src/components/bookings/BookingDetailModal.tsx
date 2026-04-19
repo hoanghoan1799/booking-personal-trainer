@@ -11,7 +11,7 @@ import Button from "@/components/ui/button/Button";
 import { getErrorMessage } from "@/lib/error.utils";
 import { useToast } from "@/context/ToastContext";
 import { formatInstantUtc } from "@/lib/date-time/utc-date-time.helper";
-import CreateWorkoutFromTemplateModal from "@/components/bookings/CreateWorkoutFromTemplateModal";
+import CreateWorkoutFromTemplateModal from "@/components/workouts/CreateWorkoutFromTemplateModal";
 
 function getDisplayName(user: { firstName?: string; lastName?: string; userName: string }) {
   const parts = [user.firstName, user.lastName].filter(Boolean);

@@ -3,31 +3,29 @@
 import { useState, useEffect } from "react";
 import { useWorkouts } from "@/hooks/useWorkouts";
 import { useProfile } from "@/hooks/useProfile";
+import { useTemplates } from "@/hooks/useTemplates";
 import { useToast } from "@/context/ToastContext";
-import { getUsers } from "@/services/users/users.service";
 import { getBookings } from "@/services/bookings/bookings.service";
-import { getExercises } from "@/services/exercises/exercises.service";
+import type { Booking } from "@/services/bookings/bookings.service";
 import {
   getWorkout,
   updateWorkoutDetail,
   type Workout,
 } from "@/services/workouts/workouts.service";
-import type { User } from "@/types/user.types";
-import type { Exercise } from "@/services/exercises/exercises.service";
 import WorkoutCard from "./WorkoutCard";
 import WorkoutDetailModal from "./WorkoutDetailModal";
-import CreateWorkoutModal from "./CreateWorkoutModal";
+import CreateWorkoutFromTemplateModal from "./CreateWorkoutFromTemplateModal";
 import Button from "@/components/ui/button/Button";
 
 export default function WorkoutsContent() {
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [selectedWorkout, setSelectedWorkout] = useState<Workout | null>(null);
-  const [trainees, setTrainees] = useState<User[]>([]);
-  const [exercises, setExercises] = useState<Exercise[]>([]);
+  const [confirmedBookings, setConfirmedBookings] = useState<Booking[]>([]);
   const [statusFilter, setStatusFilter] = useState<string>("");
 
   const { user: currentUser } = useProfile();
+  const { templates, executeReload: executeReloadTemplates } = useTemplates();
   const currentUserId = currentUser?.id ?? null;
   const currentUserRole = (currentUser?.role as string | undefined) ?? null;
   const toast = useToast();
@@ -74,38 +72,21 @@ export default function WorkoutsContent() {
   useEffect(() => {
     if (!canCreate || !createModalOpen || !currentUserId || !currentUserRole)
       return;
-
-    if (currentUserRole === "ADMIN") {
-      getUsers({ role: "TRAINEE", limit: 100 })
-        .then((res) => setTrainees(res.users))
-        .catch(() => setTrainees([]));
-    } else if (currentUserRole === "TRAINER") {
-      getBookings({
-        trainerId: currentUserId,
-        status: "CONFIRMED",
-        limit: 100,
-      })
-        .then((res) => {
-          const traineeMap = new Map<string, User>();
-          res.bookings.forEach((b) => {
-            if (b.trainee && !traineeMap.has(b.trainee.id)) {
-              traineeMap.set(b.trainee.id, b.trainee);
-            }
-          });
-          setTrainees(Array.from(traineeMap.values()));
-        })
-        .catch(() => setTrainees([]));
-    } else {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setTrainees([]);
+    if (currentUserRole !== "ADMIN" && currentUserRole !== "TRAINER") {
+      setConfirmedBookings([]);
+      return;
     }
-
-    getExercises({ limit: 200 })
-      .then((res) => setExercises(res.exercises))
-      .catch(() => setExercises([]));
+    const query =
+      currentUserRole === "TRAINER"
+        ? { trainerId: currentUserId, status: "CONFIRMED" as const, limit: 100 }
+        : { status: "CONFIRMED" as const, limit: 200 };
+    void getBookings(query)
+      .then((res) => setConfirmedBookings(res.bookings))
+      .catch(() => setConfirmedBookings([]));
   }, [canCreate, createModalOpen, currentUserId, currentUserRole]);
 
   const handleCreateSuccess = () => {
+    void executeReloadTemplates();
     refetch();
   };
 
@@ -208,11 +189,11 @@ export default function WorkoutsContent() {
         onSave={handleSaveWorkout}
         onAfterPaymentSuccess={handleAfterPaymentSuccess}
       />
-      <CreateWorkoutModal
+      <CreateWorkoutFromTemplateModal
         isOpen={createModalOpen}
         onClose={() => setCreateModalOpen(false)}
-        trainees={trainees}
-        exercises={exercises}
+        confirmedBookings={confirmedBookings}
+        templates={templates}
         onSuccess={handleCreateSuccess}
       />
     </>
