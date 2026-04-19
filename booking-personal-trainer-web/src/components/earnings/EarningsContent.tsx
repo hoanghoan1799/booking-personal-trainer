@@ -8,16 +8,9 @@ import {
   type AdminEarningsTotals,
 } from "@/services/earnings/earnings.service";
 import Button from "@/components/ui/button/Button";
+import { formatCents } from "@/lib/format-money";
 
 const DEFAULT_CURRENCY_ALL = "ALL" as const;
-
-const formatCents = (cents: number): string => {
-  const sign = cents < 0 ? "-" : "";
-  const abs = Math.abs(cents);
-  const dollars = Math.floor(abs / 100);
-  const remainder = abs % 100;
-  return `${sign}${dollars.toLocaleString()}.${String(remainder).padStart(2, "0")}`;
-};
 
 const formatDateInputToIsoStart = (value: string): string => {
   const [year, month, day] = value.split("-").map((v) => Number(v));

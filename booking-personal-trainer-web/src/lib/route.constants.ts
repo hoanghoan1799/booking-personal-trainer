@@ -26,6 +26,8 @@ export const API_ROUTES = {
   USERS: "/users",
   WORKOUTS: "/workouts",
   NOTIFICATIONS: "/notifications",
+  ADMIN_REPORTS: "/admin/reports",
+  TRAINER_REPORTS: "/trainer/reports",
 } as const;
 
 /** Full API endpoint paths for fetch calls */
@@ -39,6 +41,8 @@ export const API_ENDPOINTS = {
   USERS: `${API_BASE}${API_ROUTES.USERS}`,
   WORKOUTS: `${API_BASE}${API_ROUTES.WORKOUTS}`,
   NOTIFICATIONS: `${API_BASE}${API_ROUTES.NOTIFICATIONS}`,
+  ADMIN_REPORTS: `${API_BASE}${API_ROUTES.ADMIN_REPORTS}`,
+  TRAINER_REPORTS: `${API_BASE}${API_ROUTES.TRAINER_REPORTS}`,
 } as const;
 
 /** App (frontend) routes for navigation */

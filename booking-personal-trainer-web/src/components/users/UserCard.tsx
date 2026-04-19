@@ -1,6 +1,7 @@
 "use client";
 
 import type { User } from "@/types/user.types";
+import { getUserDisplayName } from "@/lib/user-display";
 import Badge from "@/components/ui/badge/Badge";
 import RoleBadge from "./RoleBadge";
 
@@ -10,17 +11,12 @@ interface UserCardProps {
   onClick?: () => void;
 }
 
-const getDisplayName = (user: User) => {
-  const parts = [user.firstName, user.lastName].filter(Boolean);
-  return parts.length > 0 ? parts.join(" ") : user.userName;
-};
-
 export default function UserCard({
   user,
   showWaitingBadge = false,
   onClick,
 }: UserCardProps) {
-  const displayName = getDisplayName(user);
+  const displayName = getUserDisplayName(user);
   const isClickable = Boolean(onClick);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
