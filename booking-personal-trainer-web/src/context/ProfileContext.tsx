@@ -6,10 +6,10 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
-  useSyncExternalStore,
 } from "react";
 import type { User } from "@/types/user.types";
 import { getProfile } from "@/services/auth/auth.service";
@@ -25,18 +25,15 @@ type ProfileContextValue = {
 
 const ProfileContext = createContext<ProfileContextValue | null>(null);
 
-const getHasAccessTokenSnapshot = (): boolean => getAccessToken() !== "";
-
-const getHasAccessTokenServerSnapshot = (): boolean => false;
-
 export const ProfileProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const hasAccessToken = useSyncExternalStore(
-    subscribeAccessTokenChange,
-    getHasAccessTokenSnapshot,
-    getHasAccessTokenServerSnapshot,
-  );
+  /**
+   * Token presence must not be read from localStorage during the initial render on the client,
+   * or it will disagree with SSR (server always has no token) and React will report a hydration
+   * mismatch. Start false everywhere, then sync in useLayoutEffect after hydration.
+   */
+  const [hasAccessToken, setHasAccessToken] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
@@ -66,6 +63,14 @@ export const ProfileProvider: React.FC<{ children: React.ReactNode }> = ({
       inFlightRef.current = null;
     });
     await inFlightRef.current;
+  }, []);
+
+  useLayoutEffect(() => {
+    const syncHasAccessToken = (): void => {
+      setHasAccessToken(getAccessToken() !== "");
+    };
+    syncHasAccessToken();
+    return subscribeAccessTokenChange(syncHasAccessToken);
   }, []);
 
   useEffect(() => {
