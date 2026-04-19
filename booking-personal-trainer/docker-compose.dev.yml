@@ -6,7 +6,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.dev
-    command: pnpm start:dev
+    command: ["pnpm", "start:dev"]
     volumes:
     - .:/usr/src/app
     - /usr/src/app/node_modules
