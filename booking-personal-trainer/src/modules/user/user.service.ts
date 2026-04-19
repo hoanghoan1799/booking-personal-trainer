@@ -275,12 +275,20 @@ export class UserService {
       return BaseResponseDto.ok(targetUser);
     }
 
-    if (targetUser.role === data.role) {
+    const previousRole = targetUser.role;
+    const previousApprovalStatus = targetUser.approvalStatus;
+    targetUser.role = data.role;
+    if (data.role === UserRole.TRAINER) {
+      targetUser.approvalStatus = TrainerApprovalStatus.APPROVED;
+    } else {
+      targetUser.approvalStatus = TrainerApprovalStatus.NONE;
+    }
+    const hasRoleOrApprovalChange =
+      previousRole !== targetUser.role ||
+      previousApprovalStatus !== targetUser.approvalStatus;
+    if (!hasRoleOrApprovalChange) {
       return BaseResponseDto.ok(targetUser);
     }
-
-    targetUser.role = data.role;
-    targetUser.approvalStatus = TrainerApprovalStatus.NONE;
     await this.userRepo.save(targetUser);
 
     await this.notificationsService.createAndPublishToUsers({

@@ -315,6 +315,60 @@ describe('UserService', () => {
       expect(actual.data.approvalStatus).toBe(TrainerApprovalStatus.APPROVED);
       expect(userRepo.save).toHaveBeenCalled();
     });
+
+    it('should set APPROVED when promoting TRAINEE userType to TRAINER role', async () => {
+      const targetUser = {
+        ...mockUser,
+        id: 'trainee-type-id',
+        userType: UserType.TRAINEE,
+        role: UserRole.TRAINEE,
+        approvalStatus: TrainerApprovalStatus.NONE,
+      };
+      userRepo.findById.mockResolvedValue(targetUser);
+      const currentUser: JwtAuthPayload = {
+        id: 'admin-id',
+        email: 'admin@test.com',
+        userName: 'admin',
+        role: UserRole.ADMIN,
+      };
+
+      const actual = await service.updateUserRole(
+        targetUser.id,
+        { role: UserRole.TRAINER },
+        currentUser,
+      );
+
+      expect(actual.data.role).toBe(UserRole.TRAINER);
+      expect(actual.data.approvalStatus).toBe(TrainerApprovalStatus.APPROVED);
+      expect(userRepo.save).toHaveBeenCalled();
+    });
+
+    it('should set APPROVED when role is already TRAINER but approvalStatus was NONE', async () => {
+      const targetUser = {
+        ...mockUser,
+        id: 'stuck-trainer-id',
+        userType: UserType.TRAINEE,
+        role: UserRole.TRAINER,
+        approvalStatus: TrainerApprovalStatus.NONE,
+      };
+      userRepo.findById.mockResolvedValue(targetUser);
+      const currentUser: JwtAuthPayload = {
+        id: 'admin-id',
+        email: 'admin@test.com',
+        userName: 'admin',
+        role: UserRole.ADMIN,
+      };
+
+      const actual = await service.updateUserRole(
+        targetUser.id,
+        { role: UserRole.TRAINER },
+        currentUser,
+      );
+
+      expect(actual.data.role).toBe(UserRole.TRAINER);
+      expect(actual.data.approvalStatus).toBe(TrainerApprovalStatus.APPROVED);
+      expect(userRepo.save).toHaveBeenCalled();
+    });
   });
 
   describe('updateProfile', () => {
