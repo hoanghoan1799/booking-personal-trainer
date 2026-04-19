@@ -31,6 +31,13 @@ const readLinesFromEventStreamChunk = (input: string): {
   return { events: parts, remainder };
 };
 
+const executeIsAbortError = (err: unknown): boolean => {
+  if (err instanceof DOMException && err.name === "AbortError") {
+    return true;
+  }
+  return err instanceof Error && err.name === "AbortError";
+};
+
 const parseEventBlock = (block: string): { readonly event?: string; readonly data?: string } => {
   const lines = block
     .split("\n")
@@ -71,6 +78,10 @@ export const useNotificationsStream = (args: UseNotificationsStreamArgs): { read
     let abortController: AbortController | null = null;
     let timeoutId: number | null = null;
     const connect = async (): Promise<void> => {
+      if (timeoutId != null) {
+        window.clearTimeout(timeoutId);
+        timeoutId = null;
+      }
       abortController?.abort();
       abortController = new AbortController();
       const token = getAccessToken();
@@ -118,6 +129,9 @@ export const useNotificationsStream = (args: UseNotificationsStreamArgs): { read
         }
       } catch (err) {
         if (isCancelled) return;
+        if (executeIsAbortError(err)) {
+          return;
+        }
         setIsConnected(false);
         const attempt = reconnectAttemptRef.current + 1;
         reconnectAttemptRef.current = attempt;
