@@ -11,6 +11,10 @@ import {
 } from "@/services/payments/trainer-payouts.service";
 import { createTrainerStripeConnectOnboardingLink } from "@/services/payments/trainer-stripe-connect.service";
 import { useToast } from "@/context/ToastContext";
+import {
+  dateInputToUtcIsoExclusiveEndNextUtcDay,
+  dateInputToUtcIsoStartOfUtcDay,
+} from "@/lib/date-time/utc-date-time.helper";
 
 const DEFAULT_CURRENCY_ALL = "ALL" as const;
 
@@ -23,15 +27,11 @@ const formatCents = (cents: number): string => {
 };
 
 const formatDateInputToIsoStart = (value: string): string => {
-  const [year, month, day] = value.split("-").map((v) => Number(v));
-  const date = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
-  return date.toISOString();
+  return dateInputToUtcIsoStartOfUtcDay(value);
 };
 
 const formatDateInputToIsoExclusiveEnd = (value: string): string => {
-  const [year, month, day] = value.split("-").map((v) => Number(v));
-  const date = new Date(Date.UTC(year, month - 1, day + 1, 0, 0, 0, 0));
-  return date.toISOString();
+  return dateInputToUtcIsoExclusiveEndNextUtcDay(value);
 };
 
 const SummaryCard = (props: { readonly summary: TrainerPayoutsCurrencySummary }) => {

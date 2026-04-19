@@ -6,6 +6,23 @@ import type {
   TrainerAvailability,
   TrainerTimeOff,
 } from "@/services/trainer-schedule/trainer-schedule.types";
+import { utcNowAsDate } from "@/lib/date-time/utc-date-time.helper";
+import {
+  addDays,
+  buildUtcInstantFromUtcDayAndClockMinutes,
+  clampDragRangeForDay,
+  formatDayHeader,
+  getClockTimeFromIso,
+  getFirstSelectableMinuteOnDay,
+  getIsoDayOfWeek,
+  getMinutesFromLocalDate,
+  getStartOfWeekMonday,
+  getTimeLabel,
+  isPastCalendarDay,
+  isTodayLocal,
+  utcFromMs,
+  utcInstantFromWire,
+} from "@/lib/date-time/utc-weekly-calendar.helper";
 
 type WeeklyScheduleCalendarProps = {
   readonly availabilities: TrainerAvailability[];
@@ -43,107 +60,6 @@ const MINUTES_STEP = 30 as const;
 const clamp = (value: number, min: number, max: number): number =>
   Math.min(max, Math.max(min, value));
 
-const getIsoDayOfWeek = (date: Date): number => {
-  const jsDay = date.getDay();
-  return jsDay === 0 ? 7 : jsDay;
-};
-
-const getStartOfWeekMonday = (date: Date): Date => {
-  const isoDay = getIsoDayOfWeek(date);
-  const monday = new Date(date);
-  monday.setHours(0, 0, 0, 0);
-  monday.setDate(monday.getDate() - (isoDay - 1));
-  return monday;
-};
-
-const addDays = (date: Date, days: number): Date => {
-  const next = new Date(date);
-  next.setDate(next.getDate() + days);
-  return next;
-};
-
-const startOfLocalDay = (date: Date): Date => {
-  const d = new Date(date);
-  d.setHours(0, 0, 0, 0);
-  return d;
-};
-
-const isPastCalendarDay = (dayDate: Date): boolean => {
-  return startOfLocalDay(dayDate).getTime() < startOfLocalDay(new Date()).getTime();
-};
-
-const isTodayLocal = (dayDate: Date): boolean => {
-  return startOfLocalDay(dayDate).getTime() === startOfLocalDay(new Date()).getTime();
-};
-
-/**
- * First minute-of-day (0–1440) on this calendar day whose local datetime is strictly after Date.now().
- * null = no selectable slot remains (entire day in the past, or no future step left today).
- */
-const getFirstSelectableMinuteOnDay = (dayDate: Date): number | null => {
-  if (isPastCalendarDay(dayDate)) {
-    return null;
-  }
-  const nowMs: number = Date.now();
-  for (let m = 0; m <= END_HOUR * 60; m += MINUTES_STEP) {
-    const dt = new Date(
-      dayDate.getFullYear(),
-      dayDate.getMonth(),
-      dayDate.getDate(),
-      Math.floor(m / 60),
-      m % 60,
-      0,
-      0,
-    );
-    if (dt.getTime() > nowMs) {
-      return m;
-    }
-  }
-  return null;
-};
-
-const clampDragRangeForDay = (
-  dayDate: Date,
-  anchorMinute: number,
-  otherMinute: number,
-): { start: number; end: number } | null => {
-  const minM = getFirstSelectableMinuteOnDay(dayDate);
-  if (minM === null) {
-    return null;
-  }
-  const lo = Math.min(anchorMinute, otherMinute);
-  const hi = Math.max(anchorMinute, otherMinute);
-  const lo2 = Math.max(lo, minM);
-  const hi2 = Math.max(hi, lo2);
-  return { start: lo2, end: hi2 };
-};
-
-const getMinutesFromLocalDate = (date: Date): number =>
-  date.getHours() * 60 + date.getMinutes();
-
-const getTimeLabel = (date: Date): string => {
-  const hours = date.getHours();
-  const minutes = date.getMinutes();
-  const hh = String(hours).padStart(2, "0");
-  const mm = String(minutes).padStart(2, "0");
-  return `${hh}:${mm}`;
-};
-
-const formatDayHeader = (date: Date): string => {
-  const weekday = date.toLocaleDateString(undefined, { weekday: "short" });
-  const month = date.toLocaleDateString(undefined, { month: "short" });
-  const day = date.getDate();
-  return `${weekday} ${month} ${day}`;
-};
-
-const getClockTimeFromIso = (isoString: string): { hour: number; minute: number } | null => {
-  const date = new Date(isoString);
-  if (Number.isNaN(date.getTime())) {
-    return null;
-  }
-  return { hour: date.getHours(), minute: date.getMinutes() };
-};
-
 const createEventsForWeek = (input: {
   weekStart: Date;
   availabilities: TrainerAvailability[];
@@ -154,8 +70,8 @@ const createEventsForWeek = (input: {
   const weekEnd = addDays(weekStart, 7);
 
   const availabilityEvents: CalendarEvent[] = input.availabilities.flatMap((a) => {
-    const start = new Date(a.startTime);
-    const end = new Date(a.endTime);
+    const start = utcInstantFromWire(a.startTime);
+    const end = utcInstantFromWire(a.endTime);
     if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
       return [];
     }
@@ -178,8 +94,8 @@ const createEventsForWeek = (input: {
   });
 
   const bookingEvents: CalendarEvent[] = input.bookings.flatMap((b) => {
-    const start = new Date(b.startTime);
-    const end = new Date(b.endTime);
+    const start = utcInstantFromWire(b.startTime);
+    const end = utcInstantFromWire(b.endTime);
     if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
       return [];
     }
@@ -203,8 +119,8 @@ const createEventsForWeek = (input: {
 
   const timeOffEvents: CalendarEvent[] = input.timeOff
     .flatMap((t) => {
-      const start = new Date(t.startTime);
-      const end = new Date(t.endTime);
+      const start = utcInstantFromWire(t.startTime);
+      const end = utcInstantFromWire(t.endTime);
       if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
         return [];
       }
@@ -215,8 +131,8 @@ const createEventsForWeek = (input: {
       for (let i = 0; i < 7; i++) {
         const dayStart = addDays(weekStart, i);
         const dayEnd = addDays(dayStart, 1);
-        const segmentStart = new Date(Math.max(dayStart.getTime(), start.getTime()));
-        const segmentEnd = new Date(Math.min(dayEnd.getTime(), end.getTime()));
+        const segmentStart = utcFromMs(Math.max(dayStart.getTime(), start.getTime()));
+        const segmentEnd = utcFromMs(Math.min(dayEnd.getTime(), end.getTime()));
         if (segmentEnd.getTime() <= segmentStart.getTime()) {
           continue;
         }
@@ -268,14 +184,14 @@ const WeeklyScheduleCalendar: React.FC<WeeklyScheduleCalendarProps> = ({
   const dragSurfaceRectRef = useRef<DOMRect | null>(null);
   const dragMinMinuteRef = useRef<number>(0);
   const dragDayIndexRef = useRef<number>(0);
-  const dragDayDateRef = useRef<Date>(new Date());
+  const dragDayDateRef = useRef<Date>(utcNowAsDate());
   const dragListenersRef = useRef<{
     move: (e: MouseEvent) => void;
     up: (e: MouseEvent) => void;
   } | null>(null);
 
   const weekStart = useMemo((): Date => {
-    const now = new Date();
+    const now = utcNowAsDate();
     const base = getStartOfWeekMonday(now);
     return addDays(base, weekOffset * 7);
   }, [weekOffset]);
@@ -370,24 +286,8 @@ const WeeklyScheduleCalendar: React.FC<WeeklyScheduleCalendarProps> = ({
       if (end - start < MIN_SELECTION_MINUTES) {
         return;
       }
-      const startDt = new Date(
-        dayDate.getFullYear(),
-        dayDate.getMonth(),
-        dayDate.getDate(),
-        Math.floor(start / 60),
-        start % 60,
-        0,
-        0,
-      );
-      const endDt = new Date(
-        dayDate.getFullYear(),
-        dayDate.getMonth(),
-        dayDate.getDate(),
-        Math.floor(end / 60),
-        end % 60,
-        0,
-        0,
-      );
+      const startDt = buildUtcInstantFromUtcDayAndClockMinutes(dayDate, start);
+      const endDt = buildUtcInstantFromUtcDayAndClockMinutes(dayDate, end);
       const nowMs = Date.now();
       if (startDt.getTime() <= nowMs || endDt.getTime() <= nowMs) {
         return;
@@ -681,9 +581,9 @@ const WeeklyScheduleCalendar: React.FC<WeeklyScheduleCalendarProps> = ({
                           )}
                           <div className="truncate font-semibold">{e.label}</div>
                           <div className="truncate opacity-80">
-                            {getTimeLabel(new Date(d.getFullYear(), d.getMonth(), d.getDate(), Math.floor(start / 60), start % 60))}{" "}
+                            {getTimeLabel(buildUtcInstantFromUtcDayAndClockMinutes(d, start))}{" "}
                             -{" "}
-                            {getTimeLabel(new Date(d.getFullYear(), d.getMonth(), d.getDate(), Math.floor(end / 60), end % 60))}
+                            {getTimeLabel(buildUtcInstantFromUtcDayAndClockMinutes(d, end))}
                           </div>
                         </div>
                       );

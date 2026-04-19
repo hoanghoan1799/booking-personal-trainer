@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import dayjs from "dayjs";
+import dayjs from "@/lib/date-time/utc-dayjs";
 import type { User } from "@/types/user.types";
 import type { Exercise } from "@/services/exercises/exercises.service";
 import { createWorkout } from "@/services/workouts/workouts.service";

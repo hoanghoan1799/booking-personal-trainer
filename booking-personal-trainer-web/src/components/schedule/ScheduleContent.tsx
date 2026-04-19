@@ -12,6 +12,18 @@ import Button from "@/components/ui/button/Button";
 import WeeklyScheduleCalendar from "@/components/schedule/WeeklyScheduleCalendar";
 import { Modal } from "@/components/ui/modal";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
+import {
+  formatInstantUtc,
+  toDateTimeLocalUtcFromUtcDate,
+} from "@/lib/date-time/utc-date-time.helper";
+import dayjs from "@/lib/date-time/utc-dayjs";
+import {
+  addDays,
+  buildUtcInstantFromUtcDayAndClockMinutes,
+  getIsoDayOfWeek,
+  getStartOfWeekMonday,
+  utcInstantFromWire,
+} from "@/lib/date-time/utc-weekly-calendar.helper";
 
 type DayOption = {
   readonly dayOfWeek: number;
@@ -28,52 +40,22 @@ const DAY_OPTIONS: DayOption[] = [
   { dayOfWeek: 7, label: "Sun" },
 ] as const;
 
-const getIsoDayOfWeek = (date: Date): number => {
-  const jsDay = date.getDay();
-  return jsDay === 0 ? 7 : jsDay;
-};
-
-const getStartOfWeekMonday = (date: Date): Date => {
-  const isoDay = getIsoDayOfWeek(date);
-  const monday = new Date(date);
-  monday.setHours(0, 0, 0, 0);
-  monday.setDate(monday.getDate() - (isoDay - 1));
-  return monday;
-};
-
-const addDays = (date: Date, days: number): Date => {
-  const next = new Date(date);
-  next.setDate(next.getDate() + days);
-  return next;
-};
-
 const toDateTimeLocalFromDate = (d: Date): string => {
-  const pad = (n: number): string => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(
-    d.getHours(),
-  )}:${pad(d.getMinutes())}`;
+  return toDateTimeLocalUtcFromUtcDate(d);
 };
 
 const formatTimeFromIso = (isoString: string): string => {
-  const date = new Date(isoString);
-  if (Number.isNaN(date.getTime())) {
+  if (!dayjs.utc(isoString).isValid()) {
     return "—";
   }
-  return date.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+  return formatInstantUtc(isoString, "HH:mm");
 };
 
 const formatDateTimeFromIso = (isoString: string): string => {
-  const date = new Date(isoString);
-  if (Number.isNaN(date.getTime())) {
+  if (!dayjs.utc(isoString).isValid()) {
     return "—";
   }
-  return date.toLocaleString(undefined, {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  return formatInstantUtc(isoString, "ddd, D MMM, HH:mm");
 };
 
 const buildIsoForWeekDayAndClockTime = (
@@ -84,16 +66,10 @@ const buildIsoForWeekDayAndClockTime = (
   const dayIndex = dayOfWeek - 1;
   const dayDate = addDays(weekStartMonday, dayIndex);
   const [hour, minute] = clockTime.split(":").map((v) => Number(v));
-  const local = new Date(
-    dayDate.getFullYear(),
-    dayDate.getMonth(),
-    dayDate.getDate(),
-    hour,
-    minute,
-    0,
-    0,
-  );
-  return local.toISOString();
+  return buildUtcInstantFromUtcDayAndClockMinutes(
+    dayDate,
+    hour * 60 + minute,
+  ).toISOString();
 };
 
 const AVAILABILITY_MIN_DURATION_MINUTES = 60 as const;
@@ -113,14 +89,14 @@ const isClockTimeOnThirtyMinuteStep = (clockTime: string): boolean => {
 };
 
 const isDateTimeLocalOnThirtyMinuteStep = (value: string): boolean => {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
+  const date = dayjs.utc(value, "YYYY-MM-DDTHH:mm", true);
+  if (!date.isValid()) {
     return false;
   }
-  if (date.getSeconds() !== 0 || date.getMilliseconds() !== 0) {
+  if (date.second() !== 0 || date.millisecond() !== 0) {
     return false;
   }
-  return date.getMinutes() % SCHEDULE_TIME_STEP_MINUTES === 0;
+  return date.minute() % SCHEDULE_TIME_STEP_MINUTES === 0;
 };
 
 const ScheduleContent: React.FC = () => {
@@ -195,23 +171,23 @@ const ScheduleContent: React.FC = () => {
       if (a.dayOfWeek !== b.dayOfWeek) {
         return a.dayOfWeek - b.dayOfWeek;
       }
-      return new Date(a.startTime).getTime() - new Date(b.startTime).getTime();
+      return dayjs.utc(a.startTime).valueOf() - dayjs.utc(b.startTime).valueOf();
     });
   }, [availabilities]);
 
   const sortedTimeOff = useMemo(() => {
     return [...timeOff].sort(
-      (a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime(),
+      (a, b) => dayjs.utc(a.startTime).valueOf() - dayjs.utc(b.startTime).valueOf(),
     );
   }, [timeOff]);
 
   const isValidTimeRange = useCallback((startIso: string, endIso: string): boolean => {
-    const start = new Date(startIso);
-    const end = new Date(endIso);
-    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+    const start = dayjs.utc(startIso);
+    const end = dayjs.utc(endIso);
+    if (!start.isValid() || !end.isValid()) {
       return false;
     }
-    return start.getTime() < end.getTime();
+    return start.valueOf() < end.valueOf();
   }, []);
 
   const isValidClockTime = useCallback((value: string): boolean => {
@@ -230,22 +206,21 @@ const ScheduleContent: React.FC = () => {
   }, [isValidClockTime]);
 
   const getIsoFromDateTimeLocal = useCallback((value: string): string => {
-    const date = new Date(value);
-    return date.toISOString();
+    return dayjs.utc(value, "YYYY-MM-DDTHH:mm", true).toISOString();
   }, []);
 
   const isInPastOrNow = useCallback((isoString: string): boolean => {
-    const date = new Date(isoString);
-    if (Number.isNaN(date.getTime())) {
+    const date = dayjs.utc(isoString);
+    if (!date.isValid()) {
       return false;
     }
-    return date.getTime() <= Date.now();
+    return date.valueOf() <= Date.now();
   }, []);
 
   const openCreateModalFromSelection = useCallback(
     (input: { dayIndex: number; startMinute: number; endMinute: number; weekStart: Date }) => {
       setCreateModalError(null);
-      const monday = getStartOfWeekMonday(new Date(input.weekStart));
+      const monday = getStartOfWeekMonday(input.weekStart);
       setAvailabilityWeekStartMonday(monday);
       const dayOfWeek = input.dayIndex + 1;
       const startHour = Math.floor(input.startMinute / 60);
@@ -259,20 +234,17 @@ const ScheduleContent: React.FC = () => {
       setAvailabilityStartClockTime(toClockTime(startHour, startMinute));
       setAvailabilityEndClockTime(toClockTime(endHour, endMinute));
 
-      const date = new Date(input.weekStart);
-      date.setDate(date.getDate() + input.dayIndex);
-      const toDateTimeLocal = (d: Date): string => {
-        const pad = (n: number): string => String(n).padStart(2, "0");
-        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(
-          d.getHours(),
-        )}:${pad(d.getMinutes())}`;
-      };
-      const startDate = new Date(date);
-      startDate.setHours(startHour, startMinute, 0, 0);
-      const endDate = new Date(date);
-      endDate.setHours(endHour, endMinute, 0, 0);
-      setTimeOffStartDateTime(toDateTimeLocal(startDate));
-      setTimeOffEndDateTime(toDateTimeLocal(endDate));
+      const dayDate = addDays(input.weekStart, input.dayIndex);
+      const startDate = buildUtcInstantFromUtcDayAndClockMinutes(
+        dayDate,
+        startHour * 60 + startMinute,
+      );
+      const endDate = buildUtcInstantFromUtcDayAndClockMinutes(
+        dayDate,
+        endHour * 60 + endMinute,
+      );
+      setTimeOffStartDateTime(toDateTimeLocalFromDate(startDate));
+      setTimeOffEndDateTime(toDateTimeLocalFromDate(endDate));
 
       setCreateMode("availability");
       setIsCreateModalOpen(true);
@@ -289,11 +261,11 @@ const ScheduleContent: React.FC = () => {
           return;
         }
         setEditModalError(null);
-        const start = new Date(availability.startTime);
-        const end = new Date(availability.endTime);
+        const start = utcInstantFromWire(availability.startTime);
+        const end = utcInstantFromWire(availability.endTime);
         const toClockTime = (d: Date): string => {
-          const pad = (n: number): string => String(n).padStart(2, "0");
-          return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+          const utc = dayjs.utc(d);
+          return `${String(utc.hour()).padStart(2, "0")}:${String(utc.minute()).padStart(2, "0")}`;
         };
         setAvailabilityStartClockTime(toClockTime(start));
         setAvailabilityEndClockTime(toClockTime(end));
@@ -311,8 +283,8 @@ const ScheduleContent: React.FC = () => {
         }
         setEditModalError(null);
         setEditTimeOffReason(item.reason);
-        setEditTimeOffStartDateTime(toDateTimeLocalFromDate(new Date(item.startTime)));
-        setEditTimeOffEndDateTime(toDateTimeLocalFromDate(new Date(item.endTime)));
+        setEditTimeOffStartDateTime(toDateTimeLocalFromDate(utcInstantFromWire(item.startTime)));
+        setEditTimeOffEndDateTime(toDateTimeLocalFromDate(utcInstantFromWire(item.endTime)));
         setIsDeleteTimeOffConfirmOpen(false);
         setEditTarget({ type: "timeOff", id: item.id });
         setIsEditModalOpen(true);
@@ -355,27 +327,11 @@ const ScheduleContent: React.FC = () => {
       setEditModalError("Availability must be at least 1 hour.");
       return;
     }
-    const base = new Date(availability.startTime);
+    const baseDay = dayjs.utc(availability.startTime).startOf("day");
     const [sh, sm] = availabilityStartClockTime.split(":").map((v) => Number(v));
     const [eh, em] = availabilityEndClockTime.split(":").map((v) => Number(v));
-    const startLocal = new Date(
-      base.getFullYear(),
-      base.getMonth(),
-      base.getDate(),
-      sh,
-      sm,
-      0,
-      0,
-    );
-    const endLocal = new Date(
-      base.getFullYear(),
-      base.getMonth(),
-      base.getDate(),
-      eh,
-      em,
-      0,
-      0,
-    );
+    const startLocal = baseDay.hour(sh).minute(sm).second(0).millisecond(0).toDate();
+    const endLocal = baseDay.hour(eh).minute(em).second(0).millisecond(0).toDate();
     const startIso = startLocal.toISOString();
     const endIso = endLocal.toISOString();
     if (isInPastOrNow(startIso) || isInPastOrNow(endIso)) {
@@ -477,8 +433,12 @@ const ScheduleContent: React.FC = () => {
       setEditModalError("Time must be in 30-minute increments.");
       return;
     }
-    const timeOffStartMs = new Date(editTimeOffStartDateTime).getTime();
-    const timeOffEndMs = new Date(editTimeOffEndDateTime).getTime();
+    const timeOffStartMs = dayjs
+      .utc(editTimeOffStartDateTime, "YYYY-MM-DDTHH:mm", true)
+      .valueOf();
+    const timeOffEndMs = dayjs
+      .utc(editTimeOffEndDateTime, "YYYY-MM-DDTHH:mm", true)
+      .valueOf();
     if (
       (timeOffEndMs - timeOffStartMs) / 60000 < TIME_OFF_MIN_DURATION_MINUTES
     ) {
@@ -645,8 +605,12 @@ const ScheduleContent: React.FC = () => {
       setCreateModalError("Time must be in 30-minute increments.");
       return;
     }
-    const timeOffStartMs = new Date(timeOffStartDateTime).getTime();
-    const timeOffEndMs = new Date(timeOffEndDateTime).getTime();
+    const timeOffStartMs = dayjs
+      .utc(timeOffStartDateTime, "YYYY-MM-DDTHH:mm", true)
+      .valueOf();
+    const timeOffEndMs = dayjs
+      .utc(timeOffEndDateTime, "YYYY-MM-DDTHH:mm", true)
+      .valueOf();
     if (
       (timeOffEndMs - timeOffStartMs) / 60000 < TIME_OFF_MIN_DURATION_MINUTES
     ) {

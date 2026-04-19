@@ -1,6 +1,7 @@
 "use client";
 
 import type React from "react";
+import { formatPeriodUtcFromUtcIso } from "@/lib/date-time/utc-date-time.helper";
 import type { RevenueBucketRow } from "@/services/reporting/reporting.service";
 import { formatCents } from "@/lib/format-money";
 
@@ -9,13 +10,7 @@ export type RevenueBucketsTableProps = {
 };
 
 const formatPeriod = (start: string, end: string): string => {
-  try {
-    const s = new Date(start);
-    const e = new Date(end);
-    return `${s.toLocaleDateString()} → ${e.toLocaleDateString()}`;
-  } catch {
-    return `${start} → ${end}`;
-  }
+  return formatPeriodUtcFromUtcIso(start, end);
 };
 
 export const RevenueBucketsTable = (props: RevenueBucketsTableProps): React.ReactNode => {

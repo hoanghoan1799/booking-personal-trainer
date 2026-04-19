@@ -12,6 +12,7 @@ import { useProfile } from "@/hooks/useProfile";
 import type { ExerciseTemplate, ExerciseTemplateItem, TemplateType } from "@/types/template.types";
 import ExercisePickerModal from "@/components/templates/ExercisePickerModal";
 import type { Exercise } from "@/services/exercises/exercises.service";
+import { formatInstantUtc, utcNowIso } from "@/lib/date-time/utc-date-time.helper";
 
 type TemplateFormState = {
   name: string;
@@ -59,9 +60,7 @@ function createClientId(): string {
 }
 
 function formatIsoToReadableDate(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleString();
+  return formatInstantUtc(iso, "ddd, D MMM YYYY, HH:mm");
 }
 
 function getTemplateTypeBadgeClassName(templateType: TemplateType): string {
@@ -220,7 +219,7 @@ export default function TemplatesContent() {
     const reps = parseNullableNumber(newItemForm.reps);
     const restSeconds = parseNullableNumber(newItemForm.restSeconds);
     if (sets === null || reps === null || restSeconds === null) return;
-    const nowIso = new Date().toISOString();
+    const nowIso = utcNowIso();
     const existingCount = selectedTemplate.items.length;
     const item: ExerciseTemplateItem = {
       id: createClientId(),
@@ -287,7 +286,7 @@ export default function TemplatesContent() {
           sets,
           reps,
           restSeconds,
-          updatedAtIso: new Date().toISOString(),
+          updatedAtIso: utcNowIso(),
         };
       });
       return { ...prev, items: nextItems };
@@ -313,7 +312,7 @@ export default function TemplatesContent() {
     const reps = parseNullableNumber(createItemForm.reps);
     const restSeconds = parseNullableNumber(createItemForm.restSeconds);
     if (sets === null || reps === null || restSeconds === null) return;
-    const nowIso = new Date().toISOString();
+    const nowIso = utcNowIso();
     const item: ExerciseTemplateItem = {
       id: createClientId(),
       templateId: "pending",

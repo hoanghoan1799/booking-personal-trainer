@@ -7,7 +7,8 @@ import {
   markAllNotificationsRead,
   markNotificationRead,
 } from "@/services/notifications/notifications.service";
-import dayjs from "dayjs";
+import { formatInstantUtc } from "@/lib/date-time/utc-date-time.helper";
+import dayjs from "@/lib/date-time/utc-dayjs";
 
 type Tab = "UNREAD" | "ALL";
 
@@ -65,9 +66,8 @@ export default function NotificationsPage() {
 
   const formatTimestamp = (iso?: string): string => {
     if (!iso) return "";
-    const date = dayjs(iso);
-    if (!date.isValid()) return "";
-    return date.format("MMM D, YYYY • HH:mm");
+    if (!dayjs.utc(iso).isValid()) return "";
+    return formatInstantUtc(iso, "MMM D, YYYY • HH:mm");
   };
 
   return (

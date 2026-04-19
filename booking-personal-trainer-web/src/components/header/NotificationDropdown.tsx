@@ -5,7 +5,8 @@ import { Dropdown } from "../ui/dropdown/Dropdown";
 import { DropdownItem } from "../ui/dropdown/DropdownItem";
 import { useNotifications } from "@/context/NotificationsContext";
 import { APP_ROUTES } from "@/lib/route.constants";
-import dayjs from "dayjs";
+import { formatInstantUtc } from "@/lib/date-time/utc-date-time.helper";
+import dayjs from "@/lib/date-time/utc-dayjs";
 
 export default function NotificationDropdown() {
   const [isOpen, setIsOpen] = useState(false);
@@ -30,11 +31,10 @@ export default function NotificationDropdown() {
     if (!iso) {
       return "";
     }
-    const date = dayjs(iso);
-    if (!date.isValid()) {
+    if (!dayjs.utc(iso).isValid()) {
       return "";
     }
-    return date.format("MMM D, HH:mm");
+    return formatInstantUtc(iso, "MMM D, HH:mm");
   };
   return (
     <div className="relative">

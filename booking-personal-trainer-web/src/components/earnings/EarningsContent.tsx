@@ -8,20 +8,20 @@ import {
   type AdminEarningsTotals,
 } from "@/services/earnings/earnings.service";
 import Button from "@/components/ui/button/Button";
+import {
+  dateInputToUtcIsoExclusiveEndNextUtcDay,
+  dateInputToUtcIsoStartOfUtcDay,
+} from "@/lib/date-time/utc-date-time.helper";
 import { formatCents } from "@/lib/format-money";
 
 const DEFAULT_CURRENCY_ALL = "ALL" as const;
 
 const formatDateInputToIsoStart = (value: string): string => {
-  const [year, month, day] = value.split("-").map((v) => Number(v));
-  const date = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
-  return date.toISOString();
+  return dateInputToUtcIsoStartOfUtcDay(value);
 };
 
 const formatDateInputToIsoExclusiveEnd = (value: string): string => {
-  const [year, month, day] = value.split("-").map((v) => Number(v));
-  const date = new Date(Date.UTC(year, month - 1, day + 1, 0, 0, 0, 0));
-  return date.toISOString();
+  return dateInputToUtcIsoExclusiveEndNextUtcDay(value);
 };
 
 type StatusBadgeProps = {

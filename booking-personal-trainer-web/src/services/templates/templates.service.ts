@@ -1,3 +1,4 @@
+import { normalizeUnknownToUtcIso } from "@/lib/date-time/utc-date-time.helper";
 import { apiFetch } from "@/lib/api";
 import { API_ENDPOINTS } from "@/lib/route.constants";
 import type { ExerciseTemplate, ExerciseTemplateItem, TemplateType } from "@/types/template.types";
@@ -80,11 +81,7 @@ function buildQueryString(query: GetTemplatesQuery): string {
 }
 
 function normalizeIso(value: unknown): string {
-  if (typeof value === "string") return value;
-  if (value instanceof Date) return value.toISOString();
-  const date = new Date(String(value));
-  if (Number.isNaN(date.getTime())) return new Date().toISOString();
-  return date.toISOString();
+  return normalizeUnknownToUtcIso(value);
 }
 
 function normalizeTemplateItem(item: any): ExerciseTemplateItem {

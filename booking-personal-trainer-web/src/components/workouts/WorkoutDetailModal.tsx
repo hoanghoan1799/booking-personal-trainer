@@ -10,6 +10,7 @@ import { Modal } from "@/components/ui/modal";
 import Badge from "@/components/ui/badge/Badge";
 import { useProfile } from "@/hooks/useProfile";
 import TraineeWorkoutPaymentSection from "@/components/workouts/TraineeWorkoutPaymentSection";
+import { formatInstantUtc } from "@/lib/date-time/utc-date-time.helper";
 
 const WORKOUT_STATUSES: WorkoutStatus[] = ["PENDING", "IN_PROGRESS", "DONE"];
 
@@ -23,11 +24,7 @@ function getDisplayName(user: {
 }
 
 function formatDateTime(iso: string) {
-  const d = new Date(iso);
-  return d.toLocaleString(undefined, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
+  return formatInstantUtc(iso, "ddd, D MMM YYYY, HH:mm");
 }
 
 function getStatusColor(

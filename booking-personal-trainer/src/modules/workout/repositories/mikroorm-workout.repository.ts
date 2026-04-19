@@ -1,4 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
+
+import { utcNowAsDate } from '../../../common/utils/date-time/utc-date-time.helper';
 import { EntityManager, EntityRepository, FilterQuery } from '@mikro-orm/core';
 import { InjectRepository } from '@mikro-orm/nestjs';
 
@@ -191,7 +193,7 @@ export class MikroOrmWorkoutRepository implements WorkoutRepository {
         const we = items.find((e) => e.id === workoutExerciseId);
         if (we) {
           we.isCompleted = isCompleted;
-          we.completedAt = isCompleted ? new Date() : undefined;
+          we.completedAt = isCompleted ? utcNowAsDate() : undefined;
         }
       });
     }
@@ -205,7 +207,7 @@ export class MikroOrmWorkoutRepository implements WorkoutRepository {
       return;
     }
     workout.isDeleted = true;
-    workout.deletedAt = new Date();
+    workout.deletedAt = utcNowAsDate();
     await this.em.flush();
   }
 

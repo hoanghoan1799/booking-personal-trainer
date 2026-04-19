@@ -1,7 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import dayjs from "dayjs";
+import {
+  formatDateRangeLabelUtc,
+  formatInstantUtc,
+  utcCurrentYear,
+} from "@/lib/date-time/utc-date-time.helper";
+import dayjs from "@/lib/date-time/utc-dayjs";
 import type { User } from "@/types/user.types";
 import { createBooking } from "@/services/bookings/bookings.service";
 import { getUsers } from "@/services/users/users.service";
@@ -42,7 +47,7 @@ const getDisplayName = (user: User | null) => {
 
 /** Earliest start: now + 30 min, rounded up to next 30-min slot (matches BE MUST_BOOK_BEFORE_30_MINUTES) */
 function getEarliestStartTime(): dayjs.Dayjs {
-  const base = dayjs().add(30, "minute");
+  const base = dayjs.utc().add(30, "minute");
   const roundedMinute = Math.ceil(base.minute() / 30) * 30;
   if (roundedMinute >= 60) {
     return base.add(1, "hour").minute(0).second(0).millisecond(0);
@@ -63,51 +68,28 @@ function getMinStartTime(): string {
 }
 
 function getDefaultDate(): string {
-  return dayjs().format(DATE_LOCAL_FORMAT);
+  return dayjs.utc().format(DATE_LOCAL_FORMAT);
 }
 
 function getDefaultWeek(): string {
-  return dayjs().format("GGGG-[W]WW");
+  return dayjs.utc().format("GGGG-[W]WW");
 }
 
 function getDefaultMonth(): string {
-  return dayjs().format("YYYY-MM");
+  return dayjs.utc().format("YYYY-MM");
 }
 
 function getDefaultYear(): string {
-  return dayjs().format("YYYY");
+  return String(utcCurrentYear());
 }
 
 function formatDateTimeLocal(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleString(undefined, {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  if (!dayjs.utc(iso).isValid()) return "—";
+  return formatInstantUtc(iso, "ddd, D MMM YYYY, HH:mm");
 }
 
 function formatDateRangeLabel(input: { startIso: string; endIso: string }): string {
-  const start = new Date(input.startIso);
-  const end = new Date(input.endIso);
-  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return "—";
-  const startLabel = start.toLocaleDateString(undefined, {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-  const endLabel = end.toLocaleDateString(undefined, {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-  return `${startLabel} → ${endLabel}`;
+  return formatDateRangeLabelUtc(input.startIso, input.endIso);
 }
 
 function combineDateAndTimeToIso(input: {
@@ -125,31 +107,38 @@ function combineDateAndTimeToIso(input: {
   if (!Number.isFinite(h) || !Number.isFinite(m)) return null;
   if (h < 0 || h > 23) return null;
   if (m < 0 || m > 59) return null;
-  const local = new Date(year, month1 - 1, day, h, m, 0, 0);
-  if (Number.isNaN(local.getTime())) return null;
-  return local.toISOString();
+  const combined = dayjs.utc(
+    `${String(year)}-${String(month1).padStart(2, "0")}-${String(day).padStart(2, "0")} ${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`,
+    "YYYY-MM-DD HH:mm",
+    true,
+  );
+  if (!combined.isValid()) return null;
+  return combined.toISOString();
 }
 
 function updateDatePartOfDateTimeLocal(input: {
   dateLocal: string;
   dateTimeLocal: string;
 }): string {
-  const date = dayjs(input.dateLocal, DATE_LOCAL_FORMAT, true);
-  const dt = dayjs(input.dateTimeLocal);
+  const date = dayjs.utc(input.dateLocal, DATE_LOCAL_FORMAT, true);
+  const dt = dayjs.utc(input.dateTimeLocal, DATETIME_LOCAL_FORMAT, true);
   if (!date.isValid() || !dt.isValid()) return input.dateTimeLocal;
   const next = dt.year(date.year()).month(date.month()).date(date.date());
   return next.format(DATETIME_LOCAL_FORMAT);
 }
 
 function isOnThirtyMinuteStep(value: string): boolean {
-  const d = dayjs(value);
+  const isDateTimeLocalNaive = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value);
+  const d = isDateTimeLocalNaive
+    ? dayjs.utc(value, DATETIME_LOCAL_FORMAT, true)
+    : dayjs.utc(value);
   if (!d.isValid()) return false;
   return d.second() === 0 && d.millisecond() === 0 && d.minute() % STEP_MINUTES === 0;
 }
 
 function isValidMinDuration(startIso: string, endIso: string): boolean {
-  const start = dayjs(startIso);
-  const end = dayjs(endIso);
+  const start = dayjs.utc(startIso);
+  const end = dayjs.utc(endIso);
   if (!start.isValid() || !end.isValid()) return false;
   return end.diff(start, "minute") >= MIN_DURATION_MINUTES;
 }
@@ -172,10 +161,10 @@ export default function CreateBookingModal({
   const [endTime, setEndTime] = useState(getDefaultEndTime);
   const [selectedDate, setSelectedDate] = useState(getDefaultDate);
   const [startClockTime, setStartClockTime] = useState<string>(
-    dayjs(getDefaultStartTime()).format(TIME_LOCAL_FORMAT),
+    dayjs.utc(getDefaultStartTime(), DATETIME_LOCAL_FORMAT, true).format(TIME_LOCAL_FORMAT),
   );
   const [endClockTime, setEndClockTime] = useState<string>(
-    dayjs(getDefaultEndTime()).format(TIME_LOCAL_FORMAT),
+    dayjs.utc(getDefaultEndTime(), DATETIME_LOCAL_FORMAT, true).format(TIME_LOCAL_FORMAT),
   );
   const [selectedWeek, setSelectedWeek] = useState(getDefaultWeek);
   const [selectedMonth, setSelectedMonth] = useState(getDefaultMonth);
@@ -226,8 +215,8 @@ export default function CreateBookingModal({
     setStartTime(getDefaultStartTime());
     setEndTime(getDefaultEndTime());
     setSelectedDate(getDefaultDate());
-    setStartClockTime(dayjs(getDefaultStartTime()).format(TIME_LOCAL_FORMAT));
-    setEndClockTime(dayjs(getDefaultEndTime()).format(TIME_LOCAL_FORMAT));
+    setStartClockTime(dayjs.utc(getDefaultStartTime(), DATETIME_LOCAL_FORMAT, true).format(TIME_LOCAL_FORMAT));
+    setEndClockTime(dayjs.utc(getDefaultEndTime(), DATETIME_LOCAL_FORMAT, true).format(TIME_LOCAL_FORMAT));
     setSelectedWeek(getDefaultWeek());
     setSelectedMonth(getDefaultMonth());
     setSelectedYear(getDefaultYear());
@@ -266,10 +255,10 @@ export default function CreateBookingModal({
   const handleFindAvailableTrainers = async () => {
     const startIso =
       combineDateAndTimeToIso({ dateLocal: selectedDate, timeLocal: startClockTime }) ??
-      dayjs(startTime).toISOString();
+      dayjs.utc(startTime, DATETIME_LOCAL_FORMAT, true).toISOString();
     const endIso =
       combineDateAndTimeToIso({ dateLocal: selectedDate, timeLocal: endClockTime }) ??
-      dayjs(endTime).toISOString();
+      dayjs.utc(endTime, DATETIME_LOCAL_FORMAT, true).toISOString();
     if (!isOnThirtyMinuteStep(startIso) || !isOnThirtyMinuteStep(endIso)) {
       setError("Time must be in 30-minute increments.");
       return;
@@ -318,35 +307,35 @@ export default function CreateBookingModal({
   const displayName = getDisplayName(selectedTrainer);
 
   const rangeForSelectedDate = useMemo(() => {
-    const start = dayjs(selectedDate).startOf("day");
+    const start = dayjs.utc(selectedDate, DATE_LOCAL_FORMAT, true).startOf("day");
     const end = start.add(1, "day");
     return { rangeStartIso: start.toISOString(), rangeEndIso: end.toISOString() };
   }, [selectedDate]);
 
   const rangeForTimeFirstPeriod = useMemo(() => {
     if (timeFirstPeriod === "day") {
-      const start = dayjs(selectedDate).startOf("day");
+      const start = dayjs.utc(selectedDate, DATE_LOCAL_FORMAT, true).startOf("day");
       const end = start.add(1, "day");
       return { rangeStartIso: start.toISOString(), rangeEndIso: end.toISOString() };
     }
     if (timeFirstPeriod === "week") {
-      const start = dayjs(selectedWeek, "GGGG-[W]WW", true).startOf("week");
+      const start = dayjs.utc(selectedWeek, "GGGG-[W]WW", true).startOf("isoWeek");
       const end = start.add(DAYS_IN_WEEK, "day");
       return { rangeStartIso: start.toISOString(), rangeEndIso: end.toISOString() };
     }
     if (timeFirstPeriod === "month") {
-      const start = dayjs(selectedMonth, "YYYY-MM", true).startOf("month");
+      const start = dayjs.utc(selectedMonth, "YYYY-MM", true).startOf("month");
       const end = start.add(DAYS_IN_MONTH_APPROX, "day");
       return { rangeStartIso: start.toISOString(), rangeEndIso: end.toISOString() };
     }
-    const start = dayjs(selectedYear, "YYYY", true).startOf("year");
+    const start = dayjs.utc(selectedYear, "YYYY", true).startOf("year");
     const end = start.add(DAYS_IN_YEAR_APPROX, "day");
     return { rangeStartIso: start.toISOString(), rangeEndIso: end.toISOString() };
   }, [selectedDate, selectedMonth, selectedWeek, selectedYear, timeFirstPeriod]);
 
   const timeFirstAnchorLabel = useMemo(() => {
     if (timeFirstPeriod === "day") {
-      const d = dayjs(selectedDate, DATE_LOCAL_FORMAT, true);
+      const d = dayjs.utc(selectedDate, DATE_LOCAL_FORMAT, true);
       return d.isValid() ? d.format("ddd, MMM D, YYYY") : "—";
     }
     if (timeFirstPeriod === "week") {
@@ -356,7 +345,7 @@ export default function CreateBookingModal({
       });
     }
     if (timeFirstPeriod === "month") {
-      const d = dayjs(selectedMonth, "YYYY-MM", true);
+      const d = dayjs.utc(selectedMonth, "YYYY-MM", true);
       return d.isValid() ? d.format("MMMM YYYY") : "—";
     }
     return selectedYear;
@@ -528,8 +517,8 @@ export default function CreateBookingModal({
                   aria-label="Select date"
                 />
                 <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                  {dayjs(selectedDate, DATE_LOCAL_FORMAT, true).isValid()
-                    ? dayjs(selectedDate, DATE_LOCAL_FORMAT, true).format("ddd, MMM D, YYYY")
+                  {dayjs.utc(selectedDate, DATE_LOCAL_FORMAT, true).isValid()
+                    ? dayjs.utc(selectedDate, DATE_LOCAL_FORMAT, true).format("ddd, MMM D, YYYY")
                     : "—"}
                 </div>
                 <div className="mt-3 flex gap-2">
@@ -783,9 +772,10 @@ export default function CreateBookingModal({
                     {availableSlots.map((s) => {
                       const isSelected =
                         selectedSlot?.startTime === s.startTime && selectedSlot?.endTime === s.endTime;
-                      const label = `${new Date(s.startTime).toLocaleString()} → ${new Date(
+                      const label = `${formatInstantUtc(s.startTime, "MMM D, HH:mm")} → ${formatInstantUtc(
                         s.endTime,
-                      ).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}`;
+                        "HH:mm",
+                      )}`;
                       return (
                         <li key={`${s.startTime}-${s.endTime}`}>
                           <button

@@ -12,6 +12,7 @@ import {
   updateTemplate,
   updateTemplateItem,
 } from "@/services/templates/templates.service";
+import { utcNowIso } from "@/lib/date-time/utc-date-time.helper";
 import { useProfile } from "./useProfile";
 
 type CreateTemplateParams = {
@@ -54,7 +55,7 @@ type UpdateTemplateItemParams = {
 };
 
 function getNowIso(): string {
-  return new Date().toISOString();
+  return utcNowIso();
 }
 
 export function useTemplates() {

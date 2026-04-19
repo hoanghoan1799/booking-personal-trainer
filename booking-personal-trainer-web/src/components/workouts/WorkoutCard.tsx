@@ -1,5 +1,6 @@
 "use client";
 
+import { formatInstantUtc } from "@/lib/date-time/utc-date-time.helper";
 import type { Workout } from "@/services/workouts/workouts.service";
 import Badge from "@/components/ui/badge/Badge";
 
@@ -9,11 +10,7 @@ function getDisplayName(user: { firstName?: string; lastName?: string; userName:
 }
 
 function formatDateTime(iso: string) {
-  const d = new Date(iso);
-  return d.toLocaleString(undefined, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
+  return formatInstantUtc(iso, "ddd, D MMM YYYY, HH:mm");
 }
 
 function getStatusColor(status: string): "primary" | "success" | "error" | "warning" | "info" {

@@ -10,6 +10,7 @@ import Badge from "@/components/ui/badge/Badge";
 import Button from "@/components/ui/button/Button";
 import { getErrorMessage } from "@/lib/error.utils";
 import { useToast } from "@/context/ToastContext";
+import { formatInstantUtc } from "@/lib/date-time/utc-date-time.helper";
 import CreateWorkoutFromTemplateModal from "@/components/bookings/CreateWorkoutFromTemplateModal";
 
 function getDisplayName(user: { firstName?: string; lastName?: string; userName: string }) {
@@ -18,8 +19,7 @@ function getDisplayName(user: { firstName?: string; lastName?: string; userName:
 }
 
 function formatDateTime(iso: string) {
-  const d = new Date(iso);
-  return d.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+  return formatInstantUtc(iso, "ddd, D MMM YYYY, HH:mm");
 }
 
 function getStatusColor(status: string): "primary" | "success" | "error" | "warning" | "info" {

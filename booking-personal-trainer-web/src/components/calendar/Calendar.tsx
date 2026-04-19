@@ -7,6 +7,8 @@ import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import type { EventClickArg, EventContentArg } from "@fullcalendar/core";
 import type { EventInput } from "@fullcalendar/core";
+import { formatInstantUtc } from "@/lib/date-time/utc-date-time.helper";
+import dayjs from "@/lib/date-time/utc-dayjs";
 import type { Booking } from "@/services/bookings/bookings.service";
 import { getBookings, updateBookingStatus } from "@/services/bookings/bookings.service";
 import { useProfile } from "@/hooks/useProfile";
@@ -34,11 +36,7 @@ function getDisplayName(user: { firstName?: string; lastName?: string; userName:
 }
 
 function formatDateTime(iso: string) {
-  const d = new Date(iso);
-  return d.toLocaleString(undefined, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
+  return formatInstantUtc(iso, "ddd, D MMM YYYY, HH:mm");
 }
 
 const Calendar: React.FC = () => {
@@ -62,14 +60,14 @@ const Calendar: React.FC = () => {
     setIsLoading(true);
     try {
       const res = await getBookings({ limit: 200 });
-      const now = new Date();
+      const now = dayjs();
       const bookingEvents: BookingEvent[] = res.bookings.map((b) => {
         const trainerName = b.trainer ? getDisplayName(b.trainer) : "—";
         const traineeName = b.trainee ? getDisplayName(b.trainee) : "—";
         const title = `${trainerName} – ${traineeName}`;
         const colorKey = STATUS_COLORS[b.status] ?? "primary";
-        const endDate = new Date(b.endTime);
-        const isPast = endDate.getTime() < now.getTime();
+        const endDate = dayjs(b.endTime);
+        const isPast = endDate.isValid() && endDate.valueOf() < now.valueOf();
 
         return {
           id: b.id,

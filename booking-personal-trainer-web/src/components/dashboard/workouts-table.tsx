@@ -1,6 +1,7 @@
 "use client";
 
 import type React from "react";
+import { formatInstantUtc } from "@/lib/date-time/utc-date-time.helper";
 import type { Workout } from "@/services/workouts/workouts.service";
 import { getUserDisplayName } from "@/lib/user-display";
 import { WorkoutStatusBadge } from "./workout-status-badge";
@@ -14,14 +15,7 @@ export type WorkoutsTableProps = {
 };
 
 const formatDateTime = (iso: string): string => {
-  try {
-    return new Date(iso).toLocaleString(undefined, {
-      dateStyle: "medium",
-      timeStyle: "short",
-    });
-  } catch {
-    return iso;
-  }
+  return formatInstantUtc(iso, "ddd, D MMM YYYY, HH:mm");
 };
 
 export const WorkoutsTable = (props: WorkoutsTableProps): React.ReactNode => {

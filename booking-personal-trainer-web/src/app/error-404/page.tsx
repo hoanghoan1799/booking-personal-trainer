@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import React from "react";
+import { utcCurrentYear } from "@/lib/date-time/utc-date-time.helper";
 
 export const metadata: Metadata = {
   title: "Page Not Found | Booking Personal Trainer",
@@ -46,7 +47,7 @@ export default function Error404Page() {
       </div>
 
       <p className="absolute bottom-6 left-1/2 -translate-x-1/2 text-center text-sm text-gray-500 dark:text-gray-400">
-        &copy; {new Date().getFullYear()} - Booking Personal Trainer
+        &copy; {utcCurrentYear()} - Booking Personal Trainer
       </p>
     </div>
   );
