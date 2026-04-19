@@ -1,5 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 
 // Commons
 import { ERROR_MESSAGES } from '../../common/constants/message.constant';
@@ -42,7 +46,10 @@ describe('UserService', () => {
     save: jest.Mock;
   };
   let bookingRepo: { findTraineeIdsByTrainerId: jest.Mock };
-  let notificationsService: { createAndPublishToUsers: jest.Mock };
+  let notificationsService: {
+    createAndPublishToUsers: jest.Mock;
+    notifyAdmins: jest.Mock;
+  };
   let emailService: { send: jest.Mock };
 
   const mockUser = {
@@ -67,6 +74,7 @@ describe('UserService', () => {
     };
     notificationsService = {
       createAndPublishToUsers: jest.fn().mockResolvedValue([]),
+      notifyAdmins: jest.fn().mockResolvedValue(undefined),
     };
     emailService = {
       send: jest.fn().mockResolvedValue({ messageId: 'mock-message-id' }),
@@ -367,6 +375,139 @@ describe('UserService', () => {
 
       expect(actual.data.role).toBe(UserRole.TRAINER);
       expect(actual.data.approvalStatus).toBe(TrainerApprovalStatus.APPROVED);
+      expect(userRepo.save).toHaveBeenCalled();
+    });
+  });
+
+  describe('requestTrainerRole', () => {
+    const traineePayload: JwtAuthPayload = {
+      id: mockUser.id,
+      email: mockUser.email,
+      userName: mockUser.userName,
+      role: UserRole.TRAINEE,
+    };
+
+    it('should set userType TRAINER and approval PENDING for trainee account', async () => {
+      const user = {
+        ...mockUser,
+        userType: UserType.TRAINEE,
+        approvalStatus: TrainerApprovalStatus.NONE,
+      };
+      userRepo.findById.mockResolvedValue(user);
+
+      const actual = await service.requestTrainerRole(traineePayload);
+
+      expect(actual.data.userType).toBe(UserType.TRAINER);
+      expect(actual.data.approvalStatus).toBe(TrainerApprovalStatus.PENDING);
+      expect(userRepo.save).toHaveBeenCalled();
+      expect(notificationsService.notifyAdmins).toHaveBeenCalled();
+    });
+
+    it('should throw ConflictException when application already pending', async () => {
+      const user = {
+        ...mockUser,
+        userType: UserType.TRAINER,
+        role: UserRole.TRAINEE,
+        approvalStatus: TrainerApprovalStatus.PENDING,
+      };
+      userRepo.findById.mockResolvedValue(user);
+
+      await expect(service.requestTrainerRole(traineePayload)).rejects.toThrow(
+        ConflictException,
+      );
+      await expect(service.requestTrainerRole(traineePayload)).rejects.toThrow(
+        ERROR_MESSAGES.USER.TRAINER_APPLICATION_ALREADY_PENDING,
+      );
+      expect(userRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('should throw ConflictException when already approved', async () => {
+      const user = {
+        ...mockUser,
+        userType: UserType.TRAINER,
+        role: UserRole.TRAINEE,
+        approvalStatus: TrainerApprovalStatus.APPROVED,
+      };
+      userRepo.findById.mockResolvedValue(user);
+
+      await expect(service.requestTrainerRole(traineePayload)).rejects.toThrow(
+        ERROR_MESSAGES.USER.TRAINER_APPLICATION_ALREADY_APPROVED,
+      );
+    });
+
+    it('should throw ForbiddenException when role is not trainee', async () => {
+      const user = {
+        ...mockUser,
+        role: UserRole.TRAINER,
+        userType: UserType.TRAINER,
+        approvalStatus: TrainerApprovalStatus.APPROVED,
+      };
+      userRepo.findById.mockResolvedValue(user);
+
+      await expect(service.requestTrainerRole(traineePayload)).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+
+    it('should reset REJECTED to PENDING for trainer userType', async () => {
+      const user = {
+        ...mockUser,
+        userType: UserType.TRAINER,
+        role: UserRole.TRAINEE,
+        approvalStatus: TrainerApprovalStatus.REJECTED,
+      };
+      userRepo.findById.mockResolvedValue(user);
+
+      const actual = await service.requestTrainerRole(traineePayload);
+
+      expect(actual.data.approvalStatus).toBe(TrainerApprovalStatus.PENDING);
+      expect(userRepo.save).toHaveBeenCalled();
+      expect(notificationsService.notifyAdmins).toHaveBeenCalled();
+    });
+
+    it('should set PENDING when trainer userType has NONE approval', async () => {
+      const user = {
+        ...mockUser,
+        userType: UserType.TRAINER,
+        role: UserRole.TRAINEE,
+        approvalStatus: TrainerApprovalStatus.NONE,
+      };
+      userRepo.findById.mockResolvedValue(user);
+
+      const actual = await service.requestTrainerRole(traineePayload);
+
+      expect(actual.data.approvalStatus).toBe(TrainerApprovalStatus.PENDING);
+      expect(userRepo.save).toHaveBeenCalled();
+    });
+
+    it('should throw ConflictException for unsupported trainee approval state', async () => {
+      const user = {
+        ...mockUser,
+        userType: UserType.TRAINEE,
+        role: UserRole.TRAINEE,
+        approvalStatus: TrainerApprovalStatus.PENDING,
+      };
+      userRepo.findById.mockResolvedValue(user);
+
+      await expect(service.requestTrainerRole(traineePayload)).rejects.toThrow(
+        ERROR_MESSAGES.USER.TRAINER_APPLICATION_INVALID_STATE,
+      );
+    });
+
+    it('should return success when notifyAdmins fails', async () => {
+      const user = {
+        ...mockUser,
+        userType: UserType.TRAINEE,
+        approvalStatus: TrainerApprovalStatus.NONE,
+      };
+      userRepo.findById.mockResolvedValue(user);
+      notificationsService.notifyAdmins.mockRejectedValue(
+        new Error('notify failed'),
+      );
+
+      const actual = await service.requestTrainerRole(traineePayload);
+
+      expect(actual.data.approvalStatus).toBe(TrainerApprovalStatus.PENDING);
       expect(userRepo.save).toHaveBeenCalled();
     });
   });

@@ -1,4 +1,5 @@
 export enum NotificationType {
+  AdminTrainerRoleRequested = 'ADMIN_TRAINER_ROLE_REQUESTED',
   AdminNewUserRegistered = 'ADMIN_NEW_USER_REGISTERED',
   AdminTraineeBookedTrainer = 'ADMIN_TRAINEE_BOOKED_TRAINER',
   AdminTraineePaidForWorkout = 'ADMIN_TRAINEE_PAID_FOR_WORKOUT',

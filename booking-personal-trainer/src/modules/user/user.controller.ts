@@ -5,6 +5,7 @@ import {
   HttpStatus,
   Param,
   Patch,
+  Post,
   Query,
   UseGuards,
 } from '@nestjs/common';
@@ -169,6 +170,71 @@ export class UserController {
     @CurrentUser() user: JwtAuthPayload,
   ): Promise<BaseResponseDto<ResponseFullUserDto>> {
     return this.userService.updateProfile(data, user);
+  }
+
+  @Roles(UserRole.TRAINEE)
+  @Post('profile/trainer-request')
+  /**
+   * Rate-limit override (same spirit as profile PATCH).
+   */
+  @Throttle({
+    burst: {
+      ttl: RATE_LIMIT_WINDOW_TTL_MILLISECONDS.BURST,
+      limit: createRateLimitByIdentityResolver({ ip: 10, token: 15, user: 20 }),
+    },
+    minute: {
+      ttl: RATE_LIMIT_WINDOW_TTL_MILLISECONDS.MINUTE,
+      limit: createRateLimitByIdentityResolver({
+        ip: 80,
+        token: 120,
+        user: 180,
+      }),
+    },
+    hour: {
+      ttl: RATE_LIMIT_WINDOW_TTL_MILLISECONDS.HOUR,
+      limit: createRateLimitByIdentityResolver({
+        ip: 800,
+        token: 1200,
+        user: 1800,
+      }),
+    },
+  })
+  @Serialize(ResponseFullUserDto)
+  @ApiOperation({
+    summary: API_DESCRIPTIONS.USER.REQUEST_TRAINER_ROLE_SUMMARY,
+    description: API_DESCRIPTIONS.USER.REQUEST_TRAINER_ROLE_DESCRIPTION,
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: SUCCESS_MESSAGES.USER.TRAINER_APPLICATION_SUBMITTED,
+    schema: {
+      required: ['data'],
+      properties: {
+        data: { $ref: getSchemaPath(ResponseFullUserDto) },
+      },
+    },
+  })
+  @ApiResponse({
+    status: HttpStatus.UNAUTHORIZED,
+    description: ERROR_MESSAGES.AUTH.ACCESS_TOKEN_INVALID,
+  })
+  @ApiResponse({
+    status: HttpStatus.FORBIDDEN,
+    description: ERROR_MESSAGES.AUTH.FORBIDDEN,
+  })
+  @ApiResponse({
+    status: HttpStatus.CONFLICT,
+    description:
+      'Trainer application already pending, already approved, or account in an invalid state.',
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: ERROR_MESSAGES.USER.NOT_FOUND,
+  })
+  requestTrainerRole(
+    @CurrentUser() user: JwtAuthPayload,
+  ): Promise<BaseResponseDto<ResponseFullUserDto>> {
+    return this.userService.requestTrainerRole(user);
   }
 
   @Roles(UserRole.ADMIN)

@@ -28,6 +28,14 @@ export const ERROR_MESSAGES = {
     CANNOT_UPDATE_SELF_ROLE: 'You cannot update your own role',
     CANNOT_ASSIGN_ADMIN: 'You cannot assign admin role to other users',
     TRAINER_NOT_AVAILABLE: 'Trainer is not available',
+    TRAINER_APPLICATION_ALREADY_PENDING:
+      'A trainer application is already pending for your account.',
+    TRAINER_APPLICATION_ALREADY_APPROVED:
+      'Your trainer application is already approved.',
+    CANNOT_REQUEST_TRAINER_ROLE:
+      'Only accounts with the trainee role can submit a trainer application.',
+    TRAINER_APPLICATION_INVALID_STATE:
+      'Unable to submit a trainer application for the current account state.',
   },
 
   TRAINER: {
@@ -98,6 +106,7 @@ export const SUCCESS_MESSAGES = {
     PROFILE_UPDATED: 'User profile updated successfully',
     LIST_RETRIEVED: 'Users listed successfully',
     ROLE_UPDATED: 'User role updated successfully',
+    TRAINER_APPLICATION_SUBMITTED: 'Trainer application submitted successfully',
   },
   EXERCISE: {
     CREATED: 'Exercise created successfully',
@@ -168,6 +177,9 @@ export const API_DESCRIPTIONS = {
     UPDATE_ROLE_SUMMARY: 'Update user role',
     UPDATE_ROLE_DESCRIPTION:
       'Updates a user role (admin only). Cannot update own role, assign admin, or update another admin.',
+    REQUEST_TRAINER_ROLE_SUMMARY: 'Request trainer role (trainee)',
+    REQUEST_TRAINER_ROLE_DESCRIPTION:
+      'Submits a trainer application: sets user type to trainer and approval status to pending for admin review. Trainee role only.',
   },
   EXERCISE: {
     CREATE_SUMMARY: 'Create exercise',

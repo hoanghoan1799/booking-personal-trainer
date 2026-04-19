@@ -1,7 +1,9 @@
 import {
+  ConflictException,
   ForbiddenException,
   Inject,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 
@@ -49,6 +51,8 @@ import type { BookingRepository } from '../booking/repositories/booking.reposito
 
 @Injectable()
 export class UserService {
+  private readonly logger = new Logger(UserService.name);
+
   constructor(
     @Inject(UserRepositoryToken)
     private readonly userRepo: UserRepository,
@@ -320,6 +324,80 @@ export class UserService {
     });
 
     return BaseResponseDto.ok(targetUser);
+  }
+
+  /**
+   * Submits a trainer application for the current trainee (self-service).
+   * @param currentUser The authenticated user from JWT.
+   * @returns The updated user profile.
+   */
+  async requestTrainerRole(
+    currentUser: JwtAuthPayload,
+  ): Promise<BaseResponseDto<ResponseFullUserDto>> {
+    const user = await this.findById(currentUser.id);
+    if (user.role !== UserRole.TRAINEE) {
+      throw new ForbiddenException(
+        ERROR_MESSAGES.USER.CANNOT_REQUEST_TRAINER_ROLE,
+      );
+    }
+    if (user.approvalStatus === TrainerApprovalStatus.APPROVED) {
+      throw new ConflictException(
+        ERROR_MESSAGES.USER.TRAINER_APPLICATION_ALREADY_APPROVED,
+      );
+    }
+    if (
+      user.userType === UserType.TRAINER &&
+      user.approvalStatus === TrainerApprovalStatus.PENDING
+    ) {
+      throw new ConflictException(
+        ERROR_MESSAGES.USER.TRAINER_APPLICATION_ALREADY_PENDING,
+      );
+    }
+    let hasChanges = false;
+    if (
+      user.userType === UserType.TRAINEE &&
+      user.approvalStatus === TrainerApprovalStatus.NONE
+    ) {
+      user.userType = UserType.TRAINER;
+      user.approvalStatus = TrainerApprovalStatus.PENDING;
+      hasChanges = true;
+    } else if (
+      user.userType === UserType.TRAINER &&
+      user.approvalStatus === TrainerApprovalStatus.REJECTED
+    ) {
+      user.approvalStatus = TrainerApprovalStatus.PENDING;
+      hasChanges = true;
+    } else if (
+      user.userType === UserType.TRAINER &&
+      user.approvalStatus === TrainerApprovalStatus.NONE
+    ) {
+      user.approvalStatus = TrainerApprovalStatus.PENDING;
+      hasChanges = true;
+    }
+    if (!hasChanges) {
+      throw new ConflictException(
+        ERROR_MESSAGES.USER.TRAINER_APPLICATION_INVALID_STATE,
+      );
+    }
+    await this.userRepo.save(user);
+    try {
+      await this.notificationsService.notifyAdmins({
+        type: NotificationType.AdminTrainerRoleRequested,
+        ...NotificationTemplates.adminTrainerRoleRequested({
+          userName: user.userName,
+        }),
+        data: { userId: user.id, email: user.email },
+      });
+    } catch (err: unknown) {
+      const message: string = err instanceof Error ? err.message : String(err);
+      const stack: string | undefined =
+        err instanceof Error ? err.stack : undefined;
+      this.logger.error(
+        `Failed to notify admins after trainer role request: ${message}`,
+        stack,
+      );
+    }
+    return BaseResponseDto.ok(user);
   }
 
   /**

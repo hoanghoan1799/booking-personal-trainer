@@ -11,6 +11,10 @@ type NewUserRegisteredProps = {
   readonly source?: AuthProviderMethod;
 };
 
+type TrainerRoleRequestedProps = {
+  readonly userName: string;
+};
+
 type BookingProps = {
   readonly traineeUserName: string;
   readonly trainerUserName: string;
@@ -37,6 +41,13 @@ type WorkoutPaidProps = {
 };
 
 export const NotificationTemplates = {
+  adminTrainerRoleRequested: (
+    props: TrainerRoleRequestedProps,
+  ): NotificationTemplate => ({
+    title: 'Trainer application submitted',
+    message: `${props.userName} requested to become a trainer`,
+  }),
+
   adminNewUserRegistered: (
     props: NewUserRegisteredProps,
   ): NotificationTemplate => {
