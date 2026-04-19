@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 
 // Commons
+import dayjs from '../../common/utils/date-time/utc-dayjs';
 import { BaseResponseDto } from '../../common/dtos/base-response.dto';
 import {
   DEFAULT_LIMIT,
@@ -84,8 +85,8 @@ export class TrainerTimeOffService {
     data: CreateTrainerTimeOffDto,
     currentUser: User,
   ): Promise<TrainerTimeOff> {
-    const start: Date = new Date(data.startTime);
-    const end: Date = new Date(data.endTime);
+    const start: Date = dayjs.utc(data.startTime).toDate();
+    const end: Date = dayjs.utc(data.endTime).toDate();
     this.assertValidTimeOffWindow(start, end);
     await this.scheduleConflictService.assertNoOverlap({
       trainerId: currentUser.id,
@@ -114,9 +115,11 @@ export class TrainerTimeOffService {
       throw new NotFoundException(ERROR_MESSAGES.TRAINER.TIME_OFF_NOT_FOUND);
     }
     const start: Date = data.startTime
-      ? new Date(data.startTime)
+      ? dayjs.utc(data.startTime).toDate()
       : timeOff.startTime;
-    const end: Date = data.endTime ? new Date(data.endTime) : timeOff.endTime;
+    const end: Date = data.endTime
+      ? dayjs.utc(data.endTime).toDate()
+      : timeOff.endTime;
     this.assertValidTimeOffWindow(start, end);
     await this.scheduleConflictService.assertNoOverlap({
       trainerId: currentUser.id,

@@ -6,6 +6,8 @@ import {
 } from '@nestjs/common';
 
 // Commons
+import dayjs from '../../common/utils/date-time/utc-dayjs';
+import { utcNowAsDate } from '../../common/utils/date-time/utc-date-time.helper';
 import { UserRole } from '../../common/enums/user/user.enum';
 import { BookingStatus } from '../../common/enums/booking/booking.enum';
 import { ERROR_MESSAGES } from '../../common/constants/message.constant';
@@ -69,21 +71,20 @@ export class BookingService {
   async create(data: CreateBookingDto, currentUser: User): Promise<Booking> {
     const { trainerId, startTime, endTime } = data;
 
-    const start = new Date(startTime);
-    const end = new Date(endTime);
-    const now = new Date();
-
-    if (start >= end) {
+    const start = dayjs.utc(startTime);
+    const end = dayjs.utc(endTime);
+    const now = dayjs.utc();
+    if (!start.isValid() || !end.isValid()) {
       throw new BadRequestException(ERROR_MESSAGES.BOOKING.INVALID_TIME_RANGE);
     }
-
-    if (start.getTime() <= now.getTime()) {
+    if (!start.isBefore(end)) {
+      throw new BadRequestException(ERROR_MESSAGES.BOOKING.INVALID_TIME_RANGE);
+    }
+    if (start.valueOf() <= now.valueOf()) {
       throw new BadRequestException(ERROR_MESSAGES.BOOKING.CANNOT_BOOK_IN_PAST);
     }
-
-    const earliestAllowedTime = addMinutesToDate(now, 30);
-
-    if (start.getTime() < earliestAllowedTime.getTime()) {
+    const earliestAllowedTime = addMinutesToDate(now.toDate(), 30);
+    if (start.valueOf() < earliestAllowedTime.getTime()) {
       throw new BadRequestException(
         ERROR_MESSAGES.BOOKING.MUST_BOOK_BEFORE_30_MINUTES,
       );
@@ -101,15 +102,15 @@ export class BookingService {
 
     await this.bookingAvailabilityService.assertTrainerCanBeBookedForRange({
       trainerId,
-      start,
-      end,
+      start: start.toDate(),
+      end: end.toDate(),
     });
 
     const booking = await this.bookingRepo.create({
       trainer,
       trainee: currentUser,
-      startTime: start,
-      endTime: end,
+      startTime: start.toDate(),
+      endTime: end.toDate(),
       status: BookingStatus.PENDING,
     });
     const frontendUrl: string = (process.env.FRONTEND_URL ?? '').replace(
@@ -299,7 +300,7 @@ export class BookingService {
     }
 
     booking.status = nextStatus;
-    booking.statusChangedAt = new Date();
+    booking.statusChangedAt = utcNowAsDate();
     if (isCancelling) {
       booking.cancelledBy = currentUser;
       booking.cancellationReason = (dto.cancellationReason ?? '').trim();

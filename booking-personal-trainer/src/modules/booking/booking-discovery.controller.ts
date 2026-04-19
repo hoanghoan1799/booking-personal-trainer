@@ -1,6 +1,7 @@
 import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 
+import dayjs from '../../common/utils/date-time/utc-dayjs';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { SWAGGER_ACCESS_TOKEN } from '../../common/constants/api-document.constants';
 import { BaseResponseDto } from '../../common/dtos/base-response.dto';
@@ -34,8 +35,8 @@ export class BookingDiscoveryController {
   ): Promise<BaseResponseDto<ResponseUserDto[]>> {
     const trainers =
       await this.bookingAvailabilityService.getAvailableTrainersForRange({
-        start: new Date(query.startTime),
-        end: new Date(query.endTime),
+        start: dayjs.utc(query.startTime).toDate(),
+        end: dayjs.utc(query.endTime).toDate(),
       });
     return BaseResponseDto.ok(trainers as unknown as ResponseUserDto[]);
   }
@@ -49,8 +50,8 @@ export class BookingDiscoveryController {
   ): Promise<BaseResponseDto<BookingTimeSlot[]>> {
     const slots = await this.bookingAvailabilityService.getAvailableSlots({
       trainerId: query.trainerId,
-      rangeStart: new Date(query.rangeStart),
-      rangeEnd: new Date(query.rangeEnd),
+      rangeStart: dayjs.utc(query.rangeStart).toDate(),
+      rangeEnd: dayjs.utc(query.rangeEnd).toDate(),
       durationMinutes: query.durationMinutes ?? 60,
       stepMinutes: query.stepMinutes ?? 30,
     });

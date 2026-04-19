@@ -3,6 +3,8 @@ import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { MIN_BOOKING_NOTICE_MINUTES } from '../../../common/constants/time.constant';
 import { ERROR_MESSAGES } from '../../../common/constants/message.constant';
 import { addMinutesToDate } from '../../../common/helpers/time.helper';
+import { utcNowAsDate } from '../../../common/utils/date-time/utc-date-time.helper';
+import dayjs from '../../../common/utils/date-time/utc-dayjs';
 import { BookingStatus } from '../../../common/enums/booking/booking.enum';
 import {
   TrainerApprovalStatus,
@@ -49,9 +51,9 @@ const MIN_STEP_MINUTES = 30;
 
 const toCeilStepDate = (input: { date: Date; stepMinutes: number }): Date => {
   const stepMs = input.stepMinutes * 60 * 1000;
-  const ms = input.date.getTime();
+  const ms = dayjs.utc(input.date).valueOf();
   const ceilMs = Math.ceil(ms / stepMs) * stepMs;
-  return new Date(ceilMs);
+  return dayjs.utc(ceilMs).toDate();
 };
 
 const isOverlapping = (a: BookingTimeRange, b: BookingTimeRange): boolean => {
@@ -189,7 +191,7 @@ export class BookingAvailabilityService {
   ): Promise<BookingTimeSlot[]> {
     assertValidSlotQueryInput(input);
     const earliestAllowed = addMinutesToDate(
-      new Date(),
+      utcNowAsDate(),
       MIN_BOOKING_NOTICE_MINUTES,
     );
     const availabilityRanges =
@@ -216,28 +218,30 @@ export class BookingAvailabilityService {
       );
     const blockedRanges: BookingTimeRange[] = [
       ...overlappingBookings.map((b) => ({
-        start: new Date(b.startTime),
-        end: new Date(b.endTime),
+        start: dayjs.utc(b.startTime).toDate(),
+        end: dayjs.utc(b.endTime).toDate(),
       })),
       ...timeOffInRange.map((t) => ({
-        start: new Date(t.startTime),
-        end: new Date(t.endTime),
+        start: dayjs.utc(t.startTime).toDate(),
+        end: dayjs.utc(t.endTime).toDate(),
       })),
     ];
     const stepMs = input.stepMinutes * 60 * 1000;
     const durationMs = input.durationMinutes * 60 * 1000;
     const slots: BookingTimeSlot[] = [];
     availabilityRanges.forEach((availability) => {
-      const clampedStart = new Date(
-        Math.max(
-          availability.startTime.getTime(),
-          input.rangeStart.getTime(),
-          earliestAllowed.getTime(),
-        ),
-      );
-      const clampedEnd = new Date(
-        Math.min(availability.endTime.getTime(), input.rangeEnd.getTime()),
-      );
+      const clampedStart = dayjs
+        .utc(
+          Math.max(
+            availability.startTime.getTime(),
+            input.rangeStart.getTime(),
+            earliestAllowed.getTime(),
+          ),
+        )
+        .toDate();
+      const clampedEnd = dayjs
+        .utc(Math.min(availability.endTime.getTime(), input.rangeEnd.getTime()))
+        .toDate();
       if (clampedEnd.getTime() - clampedStart.getTime() < durationMs) {
         return;
       }
@@ -248,7 +252,7 @@ export class BookingAvailabilityService {
       const lastStartMs = clampedEnd.getTime() - durationMs;
       while (cursor.getTime() <= lastStartMs) {
         const start = cursor;
-        const end = new Date(start.getTime() + durationMs);
+        const end = dayjs.utc(start.getTime() + durationMs).toDate();
         const candidate: BookingTimeRange = { start, end };
         const isBlocked = blockedRanges.some((b) =>
           isOverlapping(candidate, b),
@@ -259,7 +263,7 @@ export class BookingAvailabilityService {
             endTime: end.toISOString(),
           });
         }
-        cursor = new Date(cursor.getTime() + stepMs);
+        cursor = dayjs.utc(cursor.getTime() + stepMs).toDate();
       }
     });
     const uniqueKey = (s: BookingTimeSlot): string =>
@@ -268,7 +272,7 @@ export class BookingAvailabilityService {
     slots.forEach((s) => dedup.set(uniqueKey(s), s));
     return [...dedup.values()].sort(
       (a, b) =>
-        new Date(a.startTime).getTime() - new Date(b.startTime).getTime(),
+        dayjs.utc(a.startTime).valueOf() - dayjs.utc(b.startTime).valueOf(),
     );
   }
 }

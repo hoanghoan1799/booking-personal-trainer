@@ -2,6 +2,7 @@ import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { NotFoundException } from '@nestjs/common';
 
 // Commons
+import dayjs from '../../common/utils/date-time/utc-dayjs';
 import { BaseResponseDto } from '../../common/dtos/base-response.dto';
 import {
   DEFAULT_LIMIT,
@@ -70,8 +71,8 @@ export class TrainerAvailabilityService {
     data: CreateTrainerAvailabilityDto,
     currentUser: User,
   ): Promise<TrainerAvailability> {
-    const start: Date = new Date(data.startTime);
-    const end: Date = new Date(data.endTime);
+    const start: Date = dayjs.utc(data.startTime).toDate();
+    const end: Date = dayjs.utc(data.endTime).toDate();
     this.assertValidAvailabilityWindow(start, end);
     await this.scheduleConflictService.assertNoOverlap({
       trainerId: currentUser.id,
@@ -103,10 +104,10 @@ export class TrainerAvailabilityService {
       );
     }
     const start: Date = data.startTime
-      ? new Date(data.startTime)
+      ? dayjs.utc(data.startTime).toDate()
       : availability.startTime;
     const end: Date = data.endTime
-      ? new Date(data.endTime)
+      ? dayjs.utc(data.endTime).toDate()
       : availability.endTime;
     this.assertValidAvailabilityWindow(start, end);
     await this.scheduleConflictService.assertNoOverlap({
