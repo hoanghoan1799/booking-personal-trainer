@@ -1,3 +1,5 @@
+import dayjs from '../utils/date-time/utc-dayjs';
+
 /**
  * Add the given number of minutes to the given date.
  *
@@ -6,5 +8,5 @@
  * @returns {Date} The resulting date after adding the minutes.
  */
 export const addMinutesToDate = (date: Date, minutes: number): Date => {
-  return new Date(date.getTime() + minutes * 60 * 1000);
+  return dayjs(date).add(minutes, 'minute').toDate();
 };
