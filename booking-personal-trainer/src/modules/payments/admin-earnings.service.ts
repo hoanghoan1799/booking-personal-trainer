@@ -3,6 +3,7 @@ import { EntityManager, FilterQuery } from '@mikro-orm/core';
 
 import { PaymentStatus } from '../../common/enums/billing/billing.enum';
 
+import { PaymentSplitAggregationHelper } from './helpers/payment-split-aggregation.helper';
 import { Payment } from './entities/payment.entity';
 import { User } from '../user/entities/user.entity';
 import { AdminEarningsQueryDto } from './dtos/admin-earnings-query.dto';
@@ -12,9 +13,6 @@ import {
   AdminEarningsTraineeRowDto,
   AdminEarningsTrainerRowDto,
 } from './dtos/admin-earnings-response.dto';
-
-const PLATFORM_WORKOUT_FEE_BPS_ENV = 'PLATFORM_WORKOUT_FEE_BPS' as const;
-const MAX_BPS = 10_000;
 
 @Injectable()
 export class AdminEarningsService {
@@ -28,11 +26,12 @@ export class AdminEarningsService {
         ? query.currency.trim().toUpperCase()
         : null;
 
-    const where: FilterQuery<Payment> = this.buildWhere({
-      from: query.from,
-      to: query.to,
-      currency: normalizedCurrency,
-    });
+    const where: FilterQuery<Payment> =
+      PaymentSplitAggregationHelper.buildPaidRefundedDateFilter({
+        from: query.from,
+        to: query.to,
+        currency: normalizedCurrency,
+      });
 
     const payments: Payment[] = await this.em.find(Payment, where, {
       populate: ['payer'],
@@ -66,7 +65,7 @@ export class AdminEarningsService {
 
       const grossCents: number = payment.amountCents;
       const { platformFeeCents, trainerShareCents, isEstimated } =
-        this.readOrEstimateSplit({
+        PaymentSplitAggregationHelper.readOrEstimateSplit({
           payment,
         });
 
@@ -103,7 +102,8 @@ export class AdminEarningsService {
       traineeRow.grossNetCents =
         traineeRow.grossPaidCents - traineeRow.grossRefundedCents;
 
-      const trainerId: string | null = this.readTrainerUserId(payment.metadata);
+      const trainerId: string | null =
+        PaymentSplitAggregationHelper.readTrainerUserId(payment.metadata);
       if (trainerId) {
         const trainerUser: User | undefined = trainersById.get(trainerId);
         const trainerRow: AdminEarningsTrainerRowDto =
@@ -144,47 +144,11 @@ export class AdminEarningsService {
     return { totals, trainees, trainers };
   }
 
-  private buildWhere(input: {
-    readonly from?: Date;
-    readonly to?: Date;
-    readonly currency: string | null;
-  }): FilterQuery<Payment> {
-    const base: FilterQuery<Payment> = {
-      status: { $in: [PaymentStatus.PAID, PaymentStatus.REFUNDED] },
-    };
-    if (input.currency) {
-      base.currency = input.currency;
-    }
-    const from: Date | undefined = input.from;
-    const to: Date | undefined = input.to;
-    if (!from && !to) {
-      return base;
-    }
-
-    const paidAtRange: Record<string, Date> = {};
-    const refundedAtRange: Record<string, Date> = {};
-    if (from) {
-      paidAtRange.$gte = from;
-      refundedAtRange.$gte = from;
-    }
-    if (to) {
-      paidAtRange.$lt = to;
-      refundedAtRange.$lt = to;
-    }
-
-    return {
-      ...base,
-      $or: [
-        { status: PaymentStatus.PAID, paidAt: paidAtRange },
-        { status: PaymentStatus.REFUNDED, refundedAt: refundedAtRange },
-      ],
-    };
-  }
-
   private collectTrainerIds(payments: Payment[]): string[] {
     const set = new Set<string>();
     for (const payment of payments) {
-      const trainerId: string | null = this.readTrainerUserId(payment.metadata);
+      const trainerId: string | null =
+        PaymentSplitAggregationHelper.readTrainerUserId(payment.metadata);
       if (trainerId) {
         set.add(trainerId);
       }
@@ -291,14 +255,6 @@ export class AdminEarningsService {
       : (user.userName ?? user.email ?? user.id);
   }
 
-  private readTrainerUserId(metadata: unknown): string | null {
-    if (!metadata || typeof metadata !== 'object') {
-      return null;
-    }
-    const value = (metadata as Record<string, unknown>).trainerUserId;
-    return typeof value === 'string' && value.trim() !== '' ? value : null;
-  }
-
   private readTrainerPayoutStatus(metadata: unknown): string | null {
     if (!metadata || typeof metadata !== 'object') {
       return null;
@@ -309,63 +265,5 @@ export class AdminEarningsService {
     }
     const status = (payout as Record<string, unknown>).status;
     return typeof status === 'string' && status.trim() !== '' ? status : null;
-  }
-
-  private readOrEstimateSplit(input: { readonly payment: Payment }): {
-    readonly platformFeeCents: number;
-    readonly trainerShareCents: number;
-    readonly isEstimated: boolean;
-  } {
-    const metadata = input.payment.metadata ?? null;
-    const platformFeeMeta = this.readPositiveInt(
-      metadata && typeof metadata === 'object'
-        ? (metadata as Record<string, unknown>).platformFeeCents
-        : null,
-    );
-    const trainerShareMeta = this.readPositiveInt(
-      metadata && typeof metadata === 'object'
-        ? (metadata as Record<string, unknown>).trainerShareCents
-        : null,
-    );
-    if (platformFeeMeta != null && trainerShareMeta != null) {
-      return {
-        platformFeeCents: platformFeeMeta,
-        trainerShareCents: trainerShareMeta,
-        isEstimated: false,
-      };
-    }
-    const { platformFeeCents, trainerShareCents } = this.computeSplitFromBps({
-      grossCents: input.payment.amountCents,
-    });
-    return { platformFeeCents, trainerShareCents, isEstimated: true };
-  }
-
-  private computeSplitFromBps(input: { readonly grossCents: number }): {
-    readonly platformFeeCents: number;
-    readonly trainerShareCents: number;
-  } {
-    const raw: string | undefined = process.env[PLATFORM_WORKOUT_FEE_BPS_ENV];
-    const parsed: number = raw != null && raw !== '' ? Number(raw) : 0;
-    const bps: number = Number.isFinite(parsed)
-      ? Math.min(Math.max(Math.trunc(parsed), 0), MAX_BPS)
-      : 0;
-    const platformFeeCents: number = Math.floor(
-      (input.grossCents * bps) / MAX_BPS,
-    );
-    const trainerShareCents: number = Math.max(
-      0,
-      input.grossCents - platformFeeCents,
-    );
-    return { platformFeeCents, trainerShareCents };
-  }
-
-  private readPositiveInt(value: unknown): number | null {
-    if (typeof value === 'number' && Number.isFinite(value)) {
-      return value >= 0 ? value : null;
-    }
-    if (typeof value === 'string' && /^\d+$/.test(value)) {
-      return Number.parseInt(value, 10);
-    }
-    return null;
   }
 }
