@@ -7,6 +7,7 @@ import {
   BillableTargetType,
   BillingChargeStatus,
 } from '../../../common/enums/billing/billing.enum';
+import { utcNowAsDate } from '../../../common/utils/date-time/utc-date-time.helper';
 
 // Entities
 import { BillingCharge } from '../entities/billing-charge.entity';
@@ -66,7 +67,7 @@ export class MikroOrmBillingChargeRepository implements BillingChargeRepository 
       },
       {
         status: BillingChargeStatus.EXPIRED,
-        updatedAt: new Date(),
+        updatedAt: utcNowAsDate(),
       },
     );
   }

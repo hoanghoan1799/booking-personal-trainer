@@ -12,6 +12,7 @@ import { plainToInstance } from 'class-transformer';
 
 // Commons
 import { ERROR_MESSAGES } from '../../common/constants/message.constant';
+import { utcNowAsDate } from '../../common/utils/date-time/utc-date-time.helper';
 import { TOKEN_EXPIRATION } from '../../common/constants/token.constants';
 import { BaseResponseDto } from '../../common/dtos/base-response.dto';
 import {
@@ -216,7 +217,7 @@ export class AuthService {
       const template = EmailTemplates.adminNewUserRegistered({
         userName: input.userName,
         userEmail: input.email,
-        registeredAt: new Date(),
+        registeredAt: utcNowAsDate(),
         userUrl: `${frontendUrl}/admin/users/${input.userId}`,
         authProvider: input.source,
         source: input.source,

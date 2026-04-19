@@ -9,6 +9,7 @@ import type { RedisClientType } from 'redis';
 
 //  Commons
 import { REDIS_CLIENT_TOKEN } from '../../common/constants/cache.constant';
+import { utcNowIso } from '../../common/utils/date-time/utc-date-time.helper';
 
 // DTOs
 import { KeyDto, SetKeyDto } from './dtos/key.dto';
@@ -102,7 +103,7 @@ export class RedisService implements OnModuleInit, OnApplicationShutdown {
    * - Executes a `SET`/`GET` round-trip to validate read/write
    */
   public async checkHealth(): Promise<RedisHealthResponse> {
-    const timestamp: string = new Date().toISOString();
+    const timestamp: string = utcNowIso();
     const isOpen: boolean = this.client.isOpen;
     const isReady: boolean = this.client.isReady;
     if (!isOpen) {

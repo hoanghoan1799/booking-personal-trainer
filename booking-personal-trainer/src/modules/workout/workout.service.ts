@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 
 // Commons
+import dayjs from '../../common/utils/date-time/utc-dayjs';
 import { ERROR_MESSAGES } from '../../common/constants/message.constant';
 import { UserRole } from '../../common/enums/user/user.enum';
 import { BookingStatus } from '../../common/enums/booking/booking.enum';
@@ -81,8 +82,8 @@ export class WorkoutService {
     const workout = await this.workoutRepo.create({
       trainer,
       trainee,
-      startTime: new Date(dto.startTime),
-      endTime: new Date(dto.endTime),
+      startTime: dayjs.utc(dto.startTime).toDate(),
+      endTime: dayjs.utc(dto.endTime).toDate(),
       exerciseIds: dto.exerciseIds,
     });
     await this.createWorkoutBillingQuote({

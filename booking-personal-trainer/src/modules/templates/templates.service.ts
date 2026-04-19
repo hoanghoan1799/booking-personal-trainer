@@ -1,6 +1,9 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { NotFoundException } from '@nestjs/common';
 
+// Commons
+import { utcNowAsDate } from '../../common/utils/date-time/utc-date-time.helper';
+
 // Enums
 import { UserRole } from '../../common/enums/user/user.enum';
 
@@ -395,8 +398,8 @@ export class TemplatesService {
       parentTemplateId: template.parentTemplate?.id ?? null,
       isDeleted: template.isDeleted ?? false,
       deletedAtIso: template.deletedAt ?? null,
-      createdAtIso: template.createdAt ?? new Date(),
-      updatedAtIso: template.updatedAt ?? new Date(),
+      createdAtIso: template.createdAt ?? utcNowAsDate(),
+      updatedAtIso: template.updatedAt ?? utcNowAsDate(),
       items: items
         .slice()
         .sort((a, b) => a.order - b.order)
@@ -416,8 +419,8 @@ export class TemplatesService {
       reps: item.reps,
       restSeconds: item.restSeconds,
       notes: item.notes,
-      createdAtIso: item.createdAt ?? new Date(),
-      updatedAtIso: item.updatedAt ?? new Date(),
+      createdAtIso: item.createdAt ?? utcNowAsDate(),
+      updatedAtIso: item.updatedAt ?? utcNowAsDate(),
     };
   }
 }

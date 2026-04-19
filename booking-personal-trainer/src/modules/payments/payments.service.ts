@@ -8,6 +8,7 @@ import { EntityManager } from '@mikro-orm/core';
 import Stripe from 'stripe';
 
 // Commons
+import { utcNowAsDate } from '../../common/utils/date-time/utc-date-time.helper';
 import { PaymentStatus } from '../../common/enums/billing/billing.enum';
 
 // Shared
@@ -114,7 +115,7 @@ export class PaymentsService {
       const latestStatus = latestIntent.status;
       if (latestStatus === 'succeeded') {
         existing.status = PaymentStatus.PAID;
-        existing.paidAt = existing.paidAt ?? new Date();
+        existing.paidAt = existing.paidAt ?? utcNowAsDate();
         existing.failureReason = null;
         existing.metadata = {
           ...(existing.metadata ?? {}),

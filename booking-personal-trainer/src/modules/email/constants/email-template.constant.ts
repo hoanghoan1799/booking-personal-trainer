@@ -1,3 +1,4 @@
+import dayjs from '../../../common/utils/date-time/utc-dayjs';
 import type { AuthProviderMethod } from '../../auth/types/auth-provider-method.type';
 
 export type EmailTemplate = {
@@ -89,7 +90,7 @@ export const EmailTemplates = {
       '',
       '— System',
     ].join('\n');
-    const year: number = new Date().getFullYear();
+    const year: number = dayjs.utc().year();
     const html: string = `<!DOCTYPE html>
 
 <html lang="en">

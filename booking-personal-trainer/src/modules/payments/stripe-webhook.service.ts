@@ -2,6 +2,8 @@ import { Inject, Injectable } from '@nestjs/common';
 
 // Commons
 import { PaymentStatus } from '../../common/enums/billing/billing.enum';
+import { utcNowAsDate } from '../../common/utils/date-time/utc-date-time.helper';
+import dayjs from '../../common/utils/date-time/utc-dayjs';
 
 // Repositories
 import type { PaymentRepository } from './repositories/payment.repository.interface';
@@ -65,7 +67,7 @@ export class StripeWebhookService {
     if (!payment) return;
     if (payment.status === PaymentStatus.PAID) return;
     payment.status = PaymentStatus.PAID;
-    payment.paidAt = new Date();
+    payment.paidAt = utcNowAsDate();
     payment.failureReason = null;
     payment.metadata = {
       ...(payment.metadata ?? {}),
@@ -120,7 +122,10 @@ export class StripeWebhookService {
         trainerName,
         amount,
         workoutTitle: workoutId ? `Workout ${workoutId}` : 'Workout',
-        paidAt: (payment.paidAt ?? new Date()).toISOString(),
+        paidAt: (payment.paidAt
+          ? dayjs.utc(payment.paidAt)
+          : dayjs.utc()
+        ).toISOString(),
         paymentUrl: `${frontendUrl}/trainer/payments/${payment.id}`,
       });
       if (trainerUser) {
@@ -163,7 +168,10 @@ export class StripeWebhookService {
       trainerName,
       amount,
       workoutTitle: workoutId ? `Workout ${workoutId}` : 'Workout',
-      paidAt: (payment.paidAt ?? new Date()).toISOString(),
+      paidAt: (payment.paidAt
+        ? dayjs.utc(payment.paidAt)
+        : dayjs.utc()
+      ).toISOString(),
       paymentUrl: `${frontendUrl}/admin/payments/${payment.id}`,
     });
     await this.emailService.send({
@@ -222,7 +230,7 @@ export class StripeWebhookService {
       await this.paymentRepo.findByProviderPaymentIntentId(paymentIntentId);
     if (!payment) return;
     payment.status = PaymentStatus.REFUNDED;
-    payment.refundedAt = new Date();
+    payment.refundedAt = utcNowAsDate();
     payment.metadata = {
       ...(payment.metadata ?? {}),
       stripeChargeId: charge.id,

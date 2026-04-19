@@ -3,6 +3,7 @@ import type { RedisClientType } from 'redis';
 
 // Commons
 import { BaseResponseDto } from '../../common/dtos/base-response.dto';
+import { utcNowAsDate } from '../../common/utils/date-time/utc-date-time.helper';
 import { SortOrder } from '../../common/enums/pagination/pagination.enum';
 import { UserRole } from '../../common/enums/user/user.enum';
 import { REDIS_PUBLISHER_TOKEN } from '../../common/constants/cache.constant';
@@ -171,7 +172,7 @@ export class NotificationsService {
       title: input.notification.title,
       message: input.notification.message,
       data: (input.notification.data as Record<string, unknown> | null) ?? null,
-      createdAt: (input.notification.createdAt ?? new Date()).toISOString(),
+      createdAt: (input.notification.createdAt ?? utcNowAsDate()).toISOString(),
     };
     const channel = this.buildUserChannel(input.recipientUserId);
     await this.publisherClient.publish(channel, JSON.stringify(payload));

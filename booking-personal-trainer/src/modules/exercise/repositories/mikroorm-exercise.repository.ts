@@ -1,4 +1,6 @@
 import { Injectable } from '@nestjs/common';
+
+import { utcNowAsDate } from '../../../common/utils/date-time/utc-date-time.helper';
 import { EntityManager, EntityRepository, FilterQuery } from '@mikro-orm/core';
 import { InjectRepository } from '@mikro-orm/nestjs';
 import { wrap } from '@mikro-orm/core';
@@ -90,7 +92,7 @@ export class MikroOrmExerciseRepository implements ExerciseRepository {
       return false;
     }
     exercise.isDeleted = true;
-    exercise.deletedAt = new Date();
+    exercise.deletedAt = utcNowAsDate();
     await this.em.flush();
     return true;
   }
