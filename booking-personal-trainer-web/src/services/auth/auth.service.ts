@@ -97,6 +97,14 @@ export async function updateProfile(data: UpdateProfileBody): Promise<User> {
   return res.data;
 }
 
+export async function requestTrainerRole(): Promise<User> {
+  const res = await apiFetch<ApiResponse<User>>(
+    "/api/v1/users/profile/trainer-request",
+    { method: "POST" },
+  );
+  return res.data;
+}
+
 export async function logout(): Promise<void> {
   const refreshToken = getRefreshToken();
   try {
