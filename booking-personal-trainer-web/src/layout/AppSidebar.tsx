@@ -80,19 +80,19 @@ const AppSidebar: React.FC = () => {
     const isTrainer = user?.role === "TRAINER";
     const isTrainee = user?.role === "TRAINEE";
     const isAdmin = user?.role === "ADMIN";
-    const navItemsWithoutTemplates = isTrainee
-      ? baseNavItems.filter((navItem) => navItem.path !== APP_ROUTES.TEMPLATES)
+    const navItemsWithoutTemplatesAndExercises = isTrainee
+      ? baseNavItems.filter((navItem) => navItem.path !== APP_ROUTES.TEMPLATES&& navItem.path !== APP_ROUTES.EXERCISES)
       : baseNavItems;
     const baseWithRoleItems: NavItem[] = (() => {
-      if (!isTrainer) return navItemsWithoutTemplates;
+      if (!isTrainer) return navItemsWithoutTemplatesAndExercises;
       return [
-        ...navItemsWithoutTemplates.slice(0, 4),
+        ...navItemsWithoutTemplatesAndExercises.slice(0, 4),
         {
           icon: <CalenderIcon />,
           name: "Schedule",
           path: APP_ROUTES.SCHEDULE,
         },
-        ...navItemsWithoutTemplates.slice(4),
+        ...navItemsWithoutTemplatesAndExercises.slice(4),
       ];
     })();
     if (isTrainer) {
