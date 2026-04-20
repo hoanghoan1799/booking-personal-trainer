@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useWorkouts } from "@/hooks/useWorkouts";
 import { useProfile } from "@/hooks/useProfile";
 import { useTemplates } from "@/hooks/useTemplates";
@@ -16,6 +16,59 @@ import WorkoutCard from "./WorkoutCard";
 import WorkoutDetailModal from "./WorkoutDetailModal";
 import CreateWorkoutFromTemplateModal from "./CreateWorkoutFromTemplateModal";
 import Button from "@/components/ui/button/Button";
+
+type DisplayUser = {
+  readonly id: string;
+  readonly userName: string;
+  readonly firstName?: string;
+  readonly lastName?: string;
+};
+
+const getDisplayName = (user: DisplayUser): string => {
+  const parts = [user.firstName, user.lastName].filter(Boolean);
+  return parts.length > 0 ? parts.join(" ") : user.userName;
+};
+
+const buildWorkoutGroupLabel = (input: {
+  readonly groupBy: "TRAINER" | "TRAINEE";
+  readonly user: DisplayUser | null | undefined;
+}): string => {
+  if (!input.user) {
+    return input.groupBy === "TRAINER" ? "Trainer: —" : "Trainee: —";
+  }
+  const name = getDisplayName(input.user);
+  return input.groupBy === "TRAINER" ? `Trainer: ${name}` : `Trainee: ${name}`;
+};
+
+const groupWorkoutsBy = (input: {
+  readonly workouts: readonly Workout[];
+  readonly groupBy: "TRAINER" | "TRAINEE";
+}): ReadonlyArray<{
+  readonly key: string;
+  readonly label: string;
+  readonly workouts: readonly Workout[];
+}> => {
+  const groups = new Map<string, { label: string; workouts: Workout[] }>();
+  for (const workout of input.workouts) {
+    const user =
+      input.groupBy === "TRAINER"
+        ? (workout.trainer as DisplayUser | null | undefined)
+        : (workout.trainee as DisplayUser | null | undefined);
+    const key = user?.id ?? "unknown";
+    const existing = groups.get(key);
+    if (!existing) {
+      groups.set(key, {
+        label: buildWorkoutGroupLabel({ groupBy: input.groupBy, user }),
+        workouts: [workout],
+      });
+      continue;
+    }
+    existing.workouts.push(workout);
+  }
+  return [...groups.entries()]
+    .map(([key, value]) => ({ key, label: value.label, workouts: value.workouts }))
+    .sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: "base" }));
+};
 
 export default function WorkoutsContent() {
   const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -39,6 +92,12 @@ export default function WorkoutsContent() {
   } = useWorkouts({
     status: statusFilter as "PENDING" | "IN_PROGRESS" | "DONE",
   });
+  const groupBy: "TRAINER" | "TRAINEE" =
+    currentUserRole === "TRAINER" ? "TRAINEE" : "TRAINER";
+  const groupedWorkouts = useMemo(
+    () => groupWorkoutsBy({ workouts, groupBy }),
+    [workouts, groupBy],
+  );
 
   const canUpdateWorkout = (workout: Workout) => {
     if (!currentUser) return false;
@@ -73,8 +132,12 @@ export default function WorkoutsContent() {
     if (!canCreate || !createModalOpen || !currentUserId || !currentUserRole)
       return;
     if (currentUserRole !== "ADMIN" && currentUserRole !== "TRAINER") {
-      setConfirmedBookings([]);
-      return;
+      const timeoutId = window.setTimeout(() => {
+        setConfirmedBookings([]);
+      }, 0);
+      return (): void => {
+        window.clearTimeout(timeoutId);
+      };
     }
     const query =
       currentUserRole === "TRAINER"
@@ -169,16 +232,27 @@ export default function WorkoutsContent() {
           No workouts found.
         </p>
       ) : (
-        <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3" role="list">
-          {workouts.map((w) => (
-            <li key={w.id}>
-              <WorkoutCard
-                workout={w}
-                onClick={handleWorkoutClick}
-              />
-            </li>
+        <div className="flex flex-col gap-6">
+          {groupedWorkouts.map((group) => (
+            <section key={group.key} aria-label={group.label}>
+              <div className="mb-3 flex items-center justify-between">
+                <h4 className="text-sm font-semibold text-gray-800 dark:text-white/90">
+                  {group.label}
+                </h4>
+                <span className="text-xs text-gray-500 dark:text-gray-400">
+                  {group.workouts.length} workouts
+                </span>
+              </div>
+              <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3" role="list">
+                {group.workouts.map((w) => (
+                  <li key={w.id}>
+                    <WorkoutCard workout={w} onClick={handleWorkoutClick} />
+                  </li>
+                ))}
+              </ul>
+            </section>
           ))}
-        </ul>
+        </div>
       )}
 
       <WorkoutDetailModal

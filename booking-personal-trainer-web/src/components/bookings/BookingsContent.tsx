@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { Booking } from "@/services/bookings/bookings.service";
 import { useBookings } from "@/hooks/useBookings";
 import { useProfile } from "@/hooks/useProfile";
@@ -32,6 +32,54 @@ function getStatusColor(status: string): "primary" | "success" | "error" | "warn
 function formatDateTime(iso: string) {
   return formatInstantUtc(iso, "ddd, D MMM YYYY, HH:mm");
 }
+
+type DisplayUser = {
+  readonly id: string;
+  readonly userName: string;
+  readonly firstName?: string;
+  readonly lastName?: string;
+};
+
+const buildGroupLabel = (input: {
+  readonly groupBy: "TRAINER" | "TRAINEE";
+  readonly user: DisplayUser | null | undefined;
+}): string => {
+  if (!input.user) {
+    return input.groupBy === "TRAINER" ? "Trainer: —" : "Trainee: —";
+  }
+  const name = getDisplayName(input.user);
+  return input.groupBy === "TRAINER" ? `Trainer: ${name}` : `Trainee: ${name}`;
+};
+
+const groupBookingsBy = (input: {
+  readonly bookings: readonly Booking[];
+  readonly groupBy: "TRAINER" | "TRAINEE";
+}): ReadonlyArray<{
+  readonly key: string;
+  readonly label: string;
+  readonly bookings: readonly Booking[];
+}> => {
+  const groups = new Map<string, { label: string; bookings: Booking[] }>();
+  for (const booking of input.bookings) {
+    const user =
+      input.groupBy === "TRAINER"
+        ? (booking.trainer as DisplayUser | null | undefined)
+        : (booking.trainee as DisplayUser | null | undefined);
+    const key = user?.id ?? "unknown";
+    const existing = groups.get(key);
+    if (!existing) {
+      groups.set(key, {
+        label: buildGroupLabel({ groupBy: input.groupBy, user }),
+        bookings: [booking],
+      });
+      continue;
+    }
+    existing.bookings.push(booking);
+  }
+  return [...groups.entries()]
+    .map(([key, value]) => ({ key, label: value.label, bookings: value.bookings }))
+    .sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: "base" }));
+};
 
 function BookingCard({ booking }: { booking: Booking }) {
   const trainerName = booking.trainer
@@ -72,6 +120,13 @@ export default function BookingsContent() {
   const [isCreateBookingOpen, setIsCreateBookingOpen] = useState<boolean>(false);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const isTrainee = user?.role === "TRAINEE";
+  const currentRole = (user?.role as string | undefined) ?? null;
+  const groupBy: "TRAINER" | "TRAINEE" =
+    currentRole === "TRAINER" ? "TRAINEE" : "TRAINER";
+  const groupedBookings = useMemo(
+    () => groupBookingsBy({ bookings, groupBy }),
+    [bookings, groupBy],
+  );
 
   if (isProfileLoading || isLoading) {
     return (
@@ -152,25 +207,39 @@ export default function BookingsContent() {
           </Button>
         </div>
       )}
-      <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3" role="list">
-        {bookings.map((b) => (
-          <li key={b.id}>
-            <button
-              type="button"
-              onClick={() => setSelectedBooking(b)}
-              onKeyDown={(e) => {
-                if (e.key !== "Enter" && e.key !== " ") return;
-                e.preventDefault();
-                setSelectedBooking(b);
-              }}
-              className="w-full text-left"
-              aria-label="Open booking details"
-            >
-              <BookingCard booking={b} />
-            </button>
-          </li>
+      <div className="flex flex-col gap-6">
+        {groupedBookings.map((group) => (
+          <section key={group.key} aria-label={group.label}>
+            <div className="mb-3 flex items-center justify-between">
+              <h4 className="text-sm font-semibold text-gray-800 dark:text-white/90">
+                {group.label}
+              </h4>
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                {group.bookings.length} bookings
+              </span>
+            </div>
+            <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3" role="list">
+              {group.bookings.map((b) => (
+                <li key={b.id}>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedBooking(b)}
+                    onKeyDown={(e) => {
+                      if (e.key !== "Enter" && e.key !== " ") return;
+                      e.preventDefault();
+                      setSelectedBooking(b);
+                    }}
+                    className="w-full text-left"
+                    aria-label="Open booking details"
+                  >
+                    <BookingCard booking={b} />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
         ))}
-      </ul>
+      </div>
       <CreateBookingModal
         isOpen={isCreateBookingOpen}
         onClose={() => setIsCreateBookingOpen(false)}

@@ -9,6 +9,7 @@ import { EyeCloseIcon, EyeIcon } from "@/icons";
 import { useToast } from "@/context/ToastContext";
 import type { User } from "@/types/user.types";
 import { setPassword } from "@/services/auth/auth.service";
+import { getAuthSessionMethod } from "@/lib/token";
 
 type UserPasswordCardProps = {
   readonly user: User;
@@ -21,7 +22,9 @@ export default function UserPasswordCard(props: UserPasswordCardProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  const hasPassword = Boolean(props.user.hasPassword);
+  const authMethod = getAuthSessionMethod();
+  const hasPassword =
+    authMethod === "credentials" || Boolean(props.user.hasPassword);
   if (hasPassword) {
     return null;
   }
