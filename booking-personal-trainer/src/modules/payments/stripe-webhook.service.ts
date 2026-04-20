@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { EntityManager } from '@mikro-orm/core';
 
 // Commons
 import { PaymentStatus } from '../../common/enums/billing/billing.enum';
@@ -17,6 +18,8 @@ import type { UserRepository } from '../user/repositories/user.repository.interf
 import { EmailService } from '../email/email.service';
 import { EmailTemplates } from '../email/constants/email-template.constant';
 import { collectAdminEmailAddresses } from '../email/helpers/collect-admin-email-addresses.helper';
+import { ProcessedWebhookEvent } from './entities/processed-webhook-event.entity';
+import { Payment } from './entities/payment.entity';
 
 const STRIPE_PAYMENT_INTENT_SUCCEEDED = 'payment_intent.succeeded' as const;
 const STRIPE_PAYMENT_INTENT_FAILED = 'payment_intent.payment_failed' as const;
@@ -33,36 +36,67 @@ export class StripeWebhookService {
     @Inject(UserRepositoryToken)
     private readonly userRepo: UserRepository,
     private readonly emailService: EmailService,
+    private readonly em: EntityManager,
   ) {}
 
   async handleEvent(event: {
+    id: string;
     type: string;
     data: { object: unknown };
   }): Promise<void> {
-    switch (event.type) {
-      case STRIPE_PAYMENT_INTENT_SUCCEEDED:
-        await this.handlePaymentIntentSucceeded(event.data.object as any);
-        return;
-      case STRIPE_PAYMENT_INTENT_FAILED:
-        await this.handlePaymentIntentFailed(event.data.object as any);
-        return;
-      case STRIPE_PAYMENT_INTENT_CANCELED:
-        await this.handlePaymentIntentCanceled(event.data.object as any);
-        return;
-      case STRIPE_CHARGE_REFUNDED:
-        await this.handleChargeRefunded(event.data.object as any);
-        return;
-      default:
-        return;
+    const shouldProcess =
+      event.type === STRIPE_PAYMENT_INTENT_SUCCEEDED ||
+      event.type === STRIPE_PAYMENT_INTENT_FAILED ||
+      event.type === STRIPE_PAYMENT_INTENT_CANCELED ||
+      event.type === STRIPE_CHARGE_REFUNDED;
+    if (!shouldProcess) {
+      return;
     }
+    await this.em.transactional(async (em) => {
+      try {
+        const processed = em.create(ProcessedWebhookEvent, {
+          provider: 'stripe',
+          eventId: event.id,
+          receivedAt: utcNowAsDate(),
+        });
+        await em.persist(processed).flush();
+      } catch (err: unknown) {
+        const code = (err as { code?: unknown } | null | undefined)?.code;
+        if (code === '23505') {
+          return;
+        }
+        throw err;
+      }
+      switch (event.type) {
+        case STRIPE_PAYMENT_INTENT_SUCCEEDED:
+          await this.handlePaymentIntentSucceeded(em, event.data.object as any);
+          return;
+        case STRIPE_PAYMENT_INTENT_FAILED:
+          await this.handlePaymentIntentFailed(em, event.data.object as any);
+          return;
+        case STRIPE_PAYMENT_INTENT_CANCELED:
+          await this.handlePaymentIntentCanceled(em, event.data.object as any);
+          return;
+        case STRIPE_CHARGE_REFUNDED:
+          await this.handleChargeRefunded(em, event.data.object as any);
+          return;
+        default:
+          return;
+      }
+    });
   }
 
-  private async handlePaymentIntentSucceeded(paymentIntent: {
-    id: string;
-    status: string;
-  }): Promise<void> {
-    const payment = await this.paymentRepo.findByProviderPaymentIntentId(
-      paymentIntent.id,
+  private async handlePaymentIntentSucceeded(
+    em: EntityManager,
+    paymentIntent: {
+      id: string;
+      status: string;
+    },
+  ): Promise<void> {
+    const payment = await em.findOne(
+      Payment,
+      { providerPaymentIntentId: paymentIntent.id },
+      { populate: ['payer', 'billingCharge'] },
     );
     if (!payment) return;
     if (payment.status === PaymentStatus.PAID) return;
@@ -73,7 +107,7 @@ export class StripeWebhookService {
       ...(payment.metadata ?? {}),
       stripeStatus: paymentIntent.status,
     };
-    await this.paymentRepo.save(payment);
+    await em.flush();
     await this.platformWorkoutSettlementService.applyTrainerShareTransferForPaidPayment(
       payment,
     );
@@ -182,13 +216,18 @@ export class StripeWebhookService {
     });
   }
 
-  private async handlePaymentIntentFailed(paymentIntent: {
-    id: string;
-    status: string;
-    last_payment_error?: { message?: string | null } | null;
-  }): Promise<void> {
-    const payment = await this.paymentRepo.findByProviderPaymentIntentId(
-      paymentIntent.id,
+  private async handlePaymentIntentFailed(
+    em: EntityManager,
+    paymentIntent: {
+      id: string;
+      status: string;
+      last_payment_error?: { message?: string | null } | null;
+    },
+  ): Promise<void> {
+    const payment = await em.findOne(
+      Payment,
+      { providerPaymentIntentId: paymentIntent.id },
+      { populate: ['payer', 'billingCharge'] },
     );
     if (!payment) return;
     if (payment.status === PaymentStatus.PAID) return;
@@ -199,15 +238,20 @@ export class StripeWebhookService {
       ...(payment.metadata ?? {}),
       stripeStatus: paymentIntent.status,
     };
-    await this.paymentRepo.save(payment);
+    await em.flush();
   }
 
-  private async handlePaymentIntentCanceled(paymentIntent: {
-    id: string;
-    status: string;
-  }): Promise<void> {
-    const payment = await this.paymentRepo.findByProviderPaymentIntentId(
-      paymentIntent.id,
+  private async handlePaymentIntentCanceled(
+    em: EntityManager,
+    paymentIntent: {
+      id: string;
+      status: string;
+    },
+  ): Promise<void> {
+    const payment = await em.findOne(
+      Payment,
+      { providerPaymentIntentId: paymentIntent.id },
+      { populate: ['payer', 'billingCharge'] },
     );
     if (!payment) return;
     if (payment.status === PaymentStatus.PAID) return;
@@ -216,18 +260,24 @@ export class StripeWebhookService {
       ...(payment.metadata ?? {}),
       stripeStatus: paymentIntent.status,
     };
-    await this.paymentRepo.save(payment);
+    await em.flush();
   }
 
-  private async handleChargeRefunded(charge: {
-    id: string;
-    payment_intent?: string | null;
-  }): Promise<void> {
+  private async handleChargeRefunded(
+    em: EntityManager,
+    charge: {
+      id: string;
+      payment_intent?: string | null;
+    },
+  ): Promise<void> {
     const paymentIntentId: string | null =
       typeof charge.payment_intent === 'string' ? charge.payment_intent : null;
     if (!paymentIntentId) return;
-    const payment =
-      await this.paymentRepo.findByProviderPaymentIntentId(paymentIntentId);
+    const payment = await em.findOne(
+      Payment,
+      { providerPaymentIntentId: paymentIntentId },
+      { populate: ['payer', 'billingCharge'] },
+    );
     if (!payment) return;
     payment.status = PaymentStatus.REFUNDED;
     payment.refundedAt = utcNowAsDate();
@@ -236,6 +286,6 @@ export class StripeWebhookService {
       stripeChargeId: charge.id,
       stripeRefunded: true,
     };
-    await this.paymentRepo.save(payment);
+    await em.flush();
   }
 }

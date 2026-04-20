@@ -3,6 +3,7 @@ import { MikroOrmModule } from '@mikro-orm/nestjs';
 
 // Entities
 import { Payment } from './entities/payment.entity';
+import { ProcessedWebhookEvent } from './entities/processed-webhook-event.entity';
 
 // Modules
 import { BillingModule } from '../billing/billing.module';
@@ -33,7 +34,7 @@ import { TrainerPayoutsService } from './trainer-payouts.service';
 
 @Module({
   imports: [
-    MikroOrmModule.forFeature([Payment]),
+    MikroOrmModule.forFeature([Payment, ProcessedWebhookEvent]),
     StripeModule,
     forwardRef(() => BillingModule),
     forwardRef(() => UserModule),

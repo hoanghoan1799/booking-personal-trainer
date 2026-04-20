@@ -90,6 +90,51 @@ export class PaymentsService {
       billingChargeId: activeCharge.id,
       payerUserId: input.traineeId,
     });
+    const existingPaymentByKey =
+      await this.paymentRepo.findByProviderAndIdempotencyKey({
+        provider: STRIPE_PROVIDER,
+        idempotencyKey,
+      });
+    if (existingPaymentByKey?.providerPaymentIntentId) {
+      const latestIntent = await stripeClient.paymentIntents.retrieve(
+        existingPaymentByKey.providerPaymentIntentId,
+      );
+      if (!latestIntent.client_secret) {
+        throw new Error('Stripe PaymentIntent missing client_secret');
+      }
+      return {
+        paymentId: existingPaymentByKey.id,
+        providerPaymentIntentId: latestIntent.id,
+        clientSecret: latestIntent.client_secret,
+        amountCents: existingPaymentByKey.amountCents,
+        currency: existingPaymentByKey.currency,
+      };
+    }
+    const precreatedPayment =
+      existingPaymentByKey ??
+      (await this.paymentRepo.create({
+        targetType: 'WORKOUT',
+        targetId: workout.id,
+        payerUserId: input.traineeId,
+        billingChargeId: activeCharge.id,
+        amountCents: grossCents,
+        currency: activeCharge.currency,
+        status: PaymentStatus.PROCESSING,
+        provider: STRIPE_PROVIDER,
+        providerPaymentIntentId: null,
+        idempotencyKey,
+        metadata: {
+          stripeStatus: 'created',
+          settlementModel: SETTLEMENT_MODEL_PLATFORM_COLLECT,
+          grossAmountCents: grossCents,
+          platformFeeCents,
+          trainerShareCents,
+          trainerUserId: workout.trainer.id,
+          trainerConnectAccountId,
+          currency: activeCharge.currency,
+          workoutId: workout.id,
+        },
+      }));
     const existingIntent = await stripeClient.paymentIntents.create(
       {
         amount: grossCents,
@@ -101,6 +146,7 @@ export class PaymentsService {
           payerUserId: input.traineeId,
           trainerUserId: workout.trainer.id,
           settlementModel: SETTLEMENT_MODEL_PLATFORM_COLLECT,
+          paymentId: precreatedPayment.id,
         },
       },
       { idempotencyKey },
@@ -109,8 +155,16 @@ export class PaymentsService {
       existingIntent.id,
     );
     if (existing) {
+      if (
+        precreatedPayment.id !== existing.id &&
+        precreatedPayment.providerPaymentIntentId == null
+      ) {
+        precreatedPayment.providerPaymentIntentId = existingIntent.id;
+        precreatedPayment.status = existing.status;
+        await this.paymentRepo.save(precreatedPayment);
+      }
       const latestIntent = await stripeClient.paymentIntents.retrieve(
-        existing.providerPaymentIntentId,
+        existing.providerPaymentIntentId ?? existingIntent.id,
       );
       const latestStatus = latestIntent.status;
       if (latestStatus === 'succeeded') {
@@ -181,37 +235,24 @@ export class PaymentsService {
         trainerConnectAccountId,
       });
     }
-    const payment = await this.paymentRepo.create({
-      targetType: 'WORKOUT',
-      targetId: workout.id,
-      payerUserId: input.traineeId,
-      billingChargeId: activeCharge.id,
-      amountCents: grossCents,
-      currency: activeCharge.currency,
-      status: this.mapStripePaymentIntentToPaymentStatus(paymentIntent.status),
-      provider: STRIPE_PROVIDER,
-      providerPaymentIntentId: paymentIntent.id,
-      metadata: {
-        stripeStatus: paymentIntent.status,
-        settlementModel: SETTLEMENT_MODEL_PLATFORM_COLLECT,
-        grossAmountCents: grossCents,
-        platformFeeCents,
-        trainerShareCents,
-        trainerUserId: workout.trainer.id,
-        trainerConnectAccountId,
-        currency: activeCharge.currency,
-        workoutId: workout.id,
-      },
-    });
+    precreatedPayment.status = this.mapStripePaymentIntentToPaymentStatus(
+      paymentIntent.status,
+    );
+    precreatedPayment.providerPaymentIntentId = paymentIntent.id;
+    precreatedPayment.metadata = {
+      ...(precreatedPayment.metadata ?? {}),
+      stripeStatus: paymentIntent.status,
+    };
+    await this.paymentRepo.save(precreatedPayment);
     if (!paymentIntent.client_secret) {
       throw new Error('Stripe PaymentIntent missing client_secret');
     }
     return {
-      paymentId: payment.id,
+      paymentId: precreatedPayment.id,
       providerPaymentIntentId: paymentIntent.id,
       clientSecret: paymentIntent.client_secret,
-      amountCents: payment.amountCents,
-      currency: payment.currency,
+      amountCents: precreatedPayment.amountCents,
+      currency: precreatedPayment.currency,
     };
   }
 

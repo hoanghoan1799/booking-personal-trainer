@@ -9,6 +9,7 @@ import { PlatformWorkoutSettlementService } from './platform-workout-settlement.
 import { NotificationsService } from '../notifications/notifications.service';
 import { UserRepositoryToken } from '../user/repositories/user.repository.interface';
 import { EmailService } from '../email/email.service';
+import { EntityManager } from '@mikro-orm/core';
 
 describe('StripeWebhookService', () => {
   let service: StripeWebhookService;
@@ -25,6 +26,7 @@ describe('StripeWebhookService', () => {
   };
   let userRepo: { findById: jest.Mock; findAndCount: jest.Mock };
   let emailService: { send: jest.Mock };
+  let em: { transactional: jest.Mock };
 
   beforeEach(async () => {
     paymentRepo = {
@@ -50,6 +52,9 @@ describe('StripeWebhookService', () => {
     emailService = {
       send: jest.fn().mockResolvedValue({ messageId: 'mock-message-id' }),
     };
+    em = {
+      transactional: jest.fn(),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -65,6 +70,7 @@ describe('StripeWebhookService', () => {
         },
         { provide: UserRepositoryToken, useValue: userRepo },
         { provide: EmailService, useValue: emailService },
+        { provide: EntityManager, useValue: em },
       ],
     }).compile();
 
@@ -80,9 +86,18 @@ describe('StripeWebhookService', () => {
       payer: { id: 'trainee_1', userName: 'trainee' },
       metadata: { trainerUserId: 'trainer_1', workoutId: 'workout_1' },
     } as any;
-    paymentRepo.findByProviderPaymentIntentId.mockResolvedValue(payment);
+    em.transactional.mockImplementation(
+      (handler: (innerEm: any) => Promise<any>) =>
+        handler({
+          create: jest.fn().mockReturnValue({}),
+          persist: jest.fn().mockReturnValue({ flush: jest.fn() }),
+          findOne: jest.fn().mockResolvedValue(payment),
+          flush: jest.fn().mockResolvedValue(undefined),
+        }),
+    );
 
     const event = {
+      id: 'evt_1',
       type: 'payment_intent.succeeded',
       data: { object: { id: 'pi_123', status: 'succeeded' } },
     } as any;
@@ -90,7 +105,6 @@ describe('StripeWebhookService', () => {
     await service.handleEvent(event);
 
     expect(payment.status).toBe(PaymentStatus.PAID);
-    expect(paymentRepo.save).toHaveBeenCalledWith(payment);
     expect(
       platformSettlement.applyTrainerShareTransferForPaidPayment,
     ).toHaveBeenCalledWith(payment);

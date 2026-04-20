@@ -36,11 +36,22 @@ export class MikroOrmPaymentRepository implements PaymentRepository {
       currency: data.currency,
       status: data.status ?? PaymentStatus.REQUIRES_PAYMENT_METHOD,
       provider: data.provider,
-      providerPaymentIntentId: data.providerPaymentIntentId,
+      providerPaymentIntentId: data.providerPaymentIntentId ?? null,
+      idempotencyKey: data.idempotencyKey ?? null,
       metadata: data.metadata ?? null,
     });
     await this.em.persist(payment).flush();
     return payment;
+  }
+
+  async findByProviderAndIdempotencyKey(input: {
+    readonly provider: string;
+    readonly idempotencyKey: string;
+  }): Promise<Payment | null> {
+    return this.repo.findOne(
+      { provider: input.provider, idempotencyKey: input.idempotencyKey },
+      { populate: ['payer', 'billingCharge'] },
+    );
   }
 
   async findByProviderPaymentIntentId(

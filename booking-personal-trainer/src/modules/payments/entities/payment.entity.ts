@@ -26,6 +26,7 @@ type PaymentMetadata = Record<string, unknown>;
 @Index({ properties: ['billingCharge'] })
 @Index({ properties: ['status'] })
 @Index({ properties: ['provider'] })
+@Index({ properties: ['provider', 'idempotencyKey'] })
 @Index({ properties: ['paidAt'] })
 @Index({ properties: ['refundedAt'] })
 @Unique({ properties: ['providerPaymentIntentId'] })
@@ -64,8 +65,12 @@ export class Payment extends BaseEntity {
   provider: string = 'stripe';
 
   @Expose()
-  @Property()
-  providerPaymentIntentId!: string;
+  @Property({ nullable: true })
+  providerPaymentIntentId?: string | null;
+
+  @Expose()
+  @Property({ nullable: true })
+  idempotencyKey?: string | null;
 
   @Expose()
   @Property({ type: 'json', nullable: true })

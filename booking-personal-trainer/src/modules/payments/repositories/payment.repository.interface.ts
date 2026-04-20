@@ -13,12 +13,17 @@ export type CreatePaymentData = {
   readonly currency: string;
   readonly status: PaymentStatus;
   readonly provider: string;
-  readonly providerPaymentIntentId: string;
+  readonly providerPaymentIntentId?: string | null;
+  readonly idempotencyKey?: string | null;
   readonly metadata?: Record<string, unknown> | null;
 };
 
 export interface PaymentRepository {
   create(data: CreatePaymentData): Promise<Payment>;
+  findByProviderAndIdempotencyKey(input: {
+    readonly provider: string;
+    readonly idempotencyKey: string;
+  }): Promise<Payment | null>;
   findByProviderPaymentIntentId(
     providerPaymentIntentId: string,
   ): Promise<Payment | null>;
