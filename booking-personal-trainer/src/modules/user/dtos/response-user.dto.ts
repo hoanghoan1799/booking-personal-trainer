@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Expose } from 'class-transformer';
+import { Expose, Transform } from 'class-transformer';
 
 // Commons
 import {
@@ -88,6 +88,14 @@ export class ResponseUserDto {
 }
 
 export class ResponseFullUserDto extends ResponseUserDto {
+  @ApiProperty({
+    description: 'Whether the account has a local password set.',
+    example: true,
+  })
+  @Expose()
+  @Transform(({ obj }: { obj: { password?: string } }) => Boolean(obj.password))
+  hasPassword!: boolean;
+
   @ApiPropertyOptional({ description: FIELD_DESCRIPTIONS.USER.AGE })
   @Expose()
   age?: number;

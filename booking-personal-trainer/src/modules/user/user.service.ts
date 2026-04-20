@@ -6,6 +6,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
+import { plainToInstance } from 'class-transformer';
 
 // Commons
 import { ERROR_MESSAGES } from '../../common/constants/message.constant';
@@ -397,7 +398,12 @@ export class UserService {
         stack,
       );
     }
-    return BaseResponseDto.ok(user);
+    return BaseResponseDto.ok(
+      plainToInstance(ResponseFullUserDto, user, {
+        excludeExtraneousValues: true,
+        enableImplicitConversion: true,
+      }),
+    );
   }
 
   /**
@@ -420,6 +426,11 @@ export class UserService {
     Object.assign(user, data);
     await this.userRepo.save(user);
 
-    return BaseResponseDto.ok(user);
+    return BaseResponseDto.ok(
+      plainToInstance(ResponseFullUserDto, user, {
+        excludeExtraneousValues: true,
+        enableImplicitConversion: true,
+      }),
+    );
   }
 }

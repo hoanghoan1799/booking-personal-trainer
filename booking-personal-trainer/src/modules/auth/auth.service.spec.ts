@@ -58,7 +58,7 @@ describe('AuthService', () => {
     create: jest.Mock;
   };
   let notificationsService: { notifyAdmins: jest.Mock };
-  let userRepo: { findAndCount: jest.Mock };
+  let userRepo: { findAndCount: jest.Mock; save: jest.Mock };
   let emailService: { send: jest.Mock };
 
   const mockUser = {
@@ -106,6 +106,7 @@ describe('AuthService', () => {
     };
     userRepo = {
       findAndCount: jest.fn().mockResolvedValue([[], 0]),
+      save: jest.fn().mockResolvedValue(undefined),
     };
     emailService = {
       send: jest.fn().mockResolvedValue({ messageId: 'mock-message-id' }),
@@ -359,7 +360,119 @@ describe('AuthService', () => {
 
       const actual = await service.getProfile(mockUser.id);
 
-      expect(actual.data).toEqual(mockUser);
+      expect(actual.data).toEqual(
+        expect.objectContaining({
+          id: mockUser.id,
+          email: mockUser.email,
+          userName: mockUser.userName,
+          firstName: mockUser.firstName,
+          lastName: mockUser.lastName,
+          role: mockUser.role,
+          userType: mockUser.userType,
+          hasPassword: true,
+        }),
+      );
+      expect((actual.data as unknown as { password?: unknown }).password).toBe(
+        undefined,
+      );
+    });
+  });
+
+  describe('exchangeToken', () => {
+    it('should throw UnauthorizedException when email is not verified', async () => {
+      auth0TokenVerifier.verifyAndDecode.mockResolvedValue({
+        sub: 'auth0|sub',
+        email: 'user@test.com',
+        email_verified: false,
+      });
+      await expect(
+        service.exchangeToken({ token: 'auth0-token' }),
+      ).rejects.toThrow(UnauthorizedException);
+      await expect(
+        service.exchangeToken({ token: 'auth0-token' }),
+      ).rejects.toThrow(ERROR_MESSAGES.AUTH.EMAIL_NOT_VERIFIED);
+    });
+
+    it('should throw BadRequestException when existing user by email requires linking', async () => {
+      auth0TokenVerifier.verifyAndDecode.mockResolvedValue({
+        sub: 'auth0|sub',
+        email: mockUser.email,
+        email_verified: true,
+      });
+      userProviderRepository.findByProviderIdentity.mockResolvedValue(null);
+      userService.findByEmail.mockResolvedValue(mockUser);
+
+      await expect(
+        service.exchangeToken({ token: 'auth0-token' }),
+      ).rejects.toThrow(BadRequestException);
+      await expect(
+        service.exchangeToken({ token: 'auth0-token' }),
+      ).rejects.toThrow(ERROR_MESSAGES.AUTH.ACCOUNT_LINK_REQUIRED);
+    });
+  });
+
+  describe('linkAuth0ToLocal', () => {
+    it('should link when password matches and return tokens', async () => {
+      auth0TokenVerifier.verifyAndDecode.mockResolvedValue({
+        sub: 'auth0|sub',
+        email: mockUser.email,
+        email_verified: true,
+      });
+      userService.findByEmail.mockResolvedValue(mockUser);
+      hashingService.compare.mockResolvedValue(true);
+      userProviderRepository.findByProviderIdentity.mockResolvedValue(null);
+
+      const actual = await service.linkAuth0ToLocal({
+        token: 'auth0-token',
+        password: 'password123',
+      });
+
+      expect(actual).toHaveProperty('accessToken');
+      expect(userProviderRepository.create).toHaveBeenCalledWith({
+        userId: mockUser.id,
+        providerName: 'auth0',
+        providerUserId: 'auth0|sub',
+      });
+      expect(refreshTokenService.saveRefreshToken).toHaveBeenCalled();
+    });
+
+    it('should throw BadRequestException when password does not match', async () => {
+      auth0TokenVerifier.verifyAndDecode.mockResolvedValue({
+        sub: 'auth0|sub',
+        email: mockUser.email,
+        email_verified: true,
+      });
+      userService.findByEmail.mockResolvedValue(mockUser);
+      hashingService.compare.mockResolvedValue(false);
+
+      await expect(
+        service.linkAuth0ToLocal({ token: 'auth0-token', password: 'wrong' }),
+      ).rejects.toThrow(BadRequestException);
+      await expect(
+        service.linkAuth0ToLocal({ token: 'auth0-token', password: 'wrong' }),
+      ).rejects.toThrow(ERROR_MESSAGES.VALIDATION.PASSWORD_NOT_MATCH);
+    });
+  });
+
+  describe('setPassword', () => {
+    it('should set password and create local provider', async () => {
+      userService.findById.mockResolvedValue({
+        ...mockUser,
+        password: undefined,
+      });
+
+      await service.setPassword({
+        userId: mockUser.id,
+        newPassword: 'password123',
+      });
+
+      expect(hashingService.hash).toHaveBeenCalledWith('password123');
+      expect(userRepo.save).toHaveBeenCalled();
+      expect(userProviderRepository.create).toHaveBeenCalledWith({
+        userId: mockUser.id,
+        providerName: LOCAL_PROVIDER_NAME,
+        providerUserId: mockUser.email.toLowerCase(),
+      });
     });
   });
 });
