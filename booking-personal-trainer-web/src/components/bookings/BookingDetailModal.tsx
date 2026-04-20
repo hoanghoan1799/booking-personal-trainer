@@ -156,18 +156,18 @@ export default function BookingDetailModal(props: {
     <>
       <Modal isOpen={props.isOpen} onClose={handleClose} className="max-w-2xl p-6">
         <div className="space-y-5">
-          <div className="flex items-start justify-between gap-3">
-            <div>
+          <div className="pr-12">
+            <div className="flex items-center gap-3">
               <h4 className="text-lg font-semibold text-gray-800 dark:text-white/90">
                 Booking details
               </h4>
-              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                Preview booking and take actions.
-              </p>
+              <Badge color={getStatusColor(booking.status)} size="sm">
+                {booking.status}
+              </Badge>
             </div>
-            <Badge color={getStatusColor(booking.status)} size="sm">
-              {booking.status}
-            </Badge>
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+              Preview booking and take actions.
+            </p>
           </div>
 
           <div className="grid gap-3 rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm dark:border-gray-800 dark:bg-gray-900/40 sm:grid-cols-2">
@@ -325,12 +325,6 @@ export default function BookingDetailModal(props: {
               ) : null}
             </div>
           ) : null}
-
-          <div className="flex justify-end">
-            <Button variant="outline" onClick={handleClose} aria-label="Close booking detail">
-              Close
-            </Button>
-          </div>
         </div>
       </Modal>
 
