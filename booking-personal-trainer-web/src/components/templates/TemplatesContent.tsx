@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import Button from "@/components/ui/button/Button";
 import { Modal } from "@/components/ui/modal";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
@@ -59,6 +59,19 @@ function createClientId(): string {
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
+function isValidTemplateItem(item: ExerciseTemplateItem): boolean {
+  const hasExerciseId = item.exerciseId.trim().length > 0;
+  if (!hasExerciseId) {
+    return false;
+  }
+  if (item.sets === null || item.reps === null || item.restSeconds === null) {
+    return false;
+  }
+  const isNonNegative =
+    item.sets >= 0 && item.reps >= 0 && item.restSeconds >= 0;
+  return isNonNegative;
+}
+
 function formatIsoToReadableDate(iso: string): string {
   return formatInstantUtc(iso, "ddd, D MMM YYYY, HH:mm");
 }
@@ -102,6 +115,8 @@ export default function TemplatesContent() {
   const [createItems, setCreateItems] = useState<ExerciseTemplateItem[]>([]);
   const [createItemForm, setCreateItemForm] = useState<TemplateItemFormState>(DEFAULT_ITEM_FORM_STATE);
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  const [editItemsDraft, setEditItemsDraft] = useState<ExerciseTemplateItem[]>([]);
+  const editItemsOriginalRef = useRef<ExerciseTemplateItem[]>([]);
 
   const { user: currentUser } = useProfile();
   const currentUserId = currentUser?.id ?? "local-user";
@@ -130,6 +145,15 @@ export default function TemplatesContent() {
       return matchesQuery && matchesType;
     });
   }, [query, templateTypeFilter, templates]);
+
+  const hasValidCreateItems = useMemo(() => {
+    return createItems.some(isValidTemplateItem);
+  }, [createItems]);
+
+  const hasValidEditItems = useMemo(() => {
+    if (!selectedTemplate) return false;
+    return editItemsDraft.some(isValidTemplateItem);
+  }, [editItemsDraft, selectedTemplate]);
 
   const handleOpenCreate = () => {
     setCreateForm(DEFAULT_FORM_STATE);
@@ -177,6 +201,8 @@ export default function TemplatesContent() {
     });
     setNewItemForm(DEFAULT_ITEM_FORM_STATE);
     setEditingItemId(null);
+    editItemsOriginalRef.current = template.items.slice();
+    setEditItemsDraft(template.items.slice());
     setIsEditOpen(true);
   };
 
@@ -194,6 +220,8 @@ export default function TemplatesContent() {
     setIsEditOpen(false);
     setSelectedTemplate(null);
     setEditingItemId(null);
+    editItemsOriginalRef.current = [];
+    setEditItemsDraft([]);
   };
 
   const handleSubmitEdit = async () => {
@@ -207,11 +235,52 @@ export default function TemplatesContent() {
       templateType: editForm.templateType,
       parentTemplateId: null,
     });
+    const originalItems = editItemsOriginalRef.current;
+    const originalById = new Map(originalItems.map((i) => [i.id, i]));
+    const draftById = new Map(editItemsDraft.map((i) => [i.id, i]));
+    const removed = originalItems
+      .filter((i) => !draftById.has(i.id))
+      .map((i) => i.id);
+    const added = editItemsDraft.filter((i) => !originalById.has(i.id));
+    const updated = editItemsDraft
+      .filter((i) => originalById.has(i.id))
+      .filter((i) => {
+        const prev = originalById.get(i.id);
+        if (!prev) return false;
+        return (
+          prev.exerciseId !== i.exerciseId ||
+          prev.notes !== i.notes ||
+          prev.sets !== i.sets ||
+          prev.reps !== i.reps ||
+          prev.restSeconds !== i.restSeconds
+        );
+      });
+    await Promise.all([
+      ...removed.map((itemId) =>
+        executeRemoveTemplateItem({ templateId: selectedTemplate.id, itemId }),
+      ),
+      ...updated.map((item) =>
+        executeUpdateTemplateItem({
+          templateId: selectedTemplate.id,
+          itemId: item.id,
+          exerciseId: item.exerciseId,
+          notes: item.notes,
+          sets: item.sets,
+          reps: item.reps,
+          restSeconds: item.restSeconds,
+        }),
+      ),
+      ...added.map((item) =>
+        executeAddTemplateItem({ templateId: selectedTemplate.id, item }),
+      ),
+    ]);
     setIsEditOpen(false);
     setSelectedTemplate(null);
+    editItemsOriginalRef.current = [];
+    setEditItemsDraft([]);
   };
 
-  const handleAddItem = async () => {
+  const handleAddItem = () => {
     if (!selectedTemplate) return;
     const exerciseId = newItemForm.exerciseId.trim();
     if (!exerciseId) return;
@@ -220,7 +289,6 @@ export default function TemplatesContent() {
     const restSeconds = parseNullableNumber(newItemForm.restSeconds);
     if (sets === null || reps === null || restSeconds === null) return;
     const nowIso = utcNowIso();
-    const existingCount = selectedTemplate.items.length;
     const item: ExerciseTemplateItem = {
       id: createClientId(),
       templateId: selectedTemplate.id,
@@ -229,15 +297,13 @@ export default function TemplatesContent() {
       sets,
       reps,
       restSeconds,
-      order: existingCount + 1,
+      order: editItemsDraft.length + 1,
       createdAtIso: nowIso,
       updatedAtIso: nowIso,
     };
-    await executeAddTemplateItem({ templateId: selectedTemplate.id, item });
-    setSelectedTemplate((prev) => {
-      if (!prev) return prev;
-      return { ...prev, items: [...prev.items, item] };
-    });
+    setEditItemsDraft((prev) =>
+      [...prev, item].map((it, idx) => ({ ...it, order: idx + 1 })),
+    );
     setNewItemForm(DEFAULT_ITEM_FORM_STATE);
   };
 
@@ -257,7 +323,7 @@ export default function TemplatesContent() {
     setNewItemForm(DEFAULT_ITEM_FORM_STATE);
   };
 
-  const handleSaveEditItem = async () => {
+  const handleSaveEditItem = () => {
     if (!selectedTemplate) return;
     if (!editingItemId) return;
     const exerciseId = newItemForm.exerciseId.trim();
@@ -266,31 +332,22 @@ export default function TemplatesContent() {
     const reps = parseNullableNumber(newItemForm.reps);
     const restSeconds = parseNullableNumber(newItemForm.restSeconds);
     if (sets === null || reps === null || restSeconds === null) return;
-    await executeUpdateTemplateItem({
-      templateId: selectedTemplate.id,
-      itemId: editingItemId,
-      exerciseId,
-      notes: newItemForm.notes.trim(),
-      sets,
-      reps,
-      restSeconds,
-    });
-    setSelectedTemplate((prev) => {
-      if (!prev) return prev;
-      const nextItems = prev.items.map((i) => {
-        if (i.id !== editingItemId) return i;
-        return {
-          ...i,
-          exerciseId,
-          notes: newItemForm.notes.trim(),
-          sets,
-          reps,
-          restSeconds,
-          updatedAtIso: utcNowIso(),
-        };
-      });
-      return { ...prev, items: nextItems };
-    });
+    setEditItemsDraft((prev) =>
+      prev
+        .map((i) => {
+          if (i.id !== editingItemId) return i;
+          return {
+            ...i,
+            exerciseId,
+            notes: newItemForm.notes.trim(),
+            sets,
+            reps,
+            restSeconds,
+            updatedAtIso: utcNowIso(),
+          };
+        })
+        .map((it, idx) => ({ ...it, order: idx + 1 })),
+    );
     setEditingItemId(null);
     setNewItemForm(DEFAULT_ITEM_FORM_STATE);
   };
@@ -339,11 +396,11 @@ export default function TemplatesContent() {
 
   const handleRemoveItem = (itemId: string) => {
     if (!selectedTemplate) return;
-    void executeRemoveTemplateItem({ templateId: selectedTemplate.id, itemId });
-    setSelectedTemplate((prev) => {
-      if (!prev) return prev;
-      return { ...prev, items: prev.items.filter((i) => i.id !== itemId) };
-    });
+    setEditItemsDraft((prev) =>
+      prev
+        .filter((i) => i.id !== itemId)
+        .map((it, idx) => ({ ...it, order: idx + 1 })),
+    );
   };
 
   const handleOpenDelete = (template: ExerciseTemplate) => {
@@ -774,7 +831,7 @@ export default function TemplatesContent() {
             </Button>
             <Button
               onClick={handleSubmitCreate}
-              disabled={!createForm.name.trim()}
+              disabled={!createForm.name.trim() || !hasValidCreateItems}
               aria-label="Create template"
             >
               Create
@@ -968,9 +1025,9 @@ export default function TemplatesContent() {
               )}
             </div>
             <div className="mt-4 max-h-64 overflow-auto rounded-lg pr-1">
-              {selectedTemplate && selectedTemplate.items.length > 0 ? (
+              {selectedTemplate && editItemsDraft.length > 0 ? (
                 <ul className="space-y-2" role="list" aria-label="Template items list">
-                  {selectedTemplate.items
+                  {editItemsDraft
                     .slice()
                     .sort((a, b) => a.order - b.order)
                     .map((item) => (
@@ -1032,7 +1089,7 @@ export default function TemplatesContent() {
               </Button>
               <Button
                 onClick={handleSubmitEdit}
-                disabled={!editForm.name.trim()}
+                disabled={!editForm.name.trim() || !hasValidEditItems}
                 aria-label="Save template"
               >
                 Save

@@ -768,7 +768,7 @@ export default function CreateBookingModal({
                     Pick a trainer and search to see available slots.
                   </div>
                 ) : (
-                  <ul className="mt-2 max-h-[22rem] space-y-2 overflow-y-auto pr-1 no-scrollbar" role="list" tabIndex={0}>
+                  <ul className="mt-2 max-h-[22rem] space-y-2 overflow-y-auto px-1 no-scrollbar" role="list" tabIndex={0}>
                     {availableSlots.map((s) => {
                       const isSelected =
                         selectedSlot?.startTime === s.startTime && selectedSlot?.endTime === s.endTime;
@@ -781,7 +781,7 @@ export default function CreateBookingModal({
                           <button
                             type="button"
                             onClick={() => setSelectedSlot(s)}
-                            className={`w-full rounded-xl border px-4 py-3 text-left text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 ${
+                            className={`w-full rounded-xl border px-4 py-3 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-500 ${
                               isSelected
                                 ? "border-brand-500 bg-brand-50 text-brand-800 dark:bg-brand-500/10 dark:text-brand-300"
                                 : "border-gray-200 bg-white text-gray-800 hover:bg-gray-50 dark:border-gray-800 dark:bg-gray-900 dark:text-white/90 dark:hover:bg-white/[0.04]"
