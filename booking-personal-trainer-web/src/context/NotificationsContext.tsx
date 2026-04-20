@@ -12,6 +12,7 @@ import {
   useSyncExternalStore,
 } from "react";
 import type { Notification } from "@/types/notification.types";
+import { useToast } from "@/context/ToastContext";
 import { getAccessToken, subscribeAccessTokenChange } from "@/lib/token";
 import {
   getNotifications,
@@ -45,6 +46,7 @@ const MAX_DROPDOWN_ITEMS = 10 as const;
 export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
+  const toast = useToast();
   const hasAccessToken = useSyncExternalStore(
     subscribeAccessTokenChange,
     getHasAccessTokenSnapshot,
@@ -103,12 +105,13 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
       isRead: false,
       createdAt: event.createdAt,
     } as Notification;
+    toast.info({ title: created.title, message: created.message });
     setNotifications((prev) => {
       const next = [created, ...prev.filter((n) => n.id !== created.id)];
       return next.slice(0, MAX_DROPDOWN_ITEMS);
     });
     setUnreadCount((n) => n + 1);
-  }, []);
+  }, [toast]);
 
   const { isConnected: isStreamConnected } = useNotificationsStream({
     enabled: hasAccessToken,

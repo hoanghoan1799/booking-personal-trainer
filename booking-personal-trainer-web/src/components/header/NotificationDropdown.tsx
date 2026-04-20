@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Dropdown } from "../ui/dropdown/Dropdown";
 import { DropdownItem } from "../ui/dropdown/DropdownItem";
 import { useNotifications } from "@/context/NotificationsContext";
@@ -8,8 +8,24 @@ import { APP_ROUTES } from "@/lib/route.constants";
 import { formatInstantUtc } from "@/lib/date-time/utc-date-time.helper";
 import dayjs from "@/lib/date-time/utc-dayjs";
 
+const NOTIFICATION_BADGE_CAP_THRESHOLD = 100;
+/** Must match `notification-badge-bell-ring` duration in `globals.css`. */
+const NOTIFICATION_BADGE_BELL_RING_MS = 900;
+
+const getUnreadBadgeLabel = (count: number): string => {
+  if (count <= 0) {
+    return "";
+  }
+  if (count >= NOTIFICATION_BADGE_CAP_THRESHOLD) {
+    return "99+";
+  }
+  return String(count);
+};
+
 export default function NotificationDropdown() {
   const [isOpen, setIsOpen] = useState(false);
+  const [isUnreadBellRing, setIsUnreadBellRing] = useState(false);
+  const previousUnreadCountRef = useRef<number | null>(null);
   const { notifications, unreadCount, isLoading, markRead, markAllRead } =
     useNotifications();
 
@@ -36,18 +52,51 @@ export default function NotificationDropdown() {
     }
     return formatInstantUtc(iso, "MMM D, HH:mm");
   };
+  useEffect(() => {
+    const previousUnreadCount = previousUnreadCountRef.current;
+    previousUnreadCountRef.current = unreadCount;
+    if (previousUnreadCount === null) {
+      return;
+    }
+    if (unreadCount > previousUnreadCount) {
+      let stopRingId: number | undefined;
+      const startRingId = window.setTimeout(() => {
+        setIsUnreadBellRing(true);
+        stopRingId = window.setTimeout(() => {
+          setIsUnreadBellRing(false);
+        }, NOTIFICATION_BADGE_BELL_RING_MS);
+      }, 0);
+      return (): void => {
+        window.clearTimeout(startRingId);
+        if (stopRingId !== undefined) {
+          window.clearTimeout(stopRingId);
+        }
+      };
+    }
+  }, [unreadCount]);
+  const unreadBadgeLabel: string = getUnreadBadgeLabel(unreadCount);
+  const notificationsAriaLabel: string =
+    unreadCount > 0
+      ? `Notifications, ${unreadCount} unread`
+      : "Notifications";
   return (
     <div className="relative">
       <button
+        type="button"
+        aria-label={notificationsAriaLabel}
         className="relative dropdown-toggle flex items-center justify-center text-gray-500 transition-colors bg-white border border-gray-200 rounded-full hover:text-gray-700 h-11 w-11 hover:bg-gray-100 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white"
         onClick={handleClick}
       >
         <span
-          className={`absolute right-0 top-0.5 z-10 h-2 w-2 rounded-full bg-orange-400 ${
+          className={`absolute -right-0.5 -top-0.5 z-10 min-h-[1.125rem] min-w-[1.125rem] origin-top items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-semibold tabular-nums leading-none text-white shadow-sm ring-2 ring-white dark:ring-gray-900 ${
             unreadCount > 0 ? "flex" : "hidden"
-          }`}
+          } ${
+            isUnreadBellRing
+              ? "animate-notification-badge-bell-ring will-change-transform"
+              : ""
+          } motion-reduce:animate-none`}
         >
-          <span className="absolute inline-flex w-full h-full bg-orange-400 rounded-full opacity-75 animate-ping"></span>
+          {unreadBadgeLabel}
         </span>
         <svg
           className="fill-current"

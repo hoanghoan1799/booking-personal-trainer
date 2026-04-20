@@ -6,76 +6,107 @@ import {
   useContext,
   useId,
   useMemo,
+  useRef,
   useState,
 } from "react";
-import ToastItem, {
-  type ToastItem as ToastItemType,
-  type ToastVariant,
-} from "@/components/ui/toast/Toast";
-
-interface ToastContextValue {
-  toast: {
-    success: (message: string, duration?: number) => void;
-    error: (message: string, duration?: number) => void;
-    warning: (message: string, duration?: number) => void;
-    info: (message: string, duration?: number) => void;
-    custom: (message: string, variant: ToastVariant, duration?: number) => void;
-  };
-}
+import ToastViewport from "@/components/ui/toast/toast-viewport";
+import {
+  TOAST_DEFAULT_DURATION_MS,
+  TOAST_DEDUPE_WINDOW_MS,
+} from "@/constants/toast.constants";
+import { normalizeToastMessageInput } from "@/lib/toast/normalize-toast-input";
+import type {
+  ShowToastInput,
+  ToastActions,
+  ToastContextValue,
+  ToastMessageInput,
+  ToastRecord,
+  ToastVariant,
+} from "@/types/toast.types";
 
 const ToastContext = createContext<ToastContextValue | null>(null);
 
-export function ToastProvider({ children }: { children: React.ReactNode }) {
-  const [toasts, setToasts] = useState<ToastItemType[]>([]);
-  const idPrefix = useId();
+const buildToastDedupeKey = (input: {
+  readonly variant: ToastVariant;
+  readonly title: string;
+  readonly message: string;
+}): string =>
+  `${input.variant}\u0000${input.title}\u0000${input.message}`;
 
-  const removeToast = useCallback((id: string) => {
-    setToasts((prev) => prev.filter((t) => t.id !== id));
+export function ToastProvider({ children }: { children: React.ReactNode }) {
+  const [toasts, setToasts] = useState<ToastRecord[]>([]);
+  const idPrefix = useId();
+  const dedupeTimestampsRef = useRef<Map<string, number>>(new Map());
+
+  const dismissToast = useCallback((toastId: string) => {
+    setToasts((prev) => prev.filter((t) => t.id !== toastId));
   }, []);
 
-  const addToast = useCallback(
-    (message: string, variant: ToastVariant, duration = 4000) => {
-      const id = `${idPrefix}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-      setToasts((prev) => [...prev, { id, message, variant, duration }]);
+  const showToast = useCallback(
+    (input: ShowToastInput) => {
+      const durationMs = input.durationMs ?? TOAST_DEFAULT_DURATION_MS;
+      const dedupeKey = buildToastDedupeKey({
+        variant: input.variant,
+        title: input.title,
+        message: input.message,
+      });
+      const now = Date.now();
+      const lastAt = dedupeTimestampsRef.current.get(dedupeKey) ?? 0;
+      if (now - lastAt < TOAST_DEDUPE_WINDOW_MS) {
+        return;
+      }
+      dedupeTimestampsRef.current.set(dedupeKey, now);
+      const id = `${idPrefix}-${now}-${Math.random().toString(36).slice(2)}`;
+      const next: ToastRecord = {
+        id,
+        variant: input.variant,
+        title: input.title,
+        message: input.message,
+        durationMs,
+      };
+      setToasts((prev) => [...prev, next]);
     },
     [idPrefix],
   );
 
-  const toast = useMemo(
+  const toastActions = useMemo<ToastActions>(
     () => ({
-      success: (message: string, duration?: number) =>
-        addToast(message, "success", duration),
-      error: (message: string, duration?: number) =>
-        addToast(message, "error", duration),
-      warning: (message: string, duration?: number) =>
-        addToast(message, "warning", duration),
-      info: (message: string, duration?: number) =>
-        addToast(message, "info", duration),
-      custom: (message: string, variant: ToastVariant, duration?: number) =>
-        addToast(message, variant, duration),
+      show: showToast,
+      success: (input: ToastMessageInput, durationMs?: number) => {
+        const content = normalizeToastMessageInput(input);
+        showToast({ ...content, variant: "success", durationMs });
+      },
+      error: (input: ToastMessageInput, durationMs?: number) => {
+        const content = normalizeToastMessageInput(input);
+        showToast({ ...content, variant: "error", durationMs });
+      },
+      warning: (input: ToastMessageInput, durationMs?: number) => {
+        const content = normalizeToastMessageInput(input);
+        showToast({ ...content, variant: "warning", durationMs });
+      },
+      info: (input: ToastMessageInput, durationMs?: number) => {
+        const content = normalizeToastMessageInput(input);
+        showToast({ ...content, variant: "info", durationMs });
+      },
+      dismiss: dismissToast,
     }),
-    [addToast],
+    [dismissToast, showToast],
   );
 
-  const value = useMemo(() => ({ toast }), [toast]);
+  const value = useMemo<ToastContextValue>(
+    () => ({ toast: toastActions }),
+    [toastActions],
+  );
 
   return (
     <ToastContext.Provider value={value}>
       {children}
-      <div
-        className="fixed right-4 top-4 z-[9999] flex flex-col gap-3"
-        aria-live="polite"
-        aria-label="Notifications"
-      >
-        {toasts.map((t) => (
-          <ToastItem key={t.id} toast={t} onClose={removeToast} />
-        ))}
-      </div>
+      <ToastViewport toasts={toasts} onDismiss={dismissToast} />
     </ToastContext.Provider>
   );
 }
 
-export function useToast() {
+export function useToast(): ToastActions {
   const ctx = useContext(ToastContext);
   if (!ctx) {
     throw new Error("useToast must be used within a ToastProvider");

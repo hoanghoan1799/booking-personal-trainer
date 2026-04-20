@@ -5,6 +5,7 @@
 @theme {
   --font-*: initial;
   --font-outfit: Outfit, sans-serif;
+  --app-header-height: 72px;
 
   --breakpoint-*: initial;
   --breakpoint-2xsm: 375px;
@@ -165,6 +166,43 @@
   --z-index-9999: 9999;
   --z-index-99999: 99999;
   --z-index-999999: 999999;
+
+  --animate-notification-badge-bell-ring: notification-badge-bell-ring 0.9s
+    cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+
+  @keyframes notification-badge-bell-ring {
+    0%,
+    100% {
+      transform: rotate(0deg);
+    }
+    10% {
+      transform: rotate(-16deg);
+    }
+    20% {
+      transform: rotate(16deg);
+    }
+    30% {
+      transform: rotate(-11deg);
+    }
+    40% {
+      transform: rotate(11deg);
+    }
+    50% {
+      transform: rotate(-7deg);
+    }
+    60% {
+      transform: rotate(7deg);
+    }
+    70% {
+      transform: rotate(-4deg);
+    }
+    80% {
+      transform: rotate(4deg);
+    }
+    90% {
+      transform: rotate(-2deg);
+    }
+  }
 }
 
 /*
