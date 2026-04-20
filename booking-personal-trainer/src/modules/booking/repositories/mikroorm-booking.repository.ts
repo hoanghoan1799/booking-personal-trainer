@@ -19,6 +19,12 @@ export class MikroOrmBookingRepository implements BookingRepository {
     private readonly em: EntityManager,
   ) {}
 
+  async transactional<T>(
+    handler: (em: EntityManager) => Promise<T>,
+  ): Promise<T> {
+    return this.em.transactional(async (em: EntityManager) => handler(em));
+  }
+
   async create(data: CreateBookingData): Promise<Booking> {
     const booking = this.repo.create({
       trainer: data.trainer,
@@ -64,7 +70,7 @@ export class MikroOrmBookingRepository implements BookingRepository {
     trainerId: string,
     startTime: Date,
     endTime: Date,
-    excludeStatus?: BookingStatus,
+    excludeStatuses?: readonly BookingStatus[],
   ): Promise<number> {
     const where: FilterQuery<Booking> = {
       trainer: trainerId,
@@ -75,8 +81,8 @@ export class MikroOrmBookingRepository implements BookingRepository {
         },
       ],
     };
-    if (excludeStatus != null) {
-      where.status = { $ne: excludeStatus };
+    if (excludeStatuses != null && excludeStatuses.length > 0) {
+      where.status = { $nin: [...excludeStatuses] };
     }
     return this.repo.count(where);
   }
@@ -85,15 +91,15 @@ export class MikroOrmBookingRepository implements BookingRepository {
     trainerId: string,
     startTime: Date,
     endTime: Date,
-    excludeStatus?: BookingStatus,
+    excludeStatuses?: readonly BookingStatus[],
   ): Promise<Booking[]> {
     const where: FilterQuery<Booking> = {
       trainer: trainerId,
       startTime: { $lt: endTime },
       endTime: { $gt: startTime },
     };
-    if (excludeStatus != null) {
-      where.status = { $ne: excludeStatus };
+    if (excludeStatuses != null && excludeStatuses.length > 0) {
+      where.status = { $nin: [...excludeStatuses] };
     }
     return this.repo.find(where, {
       populate: ['trainer', 'trainee'],

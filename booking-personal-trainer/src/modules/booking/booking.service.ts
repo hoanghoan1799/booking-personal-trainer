@@ -3,6 +3,7 @@ import {
   Inject,
   Injectable,
   NotFoundException,
+  Logger,
 } from '@nestjs/common';
 
 // Commons
@@ -18,6 +19,7 @@ import { SortOrder } from '../../common/enums/pagination/pagination.enum';
 // Entities
 import { Booking } from './entities/booking.entity';
 import { User } from '../user/entities/user.entity';
+import { EntityManager } from '@mikro-orm/core';
 
 // Services
 import { BookingAvailabilityService } from './services/booking-availability.service';
@@ -44,11 +46,14 @@ import type { UserRepository } from '../user/repositories/user.repository.interf
 
 @Injectable()
 export class BookingService {
+  private readonly logger = new Logger(BookingService.name);
+
   constructor(
     @Inject(BookingRepositoryToken)
     private readonly bookingRepo: BookingRepository,
     @Inject(UserRepositoryToken)
     private readonly userRepo: UserRepository,
+    private readonly em: EntityManager,
     private readonly bookingAvailabilityService: BookingAvailabilityService,
     private readonly notificationsService: NotificationsService,
     private readonly emailService: EmailService,
@@ -106,13 +111,30 @@ export class BookingService {
       end: end.toDate(),
     });
 
-    const booking = await this.bookingRepo.create({
-      trainer,
-      trainee: currentUser,
-      startTime: start.toDate(),
-      endTime: end.toDate(),
-      status: BookingStatus.PENDING,
-    });
+    const isExclusionViolation = (err: unknown): boolean => {
+      const code = (err as { code?: unknown } | null | undefined)?.code;
+      return code === '23P01';
+    };
+    const booking = await this.em
+      .transactional(async (em: EntityManager) => {
+        const created = em.create(Booking, {
+          trainer,
+          trainee: currentUser,
+          startTime: start.toDate(),
+          endTime: end.toDate(),
+          status: BookingStatus.PENDING,
+        });
+        await em.persist(created).flush();
+        return created;
+      })
+      .catch((err: unknown) => {
+        if (isExclusionViolation(err)) {
+          throw new BadRequestException(
+            ERROR_MESSAGES.BOOKING.TIME_SLOT_NOT_AVAILABLE,
+          );
+        }
+        throw err;
+      });
     const frontendUrl: string = (process.env.FRONTEND_URL ?? '').replace(
       /\/$/,
       '',
@@ -123,78 +145,84 @@ export class BookingService {
     });
     const bookingUrl: string = `${frontendUrl}/bookings/${booking.id}`;
 
-    await this.notificationsService.notifyAdmins({
-      type: NotificationType.AdminTraineeBookedTrainer,
-      ...NotificationTemplates.adminTraineeBookedTrainer({
-        traineeUserName: currentUser.userName,
-        trainerUserName: trainer.userName,
-      }),
-      data: {
-        bookingId: booking.id,
-        traineeId: currentUser.id,
-        trainerId: trainer.id,
-        startTime: booking.startTime,
-        endTime: booking.endTime,
-      },
-    });
-    const adminEmails = await collectAdminEmailAddresses(this.userRepo);
-    const adminBookingEmail = EmailTemplates.adminTraineeBookedTrainer({
-      traineeName: currentUser.userName,
-      trainerName: trainer.userName,
-      bookingTime,
-      bookingUrl,
-    });
-    await this.emailService.send({
-      to: adminEmails,
-      subject: adminBookingEmail.subject,
-      text: adminBookingEmail.text,
-      html: adminBookingEmail.html,
-    });
-
-    await this.notificationsService.createAndPublishToUsers({
-      notifications: [
-        {
-          recipientUserId: trainer.id,
-          type: NotificationType.TrainerNewBooking,
-          ...NotificationTemplates.trainerNewBooking({
-            traineeUserName: currentUser.userName,
-            trainerUserName: trainer.userName,
-          }),
-          data: {
-            bookingId: booking.id,
-            traineeId: currentUser.id,
-            trainerId: trainer.id,
-            startTime: booking.startTime,
-            endTime: booking.endTime,
-          },
+    try {
+      await this.notificationsService.notifyAdmins({
+        type: NotificationType.AdminTraineeBookedTrainer,
+        ...NotificationTemplates.adminTraineeBookedTrainer({
+          traineeUserName: currentUser.userName,
+          trainerUserName: trainer.userName,
+        }),
+        data: {
+          bookingId: booking.id,
+          traineeId: currentUser.id,
+          trainerId: trainer.id,
+          startTime: booking.startTime,
+          endTime: booking.endTime,
         },
-      ],
-    });
-    const trainerNewBookingEmail = EmailTemplates.trainerNewBooking({
-      traineeName: currentUser.userName,
-      trainerName: trainer.userName,
-      bookingTime,
-      bookingUrl,
-    });
-    await this.emailService.send({
-      to: trainer.email,
-      subject: trainerNewBookingEmail.subject,
-      text: trainerNewBookingEmail.text,
-      html: trainerNewBookingEmail.html,
-    });
-    const traineeBookingRequestEmail =
-      EmailTemplates.traineeNewBookingRequestCreated({
+      });
+      const adminEmails = await collectAdminEmailAddresses(this.userRepo);
+      const adminBookingEmail = EmailTemplates.adminTraineeBookedTrainer({
         traineeName: currentUser.userName,
         trainerName: trainer.userName,
         bookingTime,
         bookingUrl,
       });
-    await this.emailService.send({
-      to: currentUser.email,
-      subject: traineeBookingRequestEmail.subject,
-      text: traineeBookingRequestEmail.text,
-      html: traineeBookingRequestEmail.html,
-    });
+      await this.emailService.send({
+        to: adminEmails,
+        subject: adminBookingEmail.subject,
+        text: adminBookingEmail.text,
+        html: adminBookingEmail.html,
+      });
+      await this.notificationsService.createAndPublishToUsers({
+        notifications: [
+          {
+            recipientUserId: trainer.id,
+            type: NotificationType.TrainerNewBooking,
+            ...NotificationTemplates.trainerNewBooking({
+              traineeUserName: currentUser.userName,
+              trainerUserName: trainer.userName,
+            }),
+            data: {
+              bookingId: booking.id,
+              traineeId: currentUser.id,
+              trainerId: trainer.id,
+              startTime: booking.startTime,
+              endTime: booking.endTime,
+            },
+          },
+        ],
+      });
+      const trainerNewBookingEmail = EmailTemplates.trainerNewBooking({
+        traineeName: currentUser.userName,
+        trainerName: trainer.userName,
+        bookingTime,
+        bookingUrl,
+      });
+      await this.emailService.send({
+        to: trainer.email,
+        subject: trainerNewBookingEmail.subject,
+        text: trainerNewBookingEmail.text,
+        html: trainerNewBookingEmail.html,
+      });
+      const traineeBookingRequestEmail =
+        EmailTemplates.traineeNewBookingRequestCreated({
+          traineeName: currentUser.userName,
+          trainerName: trainer.userName,
+          bookingTime,
+          bookingUrl,
+        });
+      await this.emailService.send({
+        to: currentUser.email,
+        subject: traineeBookingRequestEmail.subject,
+        text: traineeBookingRequestEmail.text,
+        html: traineeBookingRequestEmail.html,
+      });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.warn(
+        `Booking ${booking.id} created but side effects failed: ${message}`,
+      );
+    }
 
     return booking;
   }

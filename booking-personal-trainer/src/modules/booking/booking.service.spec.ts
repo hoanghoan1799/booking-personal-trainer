@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-return */
 import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 
@@ -20,6 +21,7 @@ import { EmailService } from '../email/email.service';
 // Repositories
 import { BookingRepositoryToken } from './repositories/booking.repository.interface';
 import { UserRepositoryToken } from '../user/repositories/user.repository.interface';
+import { EntityManager } from '@mikro-orm/core';
 
 const DEFAULT_PAGE = 1;
 const DEFAULT_LIMIT = 10;
@@ -50,6 +52,9 @@ describe('BookingService', () => {
     createAndPublishToUsers: jest.Mock;
   };
   let emailService: { send: jest.Mock };
+  let em: {
+    transactional: jest.Mock;
+  };
 
   const mockTrainee: User = {
     id: 'trainee-uuid',
@@ -98,6 +103,9 @@ describe('BookingService', () => {
     emailService = {
       send: jest.fn().mockResolvedValue({ messageId: 'mock-message-id' }),
     };
+    em = {
+      transactional: jest.fn(),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -121,6 +129,10 @@ describe('BookingService', () => {
         {
           provide: EmailService,
           useValue: emailService,
+        },
+        {
+          provide: EntityManager,
+          useValue: em,
         },
       ],
     }).compile();
@@ -232,7 +244,13 @@ describe('BookingService', () => {
         endTime: new Date(endTime),
         status: BookingStatus.PENDING,
       };
-      bookingRepo.create.mockResolvedValue(createdBooking);
+      em.transactional.mockImplementation(
+        async (handler: (innerEm: any) => Promise<any>) =>
+          handler({
+            create: jest.fn().mockReturnValue(createdBooking),
+            persist: jest.fn().mockReturnValue({ flush: jest.fn() }),
+          }),
+      );
 
       const actual = await service.create(
         { trainerId: mockTrainer.id, startTime, endTime },
@@ -240,13 +258,7 @@ describe('BookingService', () => {
       );
 
       expect(actual).toBe(createdBooking);
-      expect(bookingRepo.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          trainee: mockTrainee,
-          trainer: mockTrainer,
-          status: BookingStatus.PENDING,
-        }),
-      );
+      expect(em.transactional).toHaveBeenCalled();
     });
   });
 

@@ -128,7 +128,7 @@ export class BookingAvailabilityService {
       input.trainerId,
       input.start,
       input.end,
-      BookingStatus.REJECTED,
+      [BookingStatus.REJECTED, BookingStatus.CANCELLED],
     );
     if (overlapCount > 0) {
       throw new BadRequestException(
@@ -175,7 +175,7 @@ export class BookingAvailabilityService {
           trainer.id,
           input.start,
           input.end,
-          BookingStatus.REJECTED,
+          [BookingStatus.REJECTED, BookingStatus.CANCELLED],
         );
         if (overlapCount > 0) {
           return null;
@@ -208,7 +208,7 @@ export class BookingAvailabilityService {
         input.trainerId,
         input.rangeStart,
         input.rangeEnd,
-        BookingStatus.REJECTED,
+        [BookingStatus.REJECTED, BookingStatus.CANCELLED],
       );
     const timeOffInRange =
       await this.timeOffRepo.findOverlappingRangesForTrainer(
