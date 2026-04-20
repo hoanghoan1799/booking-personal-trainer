@@ -323,6 +323,7 @@ export default function CreateBookingModal({
   const rangeForSelectedDate = useMemo(() => {
     const start = dayjs.utc(selectedDate, DATE_LOCAL_FORMAT, true).startOf("day");
     const end = start.add(1, "day");
+    if (!start.isValid() || !end.isValid()) return { rangeStartIso: "", rangeEndIso: "" };
     return { rangeStartIso: start.toISOString(), rangeEndIso: end.toISOString() };
   }, [selectedDate]);
 
@@ -542,6 +543,10 @@ export default function CreateBookingModal({
                     onClick={() => {
                       if (!selectedTrainer) {
                         setError("Please select a trainer first.");
+                        return;
+                      }
+                      if (!rangeForSelectedDate.rangeStartIso || !rangeForSelectedDate.rangeEndIso) {
+                        setError("Please select a valid date.");
                         return;
                       }
                       void handleFindAvailableSlots({
