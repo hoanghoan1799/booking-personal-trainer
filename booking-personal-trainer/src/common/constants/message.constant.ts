@@ -17,6 +17,12 @@ export const ERROR_MESSAGES = {
     EMAIL_MISSING: 'Email is required',
     LOGIN_USE_NO_PASSWORD:
       'This account has no password. Sign in with third-party provider instead.',
+    EMAIL_NOT_VERIFIED:
+      'Email is not verified with the third-party provider. Please verify your email and try again.',
+    ACCOUNT_LINK_REQUIRED:
+      'ACCOUNT_LINK_REQUIRED: This email already has an account. Enter your existing password to link it with Auth0.',
+    PASSWORD_SETUP_REQUIRED:
+      'This account does not have a password yet. Create a password in your profile to enable email/password login.',
   },
 
   USER: {

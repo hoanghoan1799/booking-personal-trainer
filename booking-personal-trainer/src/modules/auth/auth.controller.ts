@@ -46,6 +46,8 @@ import {
 } from './dtos/token.dto';
 import { LogoutDto } from './dtos/logout.dto';
 import { TokenExchangeDto } from './dtos/token-exchange.dto';
+import { LinkAuth0ToLocalDto } from './dtos/link-auth0-to-local.dto';
+import { SetPasswordDto } from './dtos/set-password.dto';
 import {
   ResponseFullUserDto,
   ResponseUserDto,
@@ -285,6 +287,91 @@ export class AuthController {
     };
 
     return BaseResponseDto.ok(responseData);
+  }
+
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @Post('link-auth0')
+  @Throttle({
+    burst: {
+      ttl: RATE_LIMIT_WINDOW_TTL_MILLISECONDS.BURST,
+      limit: createRateLimitByIdentityResolver({ ip: 5, token: 8, user: 8 }),
+    },
+    minute: {
+      ttl: RATE_LIMIT_WINDOW_TTL_MILLISECONDS.MINUTE,
+      limit: createRateLimitByIdentityResolver({ ip: 15, token: 30, user: 30 }),
+    },
+    hour: {
+      ttl: RATE_LIMIT_WINDOW_TTL_MILLISECONDS.HOUR,
+      limit: createRateLimitByIdentityResolver({
+        ip: 120,
+        token: 240,
+        user: 240,
+      }),
+    },
+  })
+  @ApiOperation({
+    summary: 'Link Auth0 to existing local account',
+    description:
+      'Verifies third-party JWT and links it to an existing local user after password verification, then returns application tokens.',
+  })
+  @ApiBody({ type: LinkAuth0ToLocalDto })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: SUCCESS_MESSAGES.USER.LOGGED_IN,
+    schema: {
+      required: ['data'],
+      properties: {
+        data: { $ref: getSchemaPath(AuthResponseDataDto) },
+      },
+    },
+  })
+  async linkAuth0(
+    @Body() data: LinkAuth0ToLocalDto,
+  ): Promise<BaseResponseDto<AuthResponseDataDto>> {
+    const {
+      accessToken,
+      refreshToken,
+      user,
+      accessTokenExpiresIn,
+      refreshTokenExpiresIn,
+    } = await this.authService.linkAuth0ToLocal({
+      token: data.token,
+      password: data.password,
+    });
+    const responseData: AuthResponseDataDto = {
+      user,
+      accessToken,
+      refreshToken,
+      accessTokenExpiresIn,
+      refreshTokenExpiresIn,
+    };
+    return BaseResponseDto.ok(responseData);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Roles(UserRole.ADMIN, UserRole.TRAINEE, UserRole.TRAINER)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Post('password')
+  @ApiBearerAuth(SWAGGER_ACCESS_TOKEN)
+  @ApiOperation({
+    summary: 'Create password for current user',
+    description:
+      'Allows Auth0-first users to create a password so they can log in with email/password next time.',
+  })
+  @ApiBody({ type: SetPasswordDto })
+  @ApiResponse({
+    status: HttpStatus.NO_CONTENT,
+    description: 'Password created successfully',
+  })
+  async setPassword(
+    @CurrentUser() user: JwtAuthPayload,
+    @Body() data: SetPasswordDto,
+  ): Promise<void> {
+    await this.authService.setPassword({
+      userId: user.id,
+      newPassword: data.newPassword,
+    });
   }
 
   @Public()

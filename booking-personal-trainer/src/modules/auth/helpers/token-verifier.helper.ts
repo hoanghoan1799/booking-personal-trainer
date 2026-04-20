@@ -93,6 +93,10 @@ export const mapJwtPayloadToAuth0VerifiedClaims = (
   return {
     sub,
     email: typeof payload.email === 'string' ? payload.email : undefined,
+    email_verified:
+      typeof payload.email_verified === 'boolean'
+        ? payload.email_verified
+        : undefined,
     name: typeof payload.name === 'string' ? payload.name : undefined,
     given_name:
       typeof payload.given_name === 'string' ? payload.given_name : undefined,
