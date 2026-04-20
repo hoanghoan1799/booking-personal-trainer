@@ -10,8 +10,8 @@ export interface CreateBookingInput {
 
 export interface Booking {
   id: string;
-  trainer: User;
-  trainee: User;
+  trainer?: User | null;
+  trainee?: User | null;
   status: string;
   statusChangedAt?: string | null;
   cancelledById?: string | null;

@@ -30,9 +30,11 @@ const STATUS_COLORS: Record<string, string> = {
   CANCELLED: "danger",
 };
 
-function getDisplayName(user: { firstName?: string; lastName?: string; userName: string }) {
+function getDisplayName(user?: { firstName?: string; lastName?: string; userName?: string } | null): string {
+  if (!user) return "—";
   const parts = [user.firstName, user.lastName].filter(Boolean);
-  return parts.length > 0 ? parts.join(" ") : user.userName;
+  if (parts.length > 0) return parts.join(" ");
+  return user.userName?.trim() ? user.userName : "—";
 }
 
 function formatDateTime(iso: string) {
