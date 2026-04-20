@@ -83,6 +83,15 @@ export async function getProfile(): Promise<User> {
   return res.data;
 }
 
+export async function setPassword(args: {
+  readonly newPassword: string;
+}): Promise<void> {
+  await apiFetch<void>("/api/v1/auth/password", {
+    method: "POST",
+    body: JSON.stringify({ newPassword: args.newPassword }),
+  });
+}
+
 export interface UpdateProfileBody {
   age?: number;
   height?: number;

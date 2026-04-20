@@ -9,6 +9,7 @@ import { ToastProvider } from "@/context/ToastContext";
 import { NotificationsProvider } from "@/context/NotificationsContext";
 import Auth0UserProvider from "@/components/providers/Auth0UserProvider";
 import Auth0BackendSync from "@/components/providers/Auth0BackendSync";
+import Auth0LinkingBlocker from "@/components/providers/Auth0LinkingBlocker";
 import { auth0 } from "@/lib/auth0";
 
 const outfit = Outfit({
@@ -29,6 +30,7 @@ export default async function RootLayout({
             <ProfileProvider>
               <Auth0SessionProvider>
                 <ToastProvider>
+                  <Auth0LinkingBlocker />
                   <Auth0BackendSync />
                   <NotificationsProvider>
                     <SidebarProvider>{children}</SidebarProvider>
