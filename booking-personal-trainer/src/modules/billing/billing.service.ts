@@ -15,6 +15,7 @@ import {
 // Entities
 import { BillingCharge } from './entities/billing-charge.entity';
 import { Workout } from '../workout/entities/workout.entity';
+import { User } from '../user/entities/user.entity';
 
 // Repositories
 import {
@@ -113,5 +114,53 @@ export class BillingService {
       BillableTargetType.WORKOUT,
       workoutId,
     );
+  }
+
+  /**
+   * Creates a DRAFT workout charge and activates it inside the provided transaction.
+   * This is the ACID-safe variant for flows that must atomically create domain records + billing.
+   */
+  async createAndActivateWorkoutChargeAtomic(input: {
+    readonly em: EntityManager;
+    readonly workoutId: string;
+    readonly payerUserId: string;
+    readonly amountCents: number;
+    readonly currency: string;
+    readonly metadata?: Record<string, unknown> | null;
+    readonly expiresAt?: Date | null;
+  }): Promise<BillingCharge> {
+    if (input.amountCents <= 0) {
+      throw new BadRequestException('Amount must be greater than 0');
+    }
+    const workout: Workout | null = await input.em.findOne(Workout, {
+      id: input.workoutId,
+      isDeleted: false,
+    });
+    if (!workout) {
+      throw new NotFoundException('Workout not found');
+    }
+    await input.em.nativeUpdate(
+      BillingCharge,
+      {
+        targetType: BillableTargetType.WORKOUT,
+        targetId: input.workoutId,
+        status: BillingChargeStatus.ACTIVE,
+      },
+      {
+        status: BillingChargeStatus.EXPIRED,
+      },
+    );
+    const charge = input.em.create(BillingCharge, {
+      targetType: BillableTargetType.WORKOUT,
+      targetId: input.workoutId,
+      payer: input.em.getReference(User, input.payerUserId),
+      amountCents: input.amountCents,
+      currency: input.currency,
+      status: BillingChargeStatus.ACTIVE,
+      metadata: input.metadata ?? null,
+      expiresAt: input.expiresAt ?? null,
+    });
+    await input.em.persist(charge).flush();
+    return charge;
   }
 }

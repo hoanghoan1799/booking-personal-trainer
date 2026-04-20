@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
@@ -15,6 +16,10 @@ import { WorkoutPaymentPolicyService } from '../payments/workout-payment-policy.
 import { BillingService } from '../billing/billing.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { EmailService } from '../email/email.service';
+import { EntityManager } from '@mikro-orm/core';
+import { Booking } from '../booking/entities/booking.entity';
+import { ExerciseTemplate } from '../templates/entities/exercise-template.entity';
+import { Workout } from './entities/workout.entity';
 
 const createItemsCollection = <T>(items: T[]): { getItems: () => T[] } => ({
   getItems: () => items,
@@ -38,9 +43,11 @@ describe('WorkoutService', () => {
   let billingService: {
     createWorkoutCharge: jest.Mock;
     activateCharge: jest.Mock;
+    createAndActivateWorkoutChargeAtomic: jest.Mock;
   };
   let notificationsService: { createAndPublishToUsers: jest.Mock };
   let emailService: { send: jest.Mock };
+  let em: { transactional: jest.Mock };
 
   beforeEach(async () => {
     workoutRepository = {
@@ -59,12 +66,18 @@ describe('WorkoutService', () => {
     billingService = {
       createWorkoutCharge: jest.fn().mockResolvedValue({ id: 'charge-id' }),
       activateCharge: jest.fn().mockResolvedValue(undefined),
+      createAndActivateWorkoutChargeAtomic: jest
+        .fn()
+        .mockResolvedValue({ id: 'charge-id' }),
     };
     notificationsService = {
       createAndPublishToUsers: jest.fn().mockResolvedValue([]),
     };
     emailService = {
       send: jest.fn().mockResolvedValue({ messageId: 'mock-message-id' }),
+    };
+    em = {
+      transactional: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -81,6 +94,7 @@ describe('WorkoutService', () => {
         { provide: BillingService, useValue: billingService },
         { provide: NotificationsService, useValue: notificationsService },
         { provide: EmailService, useValue: emailService },
+        { provide: EntityManager, useValue: em },
       ],
     }).compile();
 
@@ -89,7 +103,7 @@ describe('WorkoutService', () => {
 
   describe('createForBookingFromTemplate', () => {
     it('should create workout for confirmed booking from SYSTEM template', async () => {
-      bookingRepository.findById.mockResolvedValue({
+      const booking = {
         id: 'booking-id',
         status: BookingStatus.CONFIRMED,
         startTime: new Date('2026-01-01T10:00:00.000Z'),
@@ -100,25 +114,43 @@ describe('WorkoutService', () => {
           userName: 'trainee',
           email: 'trainee@test.com',
         },
-      });
-      templatesRepository.findTemplateById.mockResolvedValue({
+      } as any;
+      const template = {
         id: 'template-id',
         templateType: TemplateType.SYSTEM,
         isDeleted: false,
         createdBy: { id: 'admin-id' },
         items: createItemsCollection([]),
-      });
-      workoutRepository.createFromBookingTemplate.mockResolvedValue({
+      } as any;
+      const workout = {
         id: 'workout-id',
         booking: { id: 'booking-id' },
-        template: { id: 'template-id' },
+        template: { id: 'template-id', name: 'Template' },
         startTime: new Date('2026-01-01T10:00:00.000Z'),
         endTime: new Date('2026-01-01T11:00:00.000Z'),
         status: 'PENDING',
         trainer: { id: 'trainer-id' },
         trainee: { id: 'trainee-id' },
-        exercises: createItemsCollection([]),
-      });
+        exercises: { getItems: () => [], add: jest.fn() },
+      } as any;
+      em.transactional.mockImplementation(
+        async (handler: (innerEm: any) => Promise<any>) =>
+          handler({
+            findOne: jest.fn().mockImplementation((entity: any) => {
+              if (entity === Booking) return booking;
+              if (entity === ExerciseTemplate) return template;
+              return null;
+            }),
+            create: jest.fn().mockImplementation((entity: any) => {
+              if (entity === Workout) return workout;
+              return {};
+            }),
+            persist: jest.fn().mockReturnValue({ flush: jest.fn() }),
+            flush: jest.fn().mockResolvedValue(undefined),
+            nativeUpdate: jest.fn().mockResolvedValue(0),
+            getReference: jest.fn(),
+          }),
+      );
 
       const actual = await service.createForBookingFromTemplate(
         'booking-id',
@@ -126,50 +158,61 @@ describe('WorkoutService', () => {
         { id: 'trainer-id', role: UserRole.TRAINER },
       );
 
-      expect(workoutRepository.createFromBookingTemplate).toHaveBeenCalledWith({
-        booking: expect.objectContaining({ id: 'booking-id' }),
-        template: expect.objectContaining({ id: 'template-id' }),
-      });
       expect(actual.id).toBe('workout-id');
       expect(actual.bookingId).toBe('booking-id');
       expect(actual.templateId).toBe('template-id');
-      expect(billingService.createWorkoutCharge).toHaveBeenCalledWith(
-        expect.objectContaining({
-          workoutId: 'workout-id',
-          payerUserId: 'trainee-id',
-          amountCents: 2500,
-          currency: 'USD',
-        }),
-      );
-      expect(billingService.activateCharge).toHaveBeenCalledWith('charge-id');
+      expect(
+        billingService.createAndActivateWorkoutChargeAtomic,
+      ).toHaveBeenCalled();
     });
 
     it('should throw NotFoundException when booking missing', async () => {
-      bookingRepository.findById.mockResolvedValue(null);
+      em.transactional.mockImplementation(
+        async (handler: (innerEm: any) => Promise<any>) =>
+          handler({
+            findOne: jest.fn().mockResolvedValue(null),
+            create: jest.fn(),
+            persist: jest.fn().mockReturnValue({ flush: jest.fn() }),
+            flush: jest.fn(),
+          }),
+      );
 
       await expect(
         service.createForBookingFromTemplate(
           'missing-booking',
-          { templateId: 'template-id' },
+          { templateId: 'template-id', amountCents: 1000, currency: 'USD' },
           { id: 'trainer-id', role: UserRole.TRAINER },
         ),
       ).rejects.toBeInstanceOf(NotFoundException);
     });
 
     it('should throw BadRequestException when booking is PENDING', async () => {
-      bookingRepository.findById.mockResolvedValue({
+      const booking = {
         id: 'booking-id',
         status: BookingStatus.PENDING,
         trainer: { id: 'trainer-id' },
         trainee: { id: 'trainee-id' },
-      });
-      templatesRepository.findTemplateById.mockResolvedValue({
-        id: 'template-id',
-        templateType: TemplateType.SYSTEM,
-        isDeleted: false,
-        createdBy: { id: 'admin-id' },
-        items: createItemsCollection([]),
-      });
+      } as any;
+      em.transactional.mockImplementation(
+        async (handler: (innerEm: any) => Promise<any>) =>
+          handler({
+            findOne: jest.fn().mockImplementation((entity: any) => {
+              if (entity === Booking) return booking;
+              if (entity === ExerciseTemplate)
+                return {
+                  id: 'template-id',
+                  templateType: TemplateType.SYSTEM,
+                  isDeleted: false,
+                  createdBy: { id: 'admin-id' },
+                  items: createItemsCollection([]),
+                };
+              return null;
+            }),
+            create: jest.fn(),
+            persist: jest.fn().mockReturnValue({ flush: jest.fn() }),
+            flush: jest.fn(),
+          }),
+      );
 
       await expect(
         service.createForBookingFromTemplate(

@@ -3,7 +3,9 @@ import {
   Inject,
   Injectable,
   NotFoundException,
+  Logger,
 } from '@nestjs/common';
+import { EntityManager, LockMode } from '@mikro-orm/core';
 
 // Commons
 import dayjs from '../../common/utils/date-time/utc-dayjs';
@@ -16,7 +18,10 @@ import { SuccessMessageResponse } from '../../common/interfaces/success-message-
 // Entities
 import { User } from '../user/entities/user.entity';
 import { Workout } from './entities/workout.entity';
+import { WorkoutExercise } from './entities/workout-exercise.entity';
 import { WorkoutResponseDto } from './dtos/workout-response.dto';
+import { Booking } from '../booking/entities/booking.entity';
+import { ExerciseTemplate } from '../templates/entities/exercise-template.entity';
 
 // DTOs
 import { CreateWorkoutDto } from './dtos/create-workout.dto';
@@ -52,6 +57,8 @@ import { EmailTemplates } from '../email/constants/email-template.constant';
 
 @Injectable()
 export class WorkoutService {
+  private readonly logger = new Logger(WorkoutService.name);
+
   constructor(
     @Inject(WorkoutRepositoryToken)
     private readonly workoutRepo: WorkoutRepository,
@@ -65,6 +72,7 @@ export class WorkoutService {
     private readonly billingService: BillingService,
     private readonly notificationsService: NotificationsService,
     private readonly emailService: EmailService,
+    private readonly em: EntityManager,
   ) {}
 
   async create(
@@ -136,73 +144,147 @@ export class WorkoutService {
     ) {
       throw new BadRequestException(ERROR_MESSAGES.AUTH.FORBIDDEN);
     }
-    const booking = await this.bookingRepo.findById(bookingId);
-    if (!booking) {
-      throw new NotFoundException(ERROR_MESSAGES.BOOKING.NOT_FOUND);
-    }
     const isAdmin = currentUser.role === UserRole.ADMIN;
-    const isTrainerOfBooking = booking.trainer.id === currentUser.id;
-    if (!isAdmin && !isTrainerOfBooking) {
-      throw new BadRequestException(ERROR_MESSAGES.AUTH.FORBIDDEN);
-    }
-    if (booking.status !== BookingStatus.CONFIRMED) {
-      throw new BadRequestException(
-        'Booking must be CONFIRMED to create workout',
-      );
-    }
-    const template = await this.templatesRepo.findTemplateById(dto.templateId);
-    if (!template || template.isDeleted) {
-      throw new NotFoundException('Template not found');
-    }
-    if (
-      template.templateType === TemplateType.TRAINER &&
-      template.createdBy.id !== currentUser.id &&
-      !isAdmin
-    ) {
-      throw new BadRequestException(
-        'Cannot use trainer template you do not own',
-      );
-    }
-    const workout = await this.workoutRepo.createFromBookingTemplate({
-      booking,
-      template,
-    });
-    await this.createWorkoutBillingQuote({
-      workoutId: workout.id,
-      payerUserId: booking.trainee.id,
+    const amountCents = this.resolveWorkoutPriceCents({
       amountCents: dto.amountCents,
-      currency: dto.currency,
     });
-    await this.notificationsService.createAndPublishToUsers({
-      notifications: [
-        {
-          recipientUserId: booking.trainee.id,
-          type: NotificationType.TraineeWorkoutCreated,
-          ...NotificationTemplates.traineeWorkoutCreated({
-            trainerUserName: booking.trainer.userName,
-          }),
-          data: { workoutId: workout.id, trainerId: booking.trainer.id },
-        },
-      ],
-    });
-    const frontendUrl: string = (process.env.FRONTEND_URL ?? '').replace(
-      /\/$/,
-      '',
-    );
-    const workoutTitle: string = workout.template?.name ?? 'Workout';
-    const workoutUrl: string = `${frontendUrl}/workouts/${workout.id}`;
-    const bookingWorkoutEmail = EmailTemplates.traineeWorkoutCreated({
-      traineeName: booking.trainee.userName,
-      trainerName: booking.trainer.userName,
-      workoutTitle,
-      workoutUrl,
-    });
-    await this.emailService.send({
-      to: booking.trainee.email,
-      subject: bookingWorkoutEmail.subject,
-      text: bookingWorkoutEmail.text,
-      html: bookingWorkoutEmail.html,
-    });
+    const currency = dto.currency ?? 'USD';
+    const isUniqueViolation = (err: unknown): boolean =>
+      (err as { code?: unknown } | null | undefined)?.code === '23505';
+    const workout = await this.em
+      .transactional(async (em: EntityManager) => {
+        const booking = await em.findOne(
+          Booking,
+          { id: bookingId },
+          {
+            lockMode: LockMode.PESSIMISTIC_WRITE,
+            populate: ['trainer', 'trainee'],
+          },
+        );
+        if (!booking) {
+          throw new NotFoundException(ERROR_MESSAGES.BOOKING.NOT_FOUND);
+        }
+        const isTrainerOfBooking = booking.trainer.id === currentUser.id;
+        if (!isAdmin && !isTrainerOfBooking) {
+          throw new BadRequestException(ERROR_MESSAGES.AUTH.FORBIDDEN);
+        }
+        if (booking.status !== BookingStatus.CONFIRMED) {
+          throw new BadRequestException(
+            'This Booking has been cancelled or rejected',
+          );
+        }
+        const template = await em.findOne(
+          ExerciseTemplate,
+          { id: dto.templateId, isDeleted: false },
+          {
+            populate: [
+              'createdBy',
+              'items',
+              'items.exercise',
+              'parentTemplate',
+            ],
+          },
+        );
+        if (!template) {
+          throw new NotFoundException('Template not found');
+        }
+        if (
+          template.templateType === TemplateType.TRAINER &&
+          template.createdBy.id !== currentUser.id &&
+          !isAdmin
+        ) {
+          throw new BadRequestException(
+            'Cannot use trainer template you do not own',
+          );
+        }
+        const created = em.create(Workout, {
+          booking,
+          trainer: booking.trainer,
+          trainee: booking.trainee,
+          template,
+          startTime: booking.startTime,
+          endTime: booking.endTime,
+          status: WorkoutStatus.PENDING,
+          isDeleted: false,
+          deletedAt: null,
+        });
+        const items = template.items
+          .getItems()
+          .slice()
+          .sort((a, b) => a.order - b.order);
+        items.forEach((item) => {
+          const workoutExercise = em.create(WorkoutExercise, {
+            workout: created,
+            exercise: item.exercise,
+            order: item.order,
+            sets: item.sets,
+            reps: item.reps,
+            restSeconds: item.restSeconds,
+            notes: item.notes,
+            isCompleted: false,
+            isDeleted: false,
+          });
+          created.exercises.add(workoutExercise);
+        });
+        await em.persist(created).flush();
+        await this.billingService.createAndActivateWorkoutChargeAtomic({
+          em,
+          workoutId: created.id,
+          payerUserId: booking.trainee.id,
+          amountCents,
+          currency,
+        });
+        return created;
+      })
+      .catch((err: unknown) => {
+        if (isUniqueViolation(err)) {
+          throw new BadRequestException('Workout already exists for booking');
+        }
+        throw err;
+      });
+    try {
+      const resolvedBooking = await this.bookingRepo.findById(bookingId);
+      if (resolvedBooking) {
+        await this.notificationsService.createAndPublishToUsers({
+          notifications: [
+            {
+              recipientUserId: resolvedBooking.trainee.id,
+              type: NotificationType.TraineeWorkoutCreated,
+              ...NotificationTemplates.traineeWorkoutCreated({
+                trainerUserName: resolvedBooking.trainer.userName,
+              }),
+              data: {
+                workoutId: workout.id,
+                trainerId: resolvedBooking.trainer.id,
+              },
+            },
+          ],
+        });
+        const frontendUrl: string = (process.env.FRONTEND_URL ?? '').replace(
+          /\/$/,
+          '',
+        );
+        const workoutTitle: string = workout.template?.name ?? 'Workout';
+        const workoutUrl: string = `${frontendUrl}/workouts/${workout.id}`;
+        const bookingWorkoutEmail = EmailTemplates.traineeWorkoutCreated({
+          traineeName: resolvedBooking.trainee.userName,
+          trainerName: resolvedBooking.trainer.userName,
+          workoutTitle,
+          workoutUrl,
+        });
+        await this.emailService.send({
+          to: resolvedBooking.trainee.email,
+          subject: bookingWorkoutEmail.subject,
+          text: bookingWorkoutEmail.text,
+          html: bookingWorkoutEmail.html,
+        });
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.warn(
+        `Workout ${workout.id} created but side effects failed: ${message}`,
+      );
+    }
     return this.mapWorkoutToResponseDto(workout);
   }
 
