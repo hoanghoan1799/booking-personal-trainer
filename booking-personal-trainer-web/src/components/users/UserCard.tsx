@@ -9,12 +9,14 @@ interface UserCardProps {
   user: User;
   showWaitingBadge?: boolean;
   onClick?: () => void;
+  isSelected?: boolean;
 }
 
 export default function UserCard({
   user,
   showWaitingBadge = false,
   onClick,
+  isSelected = false,
 }: UserCardProps) {
   const displayName = getUserDisplayName(user);
   const isClickable = Boolean(onClick);
@@ -32,12 +34,17 @@ export default function UserCard({
       tabIndex={isClickable ? 0 : undefined}
       onClick={onClick}
       onKeyDown={handleKeyDown}
-      className={`flex items-center justify-between rounded-xl border border-gray-200 p-4 dark:border-gray-800 ${
+      className={`flex items-center justify-between rounded-xl border p-4 ${
+        isSelected
+          ? "border-brand-500 bg-brand-50 dark:border-brand-600 dark:bg-brand-500/10"
+          : "border-gray-200 dark:border-gray-800"
+      } ${
         isClickable
           ? "cursor-pointer transition-colors hover:border-brand-400 hover:bg-gray-50 dark:hover:border-brand-600 dark:hover:bg-white/[0.04]"
           : ""
       }`}
       aria-label={isClickable ? `Select ${displayName}` : undefined}
+      aria-pressed={isClickable ? isSelected : undefined}
     >
       <div className="flex flex-col gap-1">
         <div className="flex items-center gap-2">

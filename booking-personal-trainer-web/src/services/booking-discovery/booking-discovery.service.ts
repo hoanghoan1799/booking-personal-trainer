@@ -57,3 +57,25 @@ export async function getAvailableSlots(
   return res.data;
 }
 
+export type GetAvailableTrainersForPeriodInput = {
+  startDate: string;
+  startClockTime: string;
+  endClockTime: string;
+  period: "week" | "month" | "year";
+};
+
+export async function getAvailableTrainersForPeriod(
+  input: GetAvailableTrainersForPeriodInput,
+): Promise<User[]> {
+  const searchParams = new URLSearchParams({
+    startDate: input.startDate,
+    startClockTime: input.startClockTime,
+    endClockTime: input.endClockTime,
+    period: input.period,
+  });
+  const res = await apiFetch<ApiResponse<User[]>>(
+    `${API_ENDPOINTS.BOOKING_DISCOVERY}/available-trainers-for-period?${searchParams.toString()}`,
+  );
+  return res.data;
+}
+

@@ -668,7 +668,7 @@ span.flatpickr-weekday,
   color: black;
 }
 .fc.fc-media-screen {
-  @apply min-h-screen;
+  @apply min-h-0;
 }
 
 .input-date-icon::-webkit-inner-spin-button,

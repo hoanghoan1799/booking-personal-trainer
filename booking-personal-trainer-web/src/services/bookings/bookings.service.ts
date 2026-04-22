@@ -93,6 +93,28 @@ export async function createBooking(
   );
 }
 
+export type CreateBookingsBulkPeriod = "day" | "week" | "month" | "year";
+
+export interface CreateBookingsBulkInput {
+  trainerId: string;
+  startDate: string;
+  startClockTime: string;
+  endClockTime: string;
+  period: CreateBookingsBulkPeriod;
+}
+
+export async function createBookingsBulk(
+  input: CreateBookingsBulkInput,
+): Promise<void> {
+  await apiFetch<ApiResponse<unknown>>(
+    `${API_ENDPOINTS.BOOKINGS}/bulk`,
+    {
+      method: "POST",
+      body: JSON.stringify(input),
+    },
+  );
+}
+
 export type BookingStatus = "PENDING" | "CONFIRMED" | "REJECTED" | "CANCELLED";
 
 export async function updateBookingStatus(

@@ -5,6 +5,7 @@ import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
+import type { DateClickArg } from "@fullcalendar/interaction";
 import type { EventClickArg, EventContentArg } from "@fullcalendar/core";
 import type { EventInput } from "@fullcalendar/core";
 import { formatInstantUtc } from "@/lib/date-time/utc-date-time.helper";
@@ -13,6 +14,8 @@ import type { Booking } from "@/services/bookings/bookings.service";
 import { getBookings, updateBookingStatus } from "@/services/bookings/bookings.service";
 import { useProfile } from "@/hooks/useProfile";
 import { Modal } from "@/components/ui/modal";
+import CreateBookingFromCalendarModal from "@/components/bookings/CreateBookingFromCalendarModal";
+import Badge from "@/components/ui/badge/Badge";
 import { useToast } from "@/context/ToastContext";
 
 interface BookingEvent extends EventInput {
@@ -26,9 +29,23 @@ interface BookingEvent extends EventInput {
 const STATUS_COLORS: Record<string, string> = {
   PENDING: "warning",
   CONFIRMED: "success",
-  REJECTED: "danger",
-  CANCELLED: "danger",
+  REJECTED: "error",
+  CANCELLED: "error",
 };
+
+function getStatusBadgeColor(status: string): "primary" | "success" | "error" | "warning" | "info" {
+  switch (status) {
+    case "CONFIRMED":
+      return "success";
+    case "REJECTED":
+    case "CANCELLED":
+      return "error";
+    case "PENDING":
+      return "warning";
+    default:
+      return "info";
+  }
+}
 
 function getDisplayName(user?: { firstName?: string; lastName?: string; userName?: string } | null): string {
   if (!user) return "—";
@@ -46,6 +63,8 @@ const Calendar: React.FC = () => {
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isCreateBookingOpen, setIsCreateBookingOpen] = useState(false);
+  const [selectedDateLocal, setSelectedDateLocal] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
@@ -101,9 +120,18 @@ const Calendar: React.FC = () => {
       booking: Booking;
       isPast: boolean;
     };
-    if (props.isPast) return;
     setSelectedBooking(props.booking);
     setIsModalOpen(true);
+  };
+
+  const handleDateClick = (clickInfo: DateClickArg) => {
+    const dateLocal = clickInfo.dateStr;
+    const clickedDay = dayjs(dateLocal, "YYYY-MM-DD", true).startOf("day");
+    const today = dayjs().startOf("day");
+    if (!clickedDay.isValid()) return;
+    if (clickedDay.isBefore(today)) return;
+    setSelectedDateLocal(dateLocal);
+    setIsCreateBookingOpen(true);
   };
 
   const handleCloseModal = () => {
@@ -155,13 +183,10 @@ const Calendar: React.FC = () => {
     };
     const colorClass = `fc-bg-${props.status}`;
     const isConfirmed = props.status === "success";
-    const pastClass = props.isPast
-      ? "opacity-60 cursor-not-allowed pointer-events-none"
-      : "";
 
     return (
       <div
-        className={`event-fc-color flex fc-event-main ${colorClass} p-1 rounded-sm ${pastClass} ${isConfirmed ? "border-l-4 border-l-success-500" : ""}`}
+        className={`event-fc-color flex fc-event-main ${colorClass} p-1 rounded-sm ${props.isPast ? "opacity-60" : ""} ${isConfirmed ? "border-l-4 border-l-success-500" : ""}`}
       >
         <div className="fc-daygrid-event-dot" />
         <div className="fc-event-time">{eventInfo.timeText}</div>
@@ -195,10 +220,34 @@ const Calendar: React.FC = () => {
           events={events}
           selectable={false}
           eventClick={handleEventClick}
+          dateClick={handleDateClick}
           eventContent={renderEventContent}
+          dayCellClassNames={(arg) => {
+            const cellDay = dayjs(arg.date).startOf("day");
+            const today = dayjs().startOf("day");
+            if (!cellDay.isValid()) return [];
+            if (cellDay.isBefore(today)) {
+              return ["opacity-50", "cursor-not-allowed"];
+            }
+            return ["cursor-pointer"];
+          }}
           height="auto"
         />
       </div>
+
+      <CreateBookingFromCalendarModal
+        isOpen={isCreateBookingOpen}
+        selectedDateLocal={selectedDateLocal ?? dayjs.utc().format("YYYY-MM-DD")}
+        onClose={() => {
+          setIsCreateBookingOpen(false);
+          setSelectedDateLocal(null);
+        }}
+        onSuccess={() => {
+          setIsCreateBookingOpen(false);
+          setSelectedDateLocal(null);
+          fetchBookings();
+        }}
+      />
 
       <Modal
         isOpen={isModalOpen}
@@ -231,9 +280,9 @@ const Calendar: React.FC = () => {
                 <span className="font-medium text-gray-500 dark:text-gray-500">
                   Status:{" "}
                 </span>
-                <span className="text-gray-800 dark:text-white/90">
+                <Badge color={getStatusBadgeColor(selectedBooking.status)} size="sm">
                   {selectedBooking.status}
-                </span>
+                </Badge>
               </div>
               <div>
                 <span className="font-medium text-gray-500 dark:text-gray-500">
