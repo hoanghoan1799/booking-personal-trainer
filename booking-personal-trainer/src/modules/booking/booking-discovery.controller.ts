@@ -15,6 +15,7 @@ import {
 } from './services/booking-availability.service';
 import { GetAvailableTrainersQueryDto } from './dtos/get-available-trainers.dto';
 import { GetAvailableSlotsQueryDto } from './dtos/get-available-slots.dto';
+import { GetAvailableTrainersForPeriodQueryDto } from './dtos/get-available-trainers-for-period.dto';
 
 @ApiTags('Booking discovery')
 @ApiBearerAuth(SWAGGER_ACCESS_TOKEN)
@@ -56,5 +57,23 @@ export class BookingDiscoveryController {
       stepMinutes: query.stepMinutes ?? 30,
     });
     return BaseResponseDto.ok(slots);
+  }
+
+  @Get('available-trainers-for-period')
+  @Serialize(ResponseUserDto)
+  @ApiOperation({
+    summary: 'List available trainers for a period (week/month/year)',
+  })
+  async getAvailableTrainersForPeriod(
+    @Query() query: GetAvailableTrainersForPeriodQueryDto,
+  ): Promise<BaseResponseDto<ResponseUserDto[]>> {
+    const trainers =
+      await this.bookingAvailabilityService.getAvailableTrainersForPeriod({
+        startDateLocal: query.startDate,
+        startClockTime: query.startClockTime,
+        endClockTime: query.endClockTime,
+        period: query.period,
+      });
+    return BaseResponseDto.ok(trainers as unknown as ResponseUserDto[]);
   }
 }

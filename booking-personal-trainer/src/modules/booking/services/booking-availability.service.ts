@@ -48,6 +48,7 @@ type GetAvailableTrainersForRangeInput = {
 
 const MIN_DURATION_MINUTES = 60;
 const MIN_STEP_MINUTES = 30;
+const DATE_LOCAL_FORMAT = 'YYYY-MM-DD';
 
 const toCeilStepDate = (input: { date: Date; stepMinutes: number }): Date => {
   const stepMs = input.stepMinutes * 60 * 1000;
@@ -82,6 +83,45 @@ const assertValidSlotQueryInput = (input: GetAvailableSlotsInput): void => {
       'Duration must be a multiple of step minutes',
     );
   }
+};
+
+const buildDayjsUtcFromLocalDateAndClockTime = (input: {
+  readonly dateLocal: string;
+  readonly clockTime: string;
+}): dayjs.Dayjs | null => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(input.dateLocal)) {
+    return null;
+  }
+  if (!/^\d{2}:\d{2}$/.test(input.clockTime)) {
+    return null;
+  }
+  const dt = dayjs.utc(
+    `${input.dateLocal} ${input.clockTime}`,
+    'YYYY-MM-DD HH:mm',
+    true,
+  );
+  return dt.isValid() ? dt : null;
+};
+
+const buildDateLocalsForRollingPeriod = (input: {
+  readonly startDateLocal: string;
+  readonly period: 'week' | 'month' | 'year';
+}): readonly string[] => {
+  const start = dayjs
+    .utc(input.startDateLocal, DATE_LOCAL_FORMAT, true)
+    .startOf('day');
+  if (!start.isValid()) return [];
+  const endExclusive =
+    input.period === 'week'
+      ? start.add(7, 'day')
+      : input.period === 'month'
+        ? start.add(1, 'month')
+        : start.add(1, 'year');
+  const dayCount = endExclusive.diff(start, 'day');
+  if (!Number.isFinite(dayCount) || dayCount <= 0) return [];
+  return Array.from({ length: dayCount }).map((_, i) =>
+    start.add(i, 'day').format(DATE_LOCAL_FORMAT),
+  );
 };
 
 @Injectable()
@@ -184,6 +224,74 @@ export class BookingAvailabilityService {
       }),
     );
     return checks.filter((x): x is User => x !== null);
+  }
+
+  async getAvailableTrainersForPeriod(input: {
+    readonly startDateLocal: string;
+    readonly startClockTime: string;
+    readonly endClockTime: string;
+    readonly period: 'week' | 'month' | 'year';
+  }): Promise<User[]> {
+    const dateLocals = buildDateLocalsForRollingPeriod({
+      startDateLocal: input.startDateLocal,
+      period: input.period,
+    });
+    if (dateLocals.length === 0) {
+      throw new BadRequestException('Invalid start date');
+    }
+    const first = dateLocals[0];
+    const firstStart = buildDayjsUtcFromLocalDateAndClockTime({
+      dateLocal: first,
+      clockTime: input.startClockTime,
+    });
+    const firstEnd = buildDayjsUtcFromLocalDateAndClockTime({
+      dateLocal: first,
+      clockTime: input.endClockTime,
+    });
+    if (!firstStart || !firstEnd) {
+      throw new BadRequestException('Invalid time format');
+    }
+    if (!firstStart.isBefore(firstEnd)) {
+      throw new BadRequestException(ERROR_MESSAGES.BOOKING.INVALID_TIME_RANGE);
+    }
+    const initial = await this.getAvailableTrainersForRange({
+      start: firstStart.toDate(),
+      end: firstEnd.toDate(),
+    });
+    if (initial.length === 0) {
+      return [];
+    }
+    let availableById = new Map<string, User>(initial.map((t) => [t.id, t]));
+    for (const dateLocal of dateLocals.slice(1)) {
+      if (availableById.size === 0) return [];
+      const start = buildDayjsUtcFromLocalDateAndClockTime({
+        dateLocal,
+        clockTime: input.startClockTime,
+      });
+      const end = buildDayjsUtcFromLocalDateAndClockTime({
+        dateLocal,
+        clockTime: input.endClockTime,
+      });
+      if (!start || !end) {
+        throw new BadRequestException('Invalid time format');
+      }
+      if (!start.isBefore(end)) {
+        throw new BadRequestException(
+          ERROR_MESSAGES.BOOKING.INVALID_TIME_RANGE,
+        );
+      }
+      const trainersForDay = await this.getAvailableTrainersForRange({
+        start: start.toDate(),
+        end: end.toDate(),
+      });
+      const trainerIdsForDay = new Set<string>(trainersForDay.map((t) => t.id));
+      availableById = new Map<string, User>(
+        [...availableById.values()]
+          .filter((t) => trainerIdsForDay.has(t.id))
+          .map((t) => [t.id, t]),
+      );
+    }
+    return [...availableById.values()];
   }
 
   async getAvailableSlots(
