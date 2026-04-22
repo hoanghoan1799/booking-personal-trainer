@@ -7,7 +7,7 @@ import {
   type EmailSender,
   type EmailTransportResult,
   type SendEmailInput,
-} from '../email.types';
+} from '../types/email.types';
 
 type SmtpConfig = {
   readonly host: string;

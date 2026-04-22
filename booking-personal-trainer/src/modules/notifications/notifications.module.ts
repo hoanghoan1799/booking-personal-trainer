@@ -9,11 +9,11 @@ import { RedisModule } from '../redis/redis.module';
 import { UserModule } from '../user/user.module';
 
 // Services
-import { NotificationsService } from './notifications.service';
+import { NotificationsService } from './services/notifications.service';
 
 // Controllers
-import { NotificationsController } from './notifications.controller';
-import { NotificationsSseController } from './notifications-sse.controller';
+import { NotificationsController } from './controllers/notifications.controller';
+import { NotificationsSseController } from './controllers/notifications-sse.controller';
 
 // Repositories
 import { NotificationRepositoryToken } from './repositories/notification.repository.interface';

@@ -4,7 +4,7 @@ import { Injectable } from '@nestjs/common';
 import { TOKEN_MAX_AGE } from '../../../common/constants/token.constants';
 
 // Services
-import { RedisService } from '../../redis/redis.service';
+import { RedisService } from '../../redis/services/redis.service';
 import { HashingService } from './hashing.service';
 import { RefreshTokenDto, RevokeTokenDto } from '../dtos/token.dto';
 

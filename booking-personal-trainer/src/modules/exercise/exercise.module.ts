@@ -5,10 +5,10 @@ import { MikroOrmModule } from '@mikro-orm/nestjs';
 import { Exercise } from './entities/exercise.entity';
 
 // Services
-import { ExerciseService } from './exercise.service';
+import { ExerciseService } from './services/exercise.service';
 
 // Controllers
-import { ExerciseController } from './exercise.controller';
+import { ExerciseController } from './controllers/exercise.controller';
 
 // Repositories
 import { ExerciseRepositoryToken } from './repositories/exercise.repository.interface';

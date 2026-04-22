@@ -20,8 +20,8 @@ import {
 import { executeWithTimeout } from './helpers/redis.helper';
 
 // Services
-import { RedisController } from './redis.controller';
-import { RedisService } from './redis.service';
+import { RedisController } from './controllers/redis.controller';
+import { RedisService } from './services/redis.service';
 
 type RedisClientArgs = {
   readonly host: string;

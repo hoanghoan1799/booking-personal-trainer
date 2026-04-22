@@ -8,11 +8,11 @@ import { User } from '../user/entities/user.entity';
 import { Exercise } from '../exercise/entities/exercise.entity';
 
 // Services
-import { WorkoutService } from './workout.service';
+import { WorkoutService } from './services/workout.service';
 
 // Controllers
-import { WorkoutController } from './workout.controller';
-import { BookingWorkoutController } from './booking-workout.controller';
+import { WorkoutController } from './controllers/workout.controller';
+import { BookingWorkoutController } from './controllers/booking-workout.controller';
 
 // Repositories
 import { WorkoutRepositoryToken } from './repositories/workout.repository.interface';

@@ -6,12 +6,12 @@ import { Booking } from './entities/booking.entity';
 import { BookingSeries } from './entities/booking-series.entity';
 
 // Services
-import { BookingService } from './booking.service';
+import { BookingService } from './services/booking.service';
 import { BookingAvailabilityService } from './services/booking-availability.service';
 
 // Controllers
-import { BookingController } from './booking.controller';
-import { BookingDiscoveryController } from './booking-discovery.controller';
+import { BookingController } from './controllers/booking.controller';
+import { BookingDiscoveryController } from './controllers/booking-discovery.controller';
 
 // Repositories
 import { BookingRepositoryToken } from './repositories/booking.repository.interface';

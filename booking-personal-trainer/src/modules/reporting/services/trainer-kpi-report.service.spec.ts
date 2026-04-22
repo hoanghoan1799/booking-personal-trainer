@@ -90,7 +90,7 @@ describe('TrainerKpiReportService', () => {
         platformFeeCents: 200,
         trainerShareCents: 1800,
       },
-    } as Payment;
+    } as unknown as Payment;
     em.find.mockImplementation((entity: unknown) => {
       if (entity === Booking) {
         return Promise.resolve([]);
