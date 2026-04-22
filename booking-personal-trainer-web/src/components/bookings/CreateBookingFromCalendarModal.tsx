@@ -15,6 +15,7 @@ import UserCard from "@/components/users/UserCard";
 interface CreateBookingFromCalendarModalProps {
   readonly isOpen: boolean;
   readonly selectedDateLocal: string;
+  readonly prefilledStartClockTime?: string | null;
   readonly onClose: () => void;
   readonly onSuccess: () => void;
 }
@@ -88,6 +89,7 @@ function getPeriodDates(input: { readonly selectedDateLocal: string; readonly pe
 export default function CreateBookingFromCalendarModal({
   isOpen,
   selectedDateLocal,
+  prefilledStartClockTime = null,
   onClose,
   onSuccess,
 }: CreateBookingFromCalendarModalProps) {
@@ -117,10 +119,10 @@ export default function CreateBookingFromCalendarModal({
     setPeriod("day");
     setSelectedTrainer(null);
     setStartDateLocal(selectedDateLocal);
-    setStartClockTime("");
+    setStartClockTime(prefilledStartClockTime ?? "");
     setEndClockTime("");
     setAvailableTrainerList([]);
-  }, [isOpen, selectedDateLocal]);
+  }, [isOpen, prefilledStartClockTime, selectedDateLocal]);
 
   const handleFindAvailableTrainers = async () => {
     setError(null);

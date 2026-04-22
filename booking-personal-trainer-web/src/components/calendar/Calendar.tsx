@@ -65,6 +65,7 @@ const Calendar: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCreateBookingOpen, setIsCreateBookingOpen] = useState(false);
   const [selectedDateLocal, setSelectedDateLocal] = useState<string | null>(null);
+  const [prefilledStartClockTime, setPrefilledStartClockTime] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
@@ -125,12 +126,16 @@ const Calendar: React.FC = () => {
   };
 
   const handleDateClick = (clickInfo: DateClickArg) => {
-    const dateLocal = clickInfo.dateStr;
-    const clickedDay = dayjs(dateLocal, "YYYY-MM-DD", true).startOf("day");
+    if (currentUser?.role !== "TRAINEE") return;
+    const clicked = dayjs(clickInfo.date);
+    if (!clicked.isValid()) return;
     const today = dayjs().startOf("day");
-    if (!clickedDay.isValid()) return;
+    const clickedDay = clicked.startOf("day");
     if (clickedDay.isBefore(today)) return;
+    const dateLocal = clicked.format("YYYY-MM-DD");
+    const timeLocal = clicked.format("HH:mm");
     setSelectedDateLocal(dateLocal);
+    setPrefilledStartClockTime(timeLocal);
     setIsCreateBookingOpen(true);
   };
 
@@ -229,6 +234,7 @@ const Calendar: React.FC = () => {
             if (cellDay.isBefore(today)) {
               return ["opacity-50", "cursor-not-allowed"];
             }
+            if (currentUser?.role !== "TRAINEE") return [];
             return ["cursor-pointer"];
           }}
           height="auto"
@@ -238,13 +244,16 @@ const Calendar: React.FC = () => {
       <CreateBookingFromCalendarModal
         isOpen={isCreateBookingOpen}
         selectedDateLocal={selectedDateLocal ?? dayjs.utc().format("YYYY-MM-DD")}
+        prefilledStartClockTime={prefilledStartClockTime}
         onClose={() => {
           setIsCreateBookingOpen(false);
           setSelectedDateLocal(null);
+          setPrefilledStartClockTime(null);
         }}
         onSuccess={() => {
           setIsCreateBookingOpen(false);
           setSelectedDateLocal(null);
+          setPrefilledStartClockTime(null);
           fetchBookings();
         }}
       />
