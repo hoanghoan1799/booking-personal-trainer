@@ -42,6 +42,7 @@ import { SWAGGER_ACCESS_TOKEN } from '../../common/constants/api-document.consta
 // DTOs
 import { GetBookingsQueryDto } from './dtos/get-booking.dto';
 import { CreateBookingDto } from './dtos/create-booking.dto';
+import { CreateBookingsBulkDto } from './dtos/create-bookings-bulk.dto';
 import { UpdateBookingStatusDto } from './dtos/update-booking-status.dto';
 import { BookingResponseDto } from './dtos/response-booking.dto';
 import { ResponseUserDto } from '../user/dtos/response-user.dto';
@@ -62,6 +63,40 @@ import {
 @Controller('bookings')
 export class BookingController {
   constructor(private readonly bookingService: BookingService) {}
+
+  @Post('bulk')
+  @Throttle({
+    burst: {
+      ttl: RATE_LIMIT_WINDOW_TTL_MILLISECONDS.BURST,
+      limit: createRateLimitByIdentityResolver({ ip: 4, token: 6, user: 8 }),
+    },
+    minute: {
+      ttl: RATE_LIMIT_WINDOW_TTL_MILLISECONDS.MINUTE,
+      limit: createRateLimitByIdentityResolver({ ip: 20, token: 30, user: 40 }),
+    },
+    hour: {
+      ttl: RATE_LIMIT_WINDOW_TTL_MILLISECONDS.HOUR,
+      limit: createRateLimitByIdentityResolver({
+        ip: 120,
+        token: 200,
+        user: 300,
+      }),
+    },
+  })
+  @Serialize(BookingResponseDto)
+  @ApiOperation({
+    summary: 'Bulk create bookings in a transaction',
+    description:
+      'Creates multiple bookings (day/week/month/year) atomically. If any occurrence fails, none are created.',
+  })
+  @ApiBody({ type: CreateBookingsBulkDto })
+  async createBulk(
+    @Req() req: CurrentRequestUser,
+    @Body() data: CreateBookingsBulkDto,
+  ): Promise<BaseResponseDto<BookingResponseDto[]>> {
+    const bookings = await this.bookingService.createBulk(data, req.user);
+    return BaseResponseDto.ok(bookings as unknown as BookingResponseDto[]);
+  }
 
   @Post()
   /**

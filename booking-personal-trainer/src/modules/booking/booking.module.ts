@@ -3,6 +3,7 @@ import { MikroOrmModule } from '@mikro-orm/nestjs';
 
 // Entities
 import { Booking } from './entities/booking.entity';
+import { BookingSeries } from './entities/booking-series.entity';
 
 // Services
 import { BookingService } from './booking.service';
@@ -25,7 +26,7 @@ import { EmailModule } from '../email/email.module';
 
 @Module({
   imports: [
-    MikroOrmModule.forFeature([Booking]),
+    MikroOrmModule.forFeature([Booking, BookingSeries]),
     forwardRef(() => UserModule),
     TrainerSchedulingModule,
     forwardRef(() => PaymentsModule),

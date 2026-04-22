@@ -6,6 +6,7 @@ import { BookingStatus } from '../../../common/enums/booking/booking.enum';
 
 // Entities
 import { User } from '../../../modules/user/entities/user.entity';
+import { BookingSeries } from './booking-series.entity';
 
 @Entity({ tableName: 'bookings' })
 export class Booking extends BaseEntity {
@@ -14,6 +15,9 @@ export class Booking extends BaseEntity {
 
   @ManyToOne(() => User)
   trainee!: User;
+
+  @ManyToOne(() => BookingSeries, { nullable: true, fieldName: 'series_id' })
+  series?: BookingSeries | null;
 
   @Enum(() => BookingStatus)
   status: BookingStatus = BookingStatus.PENDING;

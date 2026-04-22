@@ -18,6 +18,7 @@ import { SortOrder } from '../../common/enums/pagination/pagination.enum';
 
 // Entities
 import { Booking } from './entities/booking.entity';
+import { BookingSeries } from './entities/booking-series.entity';
 import { User } from '../user/entities/user.entity';
 import { EntityManager } from '@mikro-orm/core';
 
@@ -34,6 +35,10 @@ import { collectAdminEmailAddresses } from '../email/helpers/collect-admin-email
 import { GetBookingsQueryDto } from './dtos/get-booking.dto';
 import { CreateBookingDto } from './dtos/create-booking.dto';
 import { UpdateBookingStatusDto } from './dtos/update-booking-status.dto';
+import {
+  CreateBookingsBulkDto,
+  type BookingBulkPeriod,
+} from './dtos/create-bookings-bulk.dto';
 
 // Repositories
 import {
@@ -71,6 +76,44 @@ export class BookingService {
       return 'Not provided';
     }
     return `${startIso} - ${endIso}`;
+  }
+
+  private buildDateLocalsForPeriod(input: {
+    readonly startDateLocal: string;
+    readonly period: BookingBulkPeriod;
+  }): readonly string[] {
+    const start = dayjs
+      .utc(input.startDateLocal, 'YYYY-MM-DD', true)
+      .startOf('day');
+    if (!start.isValid()) return [];
+    if (input.period === 'day') {
+      return [start.format('YYYY-MM-DD')];
+    }
+    const endExclusive =
+      input.period === 'week'
+        ? start.add(7, 'day')
+        : input.period === 'month'
+          ? start.add(1, 'month')
+          : start.add(1, 'year');
+    const dayCount = endExclusive.diff(start, 'day');
+    if (!Number.isFinite(dayCount) || dayCount <= 0) return [];
+    return Array.from({ length: dayCount }).map((_, i) =>
+      start.add(i, 'day').format('YYYY-MM-DD'),
+    );
+  }
+
+  private buildUtcDateTimeForLocalDay(input: {
+    readonly dateLocal: string;
+    readonly clockTime: string;
+  }): dayjs.Dayjs | null {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(input.dateLocal)) return null;
+    if (!/^\d{2}:\d{2}$/.test(input.clockTime)) return null;
+    const dt = dayjs.utc(
+      `${input.dateLocal} ${input.clockTime}`,
+      'YYYY-MM-DD HH:mm',
+      true,
+    );
+    return dt.isValid() ? dt : null;
   }
 
   async create(data: CreateBookingDto, currentUser: User): Promise<Booking> {
@@ -225,6 +268,266 @@ export class BookingService {
     }
 
     return booking;
+  }
+
+  async createBulk(
+    data: CreateBookingsBulkDto,
+    currentUser: User,
+  ): Promise<Booking[]> {
+    const now = dayjs.utc();
+    const earliestAllowedTime = addMinutesToDate(now.toDate(), 30);
+    const trainer = await this.userRepo.findById(data.trainerId);
+    if (!trainer) {
+      throw new NotFoundException(ERROR_MESSAGES.USER.TRAINER_NOT_AVAILABLE);
+    }
+    if (trainer.id === currentUser.id) {
+      throw new BadRequestException(ERROR_MESSAGES.BOOKING.CANNOT_BOOK_SELF);
+    }
+    const dateLocals = this.buildDateLocalsForPeriod({
+      startDateLocal: data.startDate,
+      period: data.period,
+    });
+    if (dateLocals.length === 0) {
+      throw new BadRequestException('Invalid start date');
+    }
+    const occurrences = dateLocals.map((dateLocal) => {
+      const start = this.buildUtcDateTimeForLocalDay({
+        dateLocal,
+        clockTime: data.startClockTime,
+      });
+      const end = this.buildUtcDateTimeForLocalDay({
+        dateLocal,
+        clockTime: data.endClockTime,
+      });
+      return { dateLocal, start, end };
+    });
+    const invalidOccurrence = occurrences.find((o) => !o.start || !o.end);
+    if (invalidOccurrence) {
+      throw new BadRequestException(ERROR_MESSAGES.BOOKING.INVALID_TIME_RANGE);
+    }
+    const invalidRange = occurrences.find((o) => !o.start!.isBefore(o.end));
+    if (invalidRange) {
+      throw new BadRequestException(ERROR_MESSAGES.BOOKING.INVALID_TIME_RANGE);
+    }
+    const hasPast = occurrences.find(
+      (o) => o.start!.valueOf() <= now.valueOf(),
+    );
+    if (hasPast) {
+      throw new BadRequestException(ERROR_MESSAGES.BOOKING.CANNOT_BOOK_IN_PAST);
+    }
+    const violatesNotice = occurrences.find(
+      (o) => o.start!.valueOf() < earliestAllowedTime.getTime(),
+    );
+    if (violatesNotice) {
+      throw new BadRequestException(
+        ERROR_MESSAGES.BOOKING.MUST_BOOK_BEFORE_30_MINUTES,
+      );
+    }
+    for (const o of occurrences) {
+      await this.bookingAvailabilityService.assertTrainerCanBeBookedForRange({
+        trainerId: trainer.id,
+        start: o.start!.toDate(),
+        end: o.end!.toDate(),
+      });
+    }
+    const isExclusionViolation = (err: unknown): boolean => {
+      const code = (err as { code?: unknown } | null | undefined)?.code;
+      return code === '23P01';
+    };
+    const createdBookings = await this.em
+      .transactional(async (em: EntityManager) => {
+        const startDate = occurrences[0]?.start;
+        const endDate = occurrences[occurrences.length - 1]?.start;
+        if (!startDate || !endDate) {
+          throw new BadRequestException('Invalid occurrences');
+        }
+        const series = em.create(BookingSeries, {
+          trainer,
+          trainee: currentUser,
+          startDate: startDate.startOf('day').toDate(),
+          endDate: endDate.startOf('day').toDate(),
+          startClockTime: data.startClockTime,
+          endClockTime: data.endClockTime,
+          period: data.period,
+        });
+        em.persist(series);
+        const created: Booking[] = [];
+        for (const o of occurrences) {
+          const booking = em.create(Booking, {
+            trainer,
+            trainee: currentUser,
+            series,
+            startTime: o.start!.toDate(),
+            endTime: o.end!.toDate(),
+            status: BookingStatus.PENDING,
+          });
+          em.persist(booking);
+          created.push(booking);
+        }
+        await em.flush();
+        return created;
+      })
+      .catch((err: unknown) => {
+        if (isExclusionViolation(err)) {
+          throw new BadRequestException(
+            ERROR_MESSAGES.BOOKING.TIME_SLOT_NOT_AVAILABLE,
+          );
+        }
+        throw err;
+      });
+    const frontendUrl: string = (process.env.FRONTEND_URL ?? '').replace(
+      /\/$/,
+      '',
+    );
+    const bookingSeriesUrl: string = `${frontendUrl}/bookings`;
+    const sessionCount: number = createdBookings.length;
+    const startDateLocal: string = dayjs
+      .utc(createdBookings[0]?.startTime)
+      .format('YYYY-MM-DD');
+    const endDateLocal: string = dayjs
+      .utc(createdBookings[createdBookings.length - 1]?.startTime)
+      .format('YYYY-MM-DD');
+    const occurrencesPreview: readonly string[] = createdBookings
+      .slice(0, 5)
+      .map(
+        (b) =>
+          `${dayjs.utc(b.startTime).format('ddd, MMM D, YYYY')} (${data.startClockTime}–${data.endClockTime})`,
+      );
+    try {
+      await this.notificationsService.notifyAdmins({
+        type: NotificationType.AdminTraineeBookedTrainerSeries,
+        ...NotificationTemplates.adminTraineeBookedTrainerSeries({
+          traineeUserName: currentUser.userName,
+          trainerUserName: trainer.userName,
+          sessionCount,
+          startDate: startDateLocal,
+          endDate: endDateLocal,
+          startClockTime: data.startClockTime,
+          endClockTime: data.endClockTime,
+        }),
+        data: {
+          trainerId: trainer.id,
+          traineeId: currentUser.id,
+          startDate: startDateLocal,
+          endDate: endDateLocal,
+          startClockTime: data.startClockTime,
+          endClockTime: data.endClockTime,
+          sessionCount,
+        },
+      });
+      await this.notificationsService.createAndPublishToUsers({
+        notifications: [
+          {
+            recipientUserId: trainer.id,
+            type: NotificationType.TrainerNewBookingSeries,
+            ...NotificationTemplates.trainerNewBookingSeries({
+              traineeUserName: currentUser.userName,
+              trainerUserName: trainer.userName,
+              sessionCount,
+              startDate: startDateLocal,
+              endDate: endDateLocal,
+              startClockTime: data.startClockTime,
+              endClockTime: data.endClockTime,
+            }),
+            data: {
+              trainerId: trainer.id,
+              traineeId: currentUser.id,
+              startDate: startDateLocal,
+              endDate: endDateLocal,
+              startClockTime: data.startClockTime,
+              endClockTime: data.endClockTime,
+              sessionCount,
+            },
+          },
+        ],
+      });
+      await this.notificationsService.createAndPublishToUsers({
+        notifications: [
+          {
+            recipientUserId: currentUser.id,
+            type: NotificationType.TraineeNewBookingSeries,
+            ...NotificationTemplates.traineeNewBookingSeries({
+              traineeUserName: currentUser.userName,
+              trainerUserName: trainer.userName,
+              sessionCount,
+              startDate: startDateLocal,
+              endDate: endDateLocal,
+              startClockTime: data.startClockTime,
+              endClockTime: data.endClockTime,
+            }),
+            data: {
+              trainerId: trainer.id,
+              traineeId: currentUser.id,
+              startDate: startDateLocal,
+              endDate: endDateLocal,
+              startClockTime: data.startClockTime,
+              endClockTime: data.endClockTime,
+              sessionCount,
+            },
+          },
+        ],
+      });
+      const adminEmails = await collectAdminEmailAddresses(this.userRepo);
+      const adminEmail = EmailTemplates.adminTraineeBookedTrainerSeries({
+        traineeName: currentUser.userName,
+        trainerName: trainer.userName,
+        sessionCount,
+        startDate: startDateLocal,
+        endDate: endDateLocal,
+        startClockTime: data.startClockTime,
+        endClockTime: data.endClockTime,
+        bookingSeriesUrl,
+        occurrencesPreview,
+      });
+      await this.emailService.send({
+        to: adminEmails,
+        subject: adminEmail.subject,
+        text: adminEmail.text,
+        html: adminEmail.html,
+      });
+      const trainerEmail = EmailTemplates.trainerNewBookingSeries({
+        traineeName: currentUser.userName,
+        trainerName: trainer.userName,
+        sessionCount,
+        startDate: startDateLocal,
+        endDate: endDateLocal,
+        startClockTime: data.startClockTime,
+        endClockTime: data.endClockTime,
+        bookingSeriesUrl,
+        occurrencesPreview,
+      });
+      await this.emailService.send({
+        to: trainer.email,
+        subject: trainerEmail.subject,
+        text: trainerEmail.text,
+        html: trainerEmail.html,
+      });
+      const traineeEmail = EmailTemplates.traineeNewBookingRequestSeriesCreated(
+        {
+          traineeName: currentUser.userName,
+          trainerName: trainer.userName,
+          sessionCount,
+          startDate: startDateLocal,
+          endDate: endDateLocal,
+          startClockTime: data.startClockTime,
+          endClockTime: data.endClockTime,
+          bookingSeriesUrl,
+          occurrencesPreview,
+        },
+      );
+      await this.emailService.send({
+        to: currentUser.email,
+        subject: traineeEmail.subject,
+        text: traineeEmail.text,
+        html: traineeEmail.html,
+      });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.warn(
+        `Bulk bookings created but aggregated side effects failed: ${message}`,
+      );
+    }
+    return createdBookings;
   }
 
   async getAll(
