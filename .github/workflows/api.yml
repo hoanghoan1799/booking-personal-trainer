@@ -114,6 +114,6 @@ jobs:
 
       - name: Redeploy service
         working-directory: .
-        run: railway redeploy --service e-commerce-api --yes
+        run: railway redeploy --service booking-personal-trainer --yes
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
