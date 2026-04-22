@@ -20,6 +20,14 @@ type BookingProps = {
   readonly trainerUserName: string;
 };
 
+type BookingSeriesProps = BookingProps & {
+  readonly sessionCount: number;
+  readonly startDate: string;
+  readonly endDate: string;
+  readonly startClockTime: string;
+  readonly endClockTime: string;
+};
+
 type BookingRejectedProps = BookingProps & {
   readonly rejectionReason?: string | null;
 };
@@ -63,9 +71,30 @@ export const NotificationTemplates = {
     message: `${props.traineeUserName} booked trainer ${props.trainerUserName}`,
   }),
 
+  adminTraineeBookedTrainerSeries: (
+    props: BookingSeriesProps,
+  ): NotificationTemplate => ({
+    title: 'New booking series created',
+    message: `${props.traineeUserName} requested ${props.sessionCount} session(s) with ${props.trainerUserName} (${props.startDate} → ${props.endDate}, ${props.startClockTime}–${props.endClockTime})`,
+  }),
+
   trainerNewBooking: (props: BookingProps): NotificationTemplate => ({
     title: 'New booking request',
     message: `${props.traineeUserName} requested a booking`,
+  }),
+
+  trainerNewBookingSeries: (
+    props: BookingSeriesProps,
+  ): NotificationTemplate => ({
+    title: 'New booking series request',
+    message: `${props.traineeUserName} requested ${props.sessionCount} session(s) (${props.startDate} → ${props.endDate}, ${props.startClockTime}–${props.endClockTime})`,
+  }),
+
+  traineeNewBookingSeries: (
+    props: BookingSeriesProps,
+  ): NotificationTemplate => ({
+    title: 'Booking series request created',
+    message: `Requested ${props.sessionCount} session(s) with ${props.trainerUserName} (${props.startDate} → ${props.endDate}, ${props.startClockTime}–${props.endClockTime})`,
   }),
 
   traineeBookingApproved: (props: BookingProps): NotificationTemplate => ({

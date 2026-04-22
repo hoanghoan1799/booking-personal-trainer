@@ -23,6 +23,18 @@ type BookingProps = {
   readonly bookingUrl: string;
 };
 
+type BookingSeriesProps = {
+  readonly traineeName: string;
+  readonly trainerName: string;
+  readonly sessionCount: number;
+  readonly startDate: string;
+  readonly endDate: string;
+  readonly startClockTime: string;
+  readonly endClockTime: string;
+  readonly bookingSeriesUrl: string;
+  readonly occurrencesPreview: readonly string[];
+};
+
 type BookingRejectedProps = BookingProps & {
   readonly rejectionReason?: string | null;
 };
@@ -228,6 +240,56 @@ export const EmailTemplates = {
     ].join(''),
   }),
 
+  adminTraineeBookedTrainerSeries: (
+    props: BookingSeriesProps,
+  ): EmailTemplate => {
+    const subject = 'New booking series created';
+    const previewLines = props.occurrencesPreview.map((v) => `- ${v}`);
+    const text = [
+      'Hi Admin,',
+      '',
+      'A new booking series request has been created.',
+      '',
+      'Series Info',
+      `- Trainee: ${props.traineeName}`,
+      `- Trainer: ${props.trainerName}`,
+      `- Sessions: ${props.sessionCount}`,
+      `- Date range: ${props.startDate} → ${props.endDate}`,
+      `- Time: ${props.startClockTime}–${props.endClockTime}`,
+      '',
+      'Occurrences (preview)',
+      ...previewLines,
+      '',
+      `View Bookings: ${props.bookingSeriesUrl}`,
+      '',
+      '— System',
+    ].join('\n');
+    const html = [
+      `<p>Hi Admin,</p>`,
+      `<p>A new booking series request has been created.</p>`,
+      `<p><strong>Series Info</strong></p>`,
+      `<ul>`,
+      `<li><strong>Trainee:</strong> ${escapeHtml(props.traineeName)}</li>`,
+      `<li><strong>Trainer:</strong> ${escapeHtml(props.trainerName)}</li>`,
+      `<li><strong>Sessions:</strong> ${escapeHtml(String(props.sessionCount))}</li>`,
+      `<li><strong>Date range:</strong> ${escapeHtml(props.startDate)} → ${escapeHtml(props.endDate)}</li>`,
+      `<li><strong>Time:</strong> ${escapeHtml(props.startClockTime)}–${escapeHtml(props.endClockTime)}</li>`,
+      `</ul>`,
+      `<p><strong>Occurrences (preview)</strong></p>`,
+      `<ul>`,
+      ...props.occurrencesPreview.map((v) => `<li>${escapeHtml(v)}</li>`),
+      `</ul>`,
+      `<div style="margin:24px 0;text-align:center;">`,
+      `  <a href="${escapeHtml(props.bookingSeriesUrl)}" style="background:#4f46e5;color:#fff;padding:12px 20px;border-radius:6px;text-decoration:none;">`,
+      `    View Bookings`,
+      `  </a>`,
+      `</div>`,
+      `<p style="word-break:break-all;">${escapeHtml(props.bookingSeriesUrl)}</p>`,
+      `<p>— System</p>`,
+    ].join('');
+    return { subject, text, html };
+  },
+
   trainerNewBooking: (props: BookingProps): EmailTemplate => {
     const safeTrainerName: string = escapeHtml(props.trainerName);
     const safeTraineeName: string = escapeHtml(props.traineeName);
@@ -261,6 +323,50 @@ export const EmailTemplates = {
       `  </a>`,
       `</div>`,
       `<p style="word-break:break-all;">${safeBookingUrl}</p>`,
+    ].join('');
+    return { subject, text, html };
+  },
+
+  trainerNewBookingSeries: (props: BookingSeriesProps): EmailTemplate => {
+    const safeTrainerName: string = escapeHtml(props.trainerName);
+    const safeTraineeName: string = escapeHtml(props.traineeName);
+    const subject: string = 'New booking series request';
+    const text: string = [
+      `Hi ${props.trainerName},`,
+      '',
+      'You have a new booking series request.',
+      '',
+      'Series Info',
+      `- Trainee: ${props.traineeName}`,
+      `- Sessions: ${props.sessionCount}`,
+      `- Date range: ${props.startDate} → ${props.endDate}`,
+      `- Time: ${props.startClockTime}–${props.endClockTime}`,
+      '',
+      'Occurrences (preview)',
+      ...props.occurrencesPreview.map((v) => `- ${v}`),
+      '',
+      `View Bookings: ${props.bookingSeriesUrl}`,
+    ].join('\n');
+    const html: string = [
+      `<p>Hi ${safeTrainerName},</p>`,
+      `<p>You have a new booking series request.</p>`,
+      `<p><strong>Series Info</strong></p>`,
+      `<ul>`,
+      `<li><strong>Trainee:</strong> ${safeTraineeName}</li>`,
+      `<li><strong>Sessions:</strong> ${escapeHtml(String(props.sessionCount))}</li>`,
+      `<li><strong>Date range:</strong> ${escapeHtml(props.startDate)} → ${escapeHtml(props.endDate)}</li>`,
+      `<li><strong>Time:</strong> ${escapeHtml(props.startClockTime)}–${escapeHtml(props.endClockTime)}</li>`,
+      `</ul>`,
+      `<p><strong>Occurrences (preview)</strong></p>`,
+      `<ul>`,
+      ...props.occurrencesPreview.map((v) => `<li>${escapeHtml(v)}</li>`),
+      `</ul>`,
+      `<div style="margin:24px 0;text-align:center;">`,
+      `  <a href="${escapeHtml(props.bookingSeriesUrl)}" style="background:#4f46e5;color:#fff;padding:12px 20px;border-radius:6px;text-decoration:none;">`,
+      `    View Bookings`,
+      `  </a>`,
+      `</div>`,
+      `<p style="word-break:break-all;">${escapeHtml(props.bookingSeriesUrl)}</p>`,
     ].join('');
     return { subject, text, html };
   },
@@ -299,6 +405,53 @@ export const EmailTemplates = {
       `  </a>`,
       `</div>`,
       `<p style="word-break:break-all;">${safeBookingUrl}</p>`,
+    ].join('');
+    return { subject, text, html };
+  },
+
+  traineeNewBookingRequestSeriesCreated: (
+    props: BookingSeriesProps,
+  ): EmailTemplate => {
+    const safeTraineeName: string = escapeHtml(props.traineeName);
+    const safeTrainerName: string = escapeHtml(props.trainerName);
+    const subject: string = 'New booking series request created';
+    const text: string = [
+      `Hi ${props.traineeName},`,
+      '',
+      `Your booking request was created for ${props.sessionCount} session(s).`,
+      '',
+      'Details',
+      `- Trainer: ${props.trainerName}`,
+      `- Date range: ${props.startDate} → ${props.endDate}`,
+      `- Time: ${props.startClockTime}–${props.endClockTime}`,
+      '',
+      'Occurrences (preview)',
+      ...props.occurrencesPreview.map((v) => `- ${v}`),
+      '',
+      'Please wait for trainer approval.',
+      '',
+      `View Bookings: ${props.bookingSeriesUrl}`,
+    ].join('\n');
+    const html: string = [
+      `<p>Hi ${safeTraineeName},</p>`,
+      `<p>Your booking request was created for <strong>${escapeHtml(String(props.sessionCount))}</strong> session(s).</p>`,
+      `<p><strong>Details</strong></p>`,
+      `<ul>`,
+      `<li><strong>Trainer:</strong> ${safeTrainerName}</li>`,
+      `<li><strong>Date range:</strong> ${escapeHtml(props.startDate)} → ${escapeHtml(props.endDate)}</li>`,
+      `<li><strong>Time:</strong> ${escapeHtml(props.startClockTime)}–${escapeHtml(props.endClockTime)}</li>`,
+      `</ul>`,
+      `<p><strong>Occurrences (preview)</strong></p>`,
+      `<ul>`,
+      ...props.occurrencesPreview.map((v) => `<li>${escapeHtml(v)}</li>`),
+      `</ul>`,
+      `<p>Please wait for trainer approval.</p>`,
+      `<div style="margin:24px 0;text-align:center;">`,
+      `  <a href="${escapeHtml(props.bookingSeriesUrl)}" style="background:#4f46e5;color:#fff;padding:12px 20px;border-radius:6px;text-decoration:none;">`,
+      `    View Bookings`,
+      `  </a>`,
+      `</div>`,
+      `<p style="word-break:break-all;">${escapeHtml(props.bookingSeriesUrl)}</p>`,
     ].join('');
     return { subject, text, html };
   },
