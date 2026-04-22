@@ -105,10 +105,15 @@ jobs:
     timeout-minutes: 10
 
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Install Railway CLI
+        working-directory: .
         run: npm install -g @railway/cli
 
       - name: Redeploy service
+        working-directory: .
         run: railway redeploy --service e-commerce-api --yes
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
