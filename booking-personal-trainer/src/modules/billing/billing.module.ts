@@ -5,7 +5,7 @@ import { MikroOrmModule } from '@mikro-orm/nestjs';
 import { BillingCharge } from './entities/billing-charge.entity';
 
 // Services
-import { BillingService } from './billing.service';
+import { BillingService } from './services/billing.service';
 
 // Repositories
 import { BillingChargeRepositoryToken } from './repositories/billing-charge.repository.interface';

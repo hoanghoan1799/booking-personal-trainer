@@ -9,23 +9,28 @@ import {
 
 // Enums
 import { TemplateType } from '../enums/template-type.enum';
+import { TemplatesDtoSwagger } from '../constants/templates-swagger-dto.constants';
 
 export class CreateTemplateDto {
-  @ApiProperty({ description: 'Template name' })
+  @ApiProperty(TemplatesDtoSwagger.CreateTemplate.ApiProperty.Name)
   @IsString()
   @IsNotEmpty()
   name!: string;
 
-  @ApiPropertyOptional({ description: 'Template description' })
+  @ApiPropertyOptional(
+    TemplatesDtoSwagger.CreateTemplate.ApiPropertyOptional.Description,
+  )
   @IsString()
   @IsOptional()
   description?: string;
 
-  @ApiProperty({ description: 'Template type', enum: TemplateType })
+  @ApiProperty(TemplatesDtoSwagger.CreateTemplate.ApiProperty.TemplateType)
   @IsEnum(TemplateType)
   templateType!: TemplateType;
 
-  @ApiPropertyOptional({ description: 'Parent template id', nullable: true })
+  @ApiPropertyOptional(
+    TemplatesDtoSwagger.CreateTemplate.ApiPropertyOptional.ParentTemplateId,
+  )
   @IsUUID()
   @IsOptional()
   parentTemplateId?: string | null;

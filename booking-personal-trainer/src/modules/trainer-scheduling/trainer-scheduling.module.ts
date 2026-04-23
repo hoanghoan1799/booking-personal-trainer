@@ -6,12 +6,12 @@ import { TrainerAvailability } from './entities/trainer-availability.entity';
 import { TrainerTimeOff } from './entities/trainer-time-off.entity';
 
 // Controllers
-import { TrainersController } from './trainers.controller';
+import { TrainersController } from './controllers/trainers.controller';
 
 // Services
-import { TrainerAvailabilityService } from './trainer-availability.service';
-import { TrainerScheduleConflictService } from './trainer-schedule-conflict.service';
-import { TrainerTimeOffService } from './trainer-time-off.service';
+import { TrainerAvailabilityService } from './services/trainer-availability.service';
+import { TrainerScheduleConflictService } from './services/trainer-schedule-conflict.service';
+import { TrainerTimeOffService } from './services/trainer-time-off.service';
 
 // Repositories
 import { TrainerAvailabilityRepositoryToken } from './repositories/trainer-availability.repository.interface';
@@ -35,6 +35,11 @@ import { MikroOrmTrainerTimeOffRepository } from './repositories/mikroorm-traine
       useClass: MikroOrmTrainerTimeOffRepository,
     },
   ],
-  exports: [TrainerAvailabilityRepositoryToken, TrainerTimeOffRepositoryToken],
+  exports: [
+    TrainerAvailabilityService,
+    TrainerTimeOffService,
+    TrainerAvailabilityRepositoryToken,
+    TrainerTimeOffRepositoryToken,
+  ],
 })
 export class TrainerSchedulingModule {}

@@ -6,10 +6,10 @@ import { User } from './entities/user.entity';
 import { UserProvider } from './entities/user-provider.entity';
 
 // Services
-import { UserService } from './user.service';
+import { UserService } from './services/user.service';
 
 // Controllers
-import { UserController } from './user.controller';
+import { UserController } from './controllers/user.controller';
 
 // Repositories
 import { UserRepositoryToken } from './repositories/user.repository.interface';

@@ -2,49 +2,44 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Expose } from 'class-transformer';
 
 // Commons
-import {
-  API_FORMATS,
-  FIELD_DESCRIPTIONS,
-} from '../../../common/constants/message.constant';
+import { TrainerSchedulingDtoSwagger } from '../constants/trainer-scheduling-swagger-dto.constants';
 
 export class TrainerTimeOffResponseDto {
-  @ApiProperty({
-    description: FIELD_DESCRIPTIONS.USER.ID,
-    format: API_FORMATS.UUID,
-    example: FIELD_DESCRIPTIONS.USER.ID_EXAMPLE,
-  })
+  @ApiProperty(
+    TrainerSchedulingDtoSwagger.TrainerTimeOffResponse.ApiProperty.Id,
+  )
   @Expose()
   id: string;
 
-  @ApiProperty({ example: 'personal' })
+  @ApiProperty(
+    TrainerSchedulingDtoSwagger.TrainerTimeOffResponse.ApiProperty.Reason,
+  )
   @Expose()
   reason: string;
 
-  @ApiProperty({
-    description: 'Time off start time.',
-    format: API_FORMATS.DATE_TIME,
-    type: Date,
-  })
+  @ApiProperty(
+    TrainerSchedulingDtoSwagger.TrainerTimeOffResponse.ApiProperty.StartTime,
+  )
   @Expose()
   startTime: Date;
 
-  @ApiProperty({
-    description: 'Time off end time.',
-    format: API_FORMATS.DATE_TIME,
-    type: Date,
-  })
+  @ApiProperty(
+    TrainerSchedulingDtoSwagger.TrainerTimeOffResponse.ApiProperty.EndTime,
+  )
   @Expose()
   endTime: Date;
 
-  @ApiPropertyOptional({
-    description: FIELD_DESCRIPTIONS.BOOKING.CREATED_AT,
-  })
+  @ApiPropertyOptional(
+    TrainerSchedulingDtoSwagger.TrainerTimeOffResponse.ApiPropertyOptional
+      .CreatedAt,
+  )
   @Expose()
   createdAt?: Date;
 
-  @ApiPropertyOptional({
-    description: FIELD_DESCRIPTIONS.BOOKING.UPDATED_AT,
-  })
+  @ApiPropertyOptional(
+    TrainerSchedulingDtoSwagger.TrainerTimeOffResponse.ApiPropertyOptional
+      .UpdatedAt,
+  )
   @Expose()
   updatedAt?: Date;
 }

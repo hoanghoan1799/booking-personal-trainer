@@ -1,35 +1,44 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsArray, IsBoolean, IsInt, IsObject, IsString } from 'class-validator';
 
+import { PaymentsDtoSwagger } from '../constants/payments-swagger-dto.constants';
+
 export class TrainerPayoutsCurrencySummaryDto {
   @ApiProperty()
   @IsString()
   currency!: string;
 
-  @ApiProperty({ description: 'Total trainer share for PAID payments.' })
+  @ApiProperty(
+    PaymentsDtoSwagger.TrainerPayoutsCurrencySummary.ApiProperty
+      .PaidTrainerShareCents,
+  )
   @IsInt()
   paidTrainerShareCents!: number;
 
-  @ApiProperty({ description: 'Total trainer share for REFUNDED payments.' })
+  @ApiProperty(
+    PaymentsDtoSwagger.TrainerPayoutsCurrencySummary.ApiProperty
+      .RefundedTrainerShareCents,
+  )
   @IsInt()
   refundedTrainerShareCents!: number;
 
-  @ApiProperty({ description: 'Net trainer share (paid - refunded).' })
+  @ApiProperty(
+    PaymentsDtoSwagger.TrainerPayoutsCurrencySummary.ApiProperty
+      .NetTrainerShareCents,
+  )
   @IsInt()
   netTrainerShareCents!: number;
 
-  @ApiProperty({
-    description:
-      'Counts by payout status (TRANSFERRED/AWAITING_TRAINER_CONNECT/FAILED/...).',
-    example: { TRANSFERRED: 10, AWAITING_TRAINER_CONNECT: 2 },
-  })
+  @ApiProperty(
+    PaymentsDtoSwagger.TrainerPayoutsCurrencySummary.ApiProperty
+      .PayoutStatusCounts,
+  )
   @IsObject()
   payoutStatusCounts!: Record<string, number>;
 
-  @ApiProperty({
-    description:
-      'True when any trainerShare was estimated (missing metadata.trainerShareCents).',
-  })
+  @ApiProperty(
+    PaymentsDtoSwagger.TrainerPayoutsCurrencySummary.ApiProperty.IsEstimated,
+  )
   @IsBoolean()
   isEstimated!: boolean;
 }
@@ -51,25 +60,33 @@ export class TrainerPayoutsTransferRowDto {
   @IsInt()
   trainerShareCents!: number;
 
-  @ApiProperty({ nullable: true })
+  @ApiProperty(
+    PaymentsDtoSwagger.TrainerPayoutsTransferRow.ApiProperty.TransferId,
+  )
   @IsString()
   transferId!: string | null;
 
-  @ApiProperty({ nullable: true })
+  @ApiProperty(
+    PaymentsDtoSwagger.TrainerPayoutsTransferRow.ApiProperty.ErrorMessage,
+  )
   @IsString()
   errorMessage!: string | null;
 }
 
 export class TrainerPayoutsResponseDto {
-  @ApiProperty({ type: [TrainerPayoutsCurrencySummaryDto] })
+  @ApiProperty(
+    PaymentsDtoSwagger.TrainerPayoutsResponse.ApiProperty.Summary(
+      TrainerPayoutsCurrencySummaryDto,
+    ),
+  )
   @IsArray()
   summary!: TrainerPayoutsCurrencySummaryDto[];
 
-  @ApiProperty({
-    type: [TrainerPayoutsTransferRowDto],
-    description:
-      'Latest payout rows for reference (transfer id or error), filtered by date/currency.',
-  })
+  @ApiProperty(
+    PaymentsDtoSwagger.TrainerPayoutsResponse.ApiProperty.Rows(
+      TrainerPayoutsTransferRowDto,
+    ),
+  )
   @IsArray()
   rows!: TrainerPayoutsTransferRowDto[];
 }

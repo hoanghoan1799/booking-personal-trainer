@@ -10,7 +10,7 @@ import type {
   EmailSender,
   EmailTransportResult,
   SendEmailInput,
-} from '../email.types';
+} from '../types/email.types';
 
 type ResendConfig = {
   readonly apiKey: string;

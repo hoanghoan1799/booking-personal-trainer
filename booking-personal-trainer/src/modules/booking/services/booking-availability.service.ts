@@ -15,13 +15,17 @@ import {
 import type { BookingRepository } from '../repositories/booking.repository.interface';
 import { BookingRepositoryToken } from '../repositories/booking.repository.interface';
 
-import type { TrainerAvailabilityRepository } from '../../trainer-scheduling/repositories/trainer-availability.repository.interface';
-import { TrainerAvailabilityRepositoryToken } from '../../trainer-scheduling/repositories/trainer-availability.repository.interface';
-
-import type { TrainerTimeOffRepository } from '../../trainer-scheduling/repositories/trainer-time-off.repository.interface';
-import { TrainerTimeOffRepositoryToken } from '../../trainer-scheduling/repositories/trainer-time-off.repository.interface';
-
 import type { User } from '../../user/entities/user.entity';
+import { TrainerAvailabilityService } from '../../trainer-scheduling/services/trainer-availability.service';
+import { TrainerTimeOffService } from '../../trainer-scheduling/services/trainer-time-off.service';
+import {
+  assertValidSlotQueryInput,
+  buildDateLocalsForRollingPeriod,
+  buildDayjsUtcFromLocalDateAndClockTime,
+  buildUniqueTimeSlotKey,
+  isOverlapping,
+  toCeilStepDate,
+} from '../helpers/booking-availability.helpers';
 
 export type BookingTimeRange = {
   readonly start: Date;
@@ -46,91 +50,11 @@ type GetAvailableTrainersForRangeInput = {
   readonly end: Date;
 };
 
-const MIN_DURATION_MINUTES = 60;
-const MIN_STEP_MINUTES = 30;
-const DATE_LOCAL_FORMAT = 'YYYY-MM-DD';
-
-const toCeilStepDate = (input: { date: Date; stepMinutes: number }): Date => {
-  const stepMs = input.stepMinutes * 60 * 1000;
-  const ms = dayjs.utc(input.date).valueOf();
-  const ceilMs = Math.ceil(ms / stepMs) * stepMs;
-  return dayjs.utc(ceilMs).toDate();
-};
-
-const isOverlapping = (a: BookingTimeRange, b: BookingTimeRange): boolean => {
-  return (
-    a.start.getTime() < b.end.getTime() && b.start.getTime() < a.end.getTime()
-  );
-};
-
-const assertValidSlotQueryInput = (input: GetAvailableSlotsInput): void => {
-  if (input.rangeStart >= input.rangeEnd) {
-    throw new BadRequestException(ERROR_MESSAGES.BOOKING.INVALID_TIME_RANGE);
-  }
-  if (input.durationMinutes < MIN_DURATION_MINUTES) {
-    throw new BadRequestException(
-      ERROR_MESSAGES.TRAINER.AVAILABILITY_MIN_ONE_HOUR,
-    );
-  }
-  if (
-    input.stepMinutes < MIN_STEP_MINUTES ||
-    input.stepMinutes % MIN_STEP_MINUTES !== 0
-  ) {
-    throw new BadRequestException('Step minutes must be 30-minute increments');
-  }
-  if (input.durationMinutes % input.stepMinutes !== 0) {
-    throw new BadRequestException(
-      'Duration must be a multiple of step minutes',
-    );
-  }
-};
-
-const buildDayjsUtcFromLocalDateAndClockTime = (input: {
-  readonly dateLocal: string;
-  readonly clockTime: string;
-}): dayjs.Dayjs | null => {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(input.dateLocal)) {
-    return null;
-  }
-  if (!/^\d{2}:\d{2}$/.test(input.clockTime)) {
-    return null;
-  }
-  const dt = dayjs.utc(
-    `${input.dateLocal} ${input.clockTime}`,
-    'YYYY-MM-DD HH:mm',
-    true,
-  );
-  return dt.isValid() ? dt : null;
-};
-
-const buildDateLocalsForRollingPeriod = (input: {
-  readonly startDateLocal: string;
-  readonly period: 'week' | 'month' | 'year';
-}): readonly string[] => {
-  const start = dayjs
-    .utc(input.startDateLocal, DATE_LOCAL_FORMAT, true)
-    .startOf('day');
-  if (!start.isValid()) return [];
-  const endExclusive =
-    input.period === 'week'
-      ? start.add(7, 'day')
-      : input.period === 'month'
-        ? start.add(1, 'month')
-        : start.add(1, 'year');
-  const dayCount = endExclusive.diff(start, 'day');
-  if (!Number.isFinite(dayCount) || dayCount <= 0) return [];
-  return Array.from({ length: dayCount }).map((_, i) =>
-    start.add(i, 'day').format(DATE_LOCAL_FORMAT),
-  );
-};
-
 @Injectable()
 export class BookingAvailabilityService {
   constructor(
-    @Inject(TrainerAvailabilityRepositoryToken)
-    private readonly availabilityRepo: TrainerAvailabilityRepository,
-    @Inject(TrainerTimeOffRepositoryToken)
-    private readonly timeOffRepo: TrainerTimeOffRepository,
+    private readonly trainerAvailabilityService: TrainerAvailabilityService,
+    private readonly trainerTimeOffService: TrainerTimeOffService,
     @Inject(BookingRepositoryToken)
     private readonly bookingRepo: BookingRepository,
   ) {}
@@ -144,7 +68,7 @@ export class BookingAvailabilityService {
       throw new BadRequestException(ERROR_MESSAGES.BOOKING.INVALID_TIME_RANGE);
     }
     const coveringAvailability =
-      await this.availabilityRepo.findCoveringForTrainer(
+      await this.trainerAvailabilityService.getCoveringAvailabilityForTrainer(
         input.trainerId,
         input.start,
         input.end,
@@ -154,11 +78,12 @@ export class BookingAvailabilityService {
         ERROR_MESSAGES.BOOKING.TIME_SLOT_NOT_AVAILABLE,
       );
     }
-    const conflictingTimeOff = await this.timeOffRepo.findOverlappingForTrainer(
-      input.trainerId,
-      input.start,
-      input.end,
-    );
+    const conflictingTimeOff =
+      await this.trainerTimeOffService.getOverlappingTimeOffForTrainer(
+        input.trainerId,
+        input.start,
+        input.end,
+      );
     if (conflictingTimeOff !== null) {
       throw new BadRequestException(
         ERROR_MESSAGES.BOOKING.TIME_SLOT_NOT_AVAILABLE,
@@ -184,7 +109,10 @@ export class BookingAvailabilityService {
       throw new BadRequestException(ERROR_MESSAGES.BOOKING.INVALID_TIME_RANGE);
     }
     const coveringAvailabilities =
-      await this.availabilityRepo.findCoveringRanges(input.start, input.end);
+      await this.trainerAvailabilityService.getCoveringAvailabilitiesForRange(
+        input.start,
+        input.end,
+      );
     const trainers = coveringAvailabilities
       .map((a) => a.trainer)
       .filter((t): t is User => t != null);
@@ -203,7 +131,7 @@ export class BookingAvailabilityService {
     const checks = await Promise.all(
       uniqueTrainers.map(async (trainer) => {
         const hasTimeOff =
-          (await this.timeOffRepo.findOverlappingForTrainer(
+          (await this.trainerTimeOffService.getOverlappingTimeOffForTrainer(
             trainer.id,
             input.start,
             input.end,
@@ -303,7 +231,7 @@ export class BookingAvailabilityService {
       MIN_BOOKING_NOTICE_MINUTES,
     );
     const availabilityRanges =
-      await this.availabilityRepo.findOverlappingRangesForTrainer(
+      await this.trainerAvailabilityService.getOverlappingAvailabilityRangesForTrainer(
         input.trainerId,
         input.rangeStart,
         input.rangeEnd,
@@ -319,7 +247,7 @@ export class BookingAvailabilityService {
         [BookingStatus.REJECTED, BookingStatus.CANCELLED],
       );
     const timeOffInRange =
-      await this.timeOffRepo.findOverlappingRangesForTrainer(
+      await this.trainerTimeOffService.getOverlappingTimeOffRangesForTrainer(
         input.trainerId,
         input.rangeStart,
         input.rangeEnd,
@@ -374,10 +302,8 @@ export class BookingAvailabilityService {
         cursor = dayjs.utc(cursor.getTime() + stepMs).toDate();
       }
     });
-    const uniqueKey = (s: BookingTimeSlot): string =>
-      `${s.startTime}|${s.endTime}`;
     const dedup = new Map<string, BookingTimeSlot>();
-    slots.forEach((s) => dedup.set(uniqueKey(s), s));
+    slots.forEach((s) => dedup.set(buildUniqueTimeSlotKey(s), s));
     return [...dedup.values()].sort(
       (a, b) =>
         dayjs.utc(a.startTime).valueOf() - dayjs.utc(b.startTime).valueOf(),

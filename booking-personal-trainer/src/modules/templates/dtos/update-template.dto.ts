@@ -3,24 +3,33 @@ import { IsEnum, IsOptional, IsString, IsUUID } from 'class-validator';
 
 // Enums
 import { TemplateType } from '../enums/template-type.enum';
+import { TemplatesDtoSwagger } from '../constants/templates-swagger-dto.constants';
 
 export class UpdateTemplateDto {
-  @ApiPropertyOptional({ description: 'Template name' })
+  @ApiPropertyOptional(
+    TemplatesDtoSwagger.UpdateTemplate.ApiPropertyOptional.Name,
+  )
   @IsString()
   @IsOptional()
   name?: string;
 
-  @ApiPropertyOptional({ description: 'Template description' })
+  @ApiPropertyOptional(
+    TemplatesDtoSwagger.UpdateTemplate.ApiPropertyOptional.Description,
+  )
   @IsString()
   @IsOptional()
   description?: string;
 
-  @ApiPropertyOptional({ description: 'Template type', enum: TemplateType })
+  @ApiPropertyOptional(
+    TemplatesDtoSwagger.UpdateTemplate.ApiPropertyOptional.TemplateType,
+  )
   @IsEnum(TemplateType)
   @IsOptional()
   templateType?: TemplateType;
 
-  @ApiPropertyOptional({ description: 'Parent template id', nullable: true })
+  @ApiPropertyOptional(
+    TemplatesDtoSwagger.UpdateTemplate.ApiPropertyOptional.ParentTemplateId,
+  )
   @IsUUID()
   @IsOptional()
   parentTemplateId?: string | null;

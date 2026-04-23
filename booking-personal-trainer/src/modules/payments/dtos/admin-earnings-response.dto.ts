@@ -1,6 +1,8 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsArray, IsBoolean, IsInt, IsObject, IsString } from 'class-validator';
 
+import { PaymentsDtoSwagger } from '../constants/payments-swagger-dto.constants';
+
 export class AdminEarningsTotalsDto {
   @ApiProperty()
   @IsString()
@@ -42,10 +44,7 @@ export class AdminEarningsTotalsDto {
   @IsInt()
   trainerShareNetCents!: number;
 
-  @ApiProperty({
-    description:
-      'True when any platformFee/trainerShare values were estimated (missing metadata).',
-  })
+  @ApiProperty(PaymentsDtoSwagger.AdminEarningsTotals.ApiProperty.IsEstimated)
   @IsBoolean()
   isEstimated!: boolean;
 }
@@ -85,11 +84,10 @@ export class AdminEarningsTraineeRowDto {
 }
 
 export class AdminEarningsTrainerPayoutBreakdownDto {
-  @ApiProperty({
-    description:
-      'Counts by payout status (TRANSFERRED/AWAITING_TRAINER_CONNECT/FAILED/...).',
-    example: { TRANSFERRED: 10, AWAITING_TRAINER_CONNECT: 2 },
-  })
+  @ApiProperty(
+    PaymentsDtoSwagger.AdminEarningsTrainerPayoutBreakdown.ApiProperty
+      .StatusCounts,
+  )
   @IsObject()
   statusCounts!: Record<string, number>;
 }
@@ -123,20 +121,36 @@ export class AdminEarningsTrainerRowDto {
   @IsInt()
   trainerShareNetCents!: number;
 
-  @ApiProperty({ type: AdminEarningsTrainerPayoutBreakdownDto })
+  @ApiProperty(
+    PaymentsDtoSwagger.AdminEarningsTrainerRow.ApiProperty.Payout(
+      AdminEarningsTrainerPayoutBreakdownDto,
+    ),
+  )
   payout!: AdminEarningsTrainerPayoutBreakdownDto;
 }
 
 export class AdminEarningsResponseDto {
-  @ApiProperty({ type: [AdminEarningsTotalsDto] })
+  @ApiProperty(
+    PaymentsDtoSwagger.AdminEarningsResponse.ApiProperty.Totals(
+      AdminEarningsTotalsDto,
+    ),
+  )
   @IsArray()
   totals!: AdminEarningsTotalsDto[];
 
-  @ApiProperty({ type: [AdminEarningsTraineeRowDto] })
+  @ApiProperty(
+    PaymentsDtoSwagger.AdminEarningsResponse.ApiProperty.Trainees(
+      AdminEarningsTraineeRowDto,
+    ),
+  )
   @IsArray()
   trainees!: AdminEarningsTraineeRowDto[];
 
-  @ApiProperty({ type: [AdminEarningsTrainerRowDto] })
+  @ApiProperty(
+    PaymentsDtoSwagger.AdminEarningsResponse.ApiProperty.Trainers(
+      AdminEarningsTrainerRowDto,
+    ),
+  )
   @IsArray()
   trainers!: AdminEarningsTrainerRowDto[];
 }

@@ -15,6 +15,7 @@ import UserCard from "@/components/users/UserCard";
 interface CreateBookingFromCalendarModalProps {
   readonly isOpen: boolean;
   readonly selectedDateLocal: string;
+  readonly prefilledStartClockTime?: string | null;
   readonly onClose: () => void;
   readonly onSuccess: () => void;
 }
@@ -40,6 +41,22 @@ function clockTimeToMinutes(value: string): number | null {
   if (h < 0 || h > 23) return null;
   if (m < 0 || m > 59) return null;
   return h * 60 + m;
+}
+
+function minutesToClockTime(value: number): string | null {
+  if (!Number.isFinite(value)) return null;
+  if (value < 0 || value >= 24 * 60) return null;
+  const h = Math.floor(value / 60);
+  const m = value % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
+function getDefaultEndClockTime(startTimeLocal: string): string {
+  const startMinutes = clockTimeToMinutes(startTimeLocal);
+  if (startMinutes === null) return "";
+  const endMinutes = startMinutes + MIN_DURATION_MINUTES;
+  const endClockTime = minutesToClockTime(endMinutes);
+  return endClockTime ?? "";
 }
 
 function getClockTimeOptions(): readonly string[] {
@@ -88,6 +105,7 @@ function getPeriodDates(input: { readonly selectedDateLocal: string; readonly pe
 export default function CreateBookingFromCalendarModal({
   isOpen,
   selectedDateLocal,
+  prefilledStartClockTime = null,
   onClose,
   onSuccess,
 }: CreateBookingFromCalendarModalProps) {
@@ -117,10 +135,11 @@ export default function CreateBookingFromCalendarModal({
     setPeriod("day");
     setSelectedTrainer(null);
     setStartDateLocal(selectedDateLocal);
-    setStartClockTime("");
-    setEndClockTime("");
+    const startTimeLocal = prefilledStartClockTime ?? "";
+    setStartClockTime(startTimeLocal);
+    setEndClockTime(getDefaultEndClockTime(startTimeLocal));
     setAvailableTrainerList([]);
-  }, [isOpen, selectedDateLocal]);
+  }, [isOpen, prefilledStartClockTime, selectedDateLocal]);
 
   const handleFindAvailableTrainers = async () => {
     setError(null);
@@ -281,7 +300,16 @@ export default function CreateBookingFromCalendarModal({
                 id="calendar-booking-start"
                 value={startClockTime}
                 onChange={(e) => {
-                  setStartClockTime(e.target.value);
+                  const nextStartClockTime: string = e.target.value;
+                  setStartClockTime(nextStartClockTime);
+                  setEndClockTime((prevEndClockTime) => {
+                    const nextStartMinutes = clockTimeToMinutes(nextStartClockTime);
+                    const prevEndMinutes = clockTimeToMinutes(prevEndClockTime);
+                    if (prevEndClockTime && nextStartMinutes !== null && prevEndMinutes !== null && prevEndMinutes > nextStartMinutes) {
+                      return prevEndClockTime;
+                    }
+                    return getDefaultEndClockTime(nextStartClockTime);
+                  });
                   setAvailableTrainerList([]);
                   setSelectedTrainer(null);
                   setError(null);

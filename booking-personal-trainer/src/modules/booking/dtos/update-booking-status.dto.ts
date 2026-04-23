@@ -3,27 +3,25 @@ import { IsEnum, IsOptional, IsString, MinLength } from 'class-validator';
 
 // Commons
 import { BookingStatus } from '../../../common/enums/booking/booking.enum';
-import { FIELD_DESCRIPTIONS } from '../../../common/constants/message.constant';
+import { BookingDtoSwagger } from '../constants/booking-swagger-dto.constants';
 
 export class UpdateBookingStatusDto {
-  @ApiProperty({
-    description: FIELD_DESCRIPTIONS.BOOKING.STATUS,
-    enum: BookingStatus,
-  })
+  @ApiProperty(BookingDtoSwagger.UpdateBookingStatus.ApiProperty.Status)
   @IsEnum(BookingStatus)
   status: BookingStatus;
 
-  @ApiPropertyOptional({
-    description: 'Cancellation reason (required when status=CANCELLED)',
-  })
+  @ApiPropertyOptional(
+    BookingDtoSwagger.UpdateBookingStatus.ApiPropertyOptional
+      .CancellationReason,
+  )
   @IsString()
   @MinLength(3)
   @IsOptional()
   cancellationReason?: string;
 
-  @ApiPropertyOptional({
-    description: 'Rejection reason (required when status=REJECTED)',
-  })
+  @ApiPropertyOptional(
+    BookingDtoSwagger.UpdateBookingStatus.ApiPropertyOptional.RejectionReason,
+  )
   @IsString()
   @MinLength(3)
   @IsOptional()

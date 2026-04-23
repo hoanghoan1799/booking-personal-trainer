@@ -1,6 +1,8 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsInt, IsString } from 'class-validator';
 
+import { ReportingDtoSwagger } from '../constants/reporting-swagger-dto.constants';
+
 export class TrainerKpiRowDto {
   @ApiProperty()
   @IsString()
@@ -30,17 +32,13 @@ export class TrainerKpiRowDto {
   @IsInt()
   workoutsDoneCount!: number;
 
-  @ApiProperty({
-    description:
-      'Sum of workout durations for DONE workouts (whole minutes, rounded down).',
-  })
+  @ApiProperty(ReportingDtoSwagger.TrainerKpiRow.ApiProperty.DeliveredMinutes)
   @IsInt()
   deliveredMinutes!: number;
 
-  @ApiProperty({
-    description:
-      'Trainer share net cents for the optional currency filter (default USD).',
-  })
+  @ApiProperty(
+    ReportingDtoSwagger.TrainerKpiRow.ApiProperty.TrainerShareNetCents,
+  )
   @IsInt()
   trainerShareNetCents!: number;
 }

@@ -4,13 +4,12 @@ import { IsEnum, IsOptional } from 'class-validator';
 // Commons
 import { BookingStatus } from '../../../common/enums/booking/booking.enum';
 import { BaseQueryDto } from '../../../common/dtos/base-query.dto';
-import { FIELD_DESCRIPTIONS } from '../../../common/constants/message.constant';
+import { BookingDtoSwagger } from '../constants/booking-swagger-dto.constants';
 
 export class GetBookingsQueryDto extends BaseQueryDto {
-  @ApiPropertyOptional({
-    description: FIELD_DESCRIPTIONS.QUERY.BOOKING_STATUS_FILTER,
-    enum: BookingStatus,
-  })
+  @ApiPropertyOptional(
+    BookingDtoSwagger.GetBookingsQuery.ApiPropertyOptional.Status,
+  )
   @IsOptional()
   @IsEnum(BookingStatus)
   status?: BookingStatus;

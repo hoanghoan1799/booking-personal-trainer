@@ -1,18 +1,26 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsDateString, IsInt, Max, Min } from 'class-validator';
 
+import { TrainerSchedulingDtoSwagger } from '../constants/trainer-scheduling-swagger-dto.constants';
+
 export class CreateTrainerAvailabilityDto {
-  @ApiProperty({ example: 1, description: 'Day of week (1-7).' })
+  @ApiProperty(
+    TrainerSchedulingDtoSwagger.CreateTrainerAvailability.ApiProperty.DayOfWeek,
+  )
   @IsInt()
   @Min(1)
   @Max(7)
   dayOfWeek: number;
 
-  @ApiProperty({ example: '2026-02-01T09:00:00Z' })
+  @ApiProperty(
+    TrainerSchedulingDtoSwagger.CreateTrainerAvailability.ApiProperty.StartTime,
+  )
   @IsDateString()
   startTime: string;
 
-  @ApiProperty({ example: '2026-02-01T10:00:00Z' })
+  @ApiProperty(
+    TrainerSchedulingDtoSwagger.CreateTrainerAvailability.ApiProperty.EndTime,
+  )
   @IsDateString()
   endTime: string;
 }

@@ -2,10 +2,10 @@ import { Module } from '@nestjs/common';
 import { MikroOrmModule } from '@mikro-orm/nestjs';
 
 // Controllers
-import { TemplatesController } from './templates.controller';
+import { TemplatesController } from './controllers/templates.controller';
 
 // Services
-import { TemplatesService } from './templates.service';
+import { TemplatesService } from './services/templates.service';
 
 // Entities
 import { ExerciseTemplate } from './entities/exercise-template.entity';

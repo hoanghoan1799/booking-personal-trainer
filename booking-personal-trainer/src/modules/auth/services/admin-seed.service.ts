@@ -1,4 +1,4 @@
-import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 // Commons
@@ -11,19 +11,14 @@ import {
 
 // Services
 import { HashingService } from './hashing.service';
+import { UserService } from '../../user/services/user.service';
 
-// Repositories
-import { UserRepositoryToken } from '../../user/repositories/user.repository.interface';
-import type { UserRepository } from '../../user/repositories/user.repository.interface';
-
-const DEFAULT_ADMIN_EMAIL = 'hoan.hoang@asnet.com.vn' as const;
-const DEFAULT_ADMIN_PASSWORD = 'Abcd@123' as const;
+import { AuthAdminSeedConstants } from '../constants/auth-admin-seed.constants';
 
 @Injectable()
 export class AdminSeedService implements OnModuleInit {
   constructor(
-    @Inject(UserRepositoryToken)
-    private readonly userRepo: UserRepository,
+    private readonly userService: UserService,
     private readonly configService: ConfigService,
     private readonly hashingService: HashingService,
   ) {}
@@ -31,11 +26,11 @@ export class AdminSeedService implements OnModuleInit {
   async onModuleInit() {
     const adminEmail = this.configService.get<string>(
       'DEFAULT_ADMIN_EMAIL',
-      DEFAULT_ADMIN_EMAIL,
+      AuthAdminSeedConstants.DefaultAdminEmail,
     );
     const adminPassword = this.configService.get<string>(
       'DEFAULT_ADMIN_PASSWORD',
-      DEFAULT_ADMIN_PASSWORD,
+      AuthAdminSeedConstants.DefaultAdminPassword,
     );
 
     if (!adminEmail || !adminPassword) {
@@ -43,7 +38,7 @@ export class AdminSeedService implements OnModuleInit {
       return;
     }
 
-    const existedAdmin = await this.userRepo.findByEmail(adminEmail);
+    const existedAdmin = await this.userService.findByEmail(adminEmail);
 
     if (existedAdmin) {
       console.log('Admin already exists');
@@ -52,7 +47,7 @@ export class AdminSeedService implements OnModuleInit {
 
     const hashedPassword = await this.hashingService.hash(adminPassword);
     try {
-      await this.userRepo.create({
+      await this.userService.create({
         email: adminEmail,
         password: hashedPassword,
         role: UserRole.ADMIN,

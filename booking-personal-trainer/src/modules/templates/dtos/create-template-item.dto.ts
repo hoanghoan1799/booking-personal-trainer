@@ -1,35 +1,45 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsInt, IsOptional, IsString, IsUUID, Min } from 'class-validator';
 
+import { TemplatesDtoSwagger } from '../constants/templates-swagger-dto.constants';
+
 export class CreateTemplateItemDto {
-  @ApiProperty({ description: 'Exercise id', format: 'uuid' })
+  @ApiProperty(TemplatesDtoSwagger.CreateTemplateItem.ApiProperty.ExerciseId)
   @IsUUID()
   exerciseId!: string;
 
-  @ApiProperty({ description: 'Order (1-based)' })
+  @ApiProperty(TemplatesDtoSwagger.CreateTemplateItem.ApiProperty.Order)
   @IsInt()
   @Min(1)
   order!: number;
 
-  @ApiPropertyOptional({ description: 'Sets', nullable: true })
+  @ApiPropertyOptional(
+    TemplatesDtoSwagger.CreateTemplateItem.ApiPropertyOptional.Sets,
+  )
   @IsInt()
   @Min(0)
   @IsOptional()
   sets?: number | null;
 
-  @ApiPropertyOptional({ description: 'Reps', nullable: true })
+  @ApiPropertyOptional(
+    TemplatesDtoSwagger.CreateTemplateItem.ApiPropertyOptional.Reps,
+  )
   @IsInt()
   @Min(0)
   @IsOptional()
   reps?: number | null;
 
-  @ApiPropertyOptional({ description: 'Rest seconds', nullable: true })
+  @ApiPropertyOptional(
+    TemplatesDtoSwagger.CreateTemplateItem.ApiPropertyOptional.RestSeconds,
+  )
   @IsInt()
   @Min(0)
   @IsOptional()
   restSeconds?: number | null;
 
-  @ApiPropertyOptional({ description: 'Notes' })
+  @ApiPropertyOptional(
+    TemplatesDtoSwagger.CreateTemplateItem.ApiPropertyOptional.Notes,
+  )
   @IsString()
   @IsOptional()
   notes?: string;

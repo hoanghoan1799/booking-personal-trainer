@@ -1,4 +1,4 @@
-import { Controller, Get, HttpStatus, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -22,6 +22,7 @@ import { TrainerKpiRowDto } from '../dtos/trainer-kpi-row.dto';
 import { LoyalUsersReportService } from '../services/loyal-users-report.service';
 import { RevenueReportService } from '../services/revenue-report.service';
 import { TrainerKpiReportService } from '../services/trainer-kpi-report.service';
+import { ReportingSwagger } from '../constants/reporting-swagger.constants';
 
 @ApiTags('Reporting (Admin)')
 @ApiBearerAuth(SWAGGER_ACCESS_TOKEN)
@@ -36,10 +37,8 @@ export class AdminReportsController {
 
   @Roles(UserRole.ADMIN)
   @Get('revenue')
-  @ApiOperation({
-    summary: 'Monthly or quarterly revenue (GMV, platform fee, trainer share).',
-  })
-  @ApiResponse({ status: HttpStatus.OK, type: [RevenueBucketRowDto] })
+  @ApiOperation(ReportingSwagger.Controller.AdminReports.ApiOperation.Revenue)
+  @ApiResponse(ReportingSwagger.Controller.AdminReports.ApiResponse.RevenueOk)
   public async getRevenue(
     @Query() query: RevenueReportQueryDto,
   ): Promise<BaseResponseDto<RevenueBucketRowDto[]>> {
@@ -53,8 +52,12 @@ export class AdminReportsController {
 
   @Roles(UserRole.ADMIN)
   @Get('trainer-kpi')
-  @ApiOperation({ summary: 'Trainer KPI leaderboard.' })
-  @ApiResponse({ status: HttpStatus.OK, type: [TrainerKpiRowDto] })
+  @ApiOperation(
+    ReportingSwagger.Controller.AdminReports.ApiOperation.TrainerKpi,
+  )
+  @ApiResponse(
+    ReportingSwagger.Controller.AdminReports.ApiResponse.TrainerKpiOk,
+  )
   public async getTrainerKpi(
     @Query() query: TrainerKpiQueryDto,
   ): Promise<BaseResponseDto<TrainerKpiRowDto[]>> {
@@ -68,8 +71,12 @@ export class AdminReportsController {
 
   @Roles(UserRole.ADMIN)
   @Get('loyal-users')
-  @ApiOperation({ summary: 'Users ranked by booking count (global).' })
-  @ApiResponse({ status: HttpStatus.OK, type: [LoyalUserRowDto] })
+  @ApiOperation(
+    ReportingSwagger.Controller.AdminReports.ApiOperation.LoyalUsers,
+  )
+  @ApiResponse(
+    ReportingSwagger.Controller.AdminReports.ApiResponse.LoyalUsersOk,
+  )
   public async getLoyalUsers(
     @Query() query: LoyalUsersQueryDto,
   ): Promise<BaseResponseDto<LoyalUserRowDto[]>> {

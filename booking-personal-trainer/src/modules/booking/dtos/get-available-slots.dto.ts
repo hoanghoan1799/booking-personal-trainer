@@ -1,6 +1,8 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsDateString, IsInt, IsOptional, IsUUID, Min } from 'class-validator';
 
+import { BookingDtoSwagger } from '../constants/booking-swagger-dto.constants';
+
 export class GetAvailableSlotsQueryDto {
   @IsUUID()
   trainerId: string;
@@ -11,13 +13,18 @@ export class GetAvailableSlotsQueryDto {
   @IsDateString()
   rangeEnd: string;
 
-  @ApiPropertyOptional({ description: 'Slot duration in minutes (default 60)' })
+  @ApiPropertyOptional(
+    BookingDtoSwagger.GetAvailableSlotsQuery.ApiPropertyOptional
+      .DurationMinutes,
+  )
   @IsOptional()
   @IsInt()
   @Min(60)
   durationMinutes?: number;
 
-  @ApiPropertyOptional({ description: 'Slot step in minutes (default 30)' })
+  @ApiPropertyOptional(
+    BookingDtoSwagger.GetAvailableSlotsQuery.ApiPropertyOptional.StepMinutes,
+  )
   @IsOptional()
   @IsInt()
   @Min(30)

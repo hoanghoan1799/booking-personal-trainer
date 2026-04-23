@@ -1,49 +1,33 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsIn, IsString, IsUUID, Matches } from 'class-validator';
 
+import { BookingDtoSwagger } from '../constants/booking-swagger-dto.constants';
+
 const PERIOD_VALUES = ['day', 'week', 'month', 'year'] as const;
 
 export type BookingBulkPeriod = (typeof PERIOD_VALUES)[number];
 
 export class CreateBookingsBulkDto {
-  @ApiProperty({
-    description: 'Trainer id',
-    format: 'uuid',
-    example: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
-  })
+  @ApiProperty(BookingDtoSwagger.CreateBookingsBulk.ApiProperty.TrainerId)
   @IsUUID()
   trainerId: string;
 
-  @ApiProperty({
-    description: 'Start date for the series (YYYY-MM-DD)',
-    format: 'date',
-    example: '2026-04-21',
-  })
+  @ApiProperty(BookingDtoSwagger.CreateBookingsBulk.ApiProperty.StartDate)
   @IsString()
   @Matches(/^\d{4}-\d{2}-\d{2}$/)
   startDate: string;
 
-  @ApiProperty({
-    description: 'Start clock time (HH:mm)',
-    example: '09:00',
-  })
+  @ApiProperty(BookingDtoSwagger.CreateBookingsBulk.ApiProperty.StartClockTime)
   @IsString()
   @Matches(/^\d{2}:\d{2}$/)
   startClockTime: string;
 
-  @ApiProperty({
-    description: 'End clock time (HH:mm)',
-    example: '10:00',
-  })
+  @ApiProperty(BookingDtoSwagger.CreateBookingsBulk.ApiProperty.EndClockTime)
   @IsString()
   @Matches(/^\d{2}:\d{2}$/)
   endClockTime: string;
 
-  @ApiProperty({
-    description: 'Period',
-    enum: PERIOD_VALUES,
-    example: 'week',
-  })
+  @ApiProperty(BookingDtoSwagger.CreateBookingsBulk.ApiProperty.Period)
   @IsIn(PERIOD_VALUES)
   period: BookingBulkPeriod;
 }

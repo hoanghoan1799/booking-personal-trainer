@@ -2,46 +2,41 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Expose } from 'class-transformer';
 
 // Commons
-import {
-  API_FORMATS,
-  FIELD_DESCRIPTIONS,
-} from '../../../common/constants/message.constant';
+import { TrainerSchedulingDtoSwagger } from '../constants/trainer-scheduling-swagger-dto.constants';
 
 export class UpdateTrainerAvailabilityResponseDto {
-  @ApiProperty({
-    description: FIELD_DESCRIPTIONS.USER.ID,
-    format: API_FORMATS.UUID,
-    example: FIELD_DESCRIPTIONS.USER.ID_EXAMPLE,
-  })
+  @ApiProperty(
+    TrainerSchedulingDtoSwagger.UpdateTrainerAvailabilityResponse.ApiProperty
+      .Id,
+  )
   @Expose()
   id: string;
 
-  @ApiProperty({
-    description: 'Day of week (1-7).',
-    example: 1,
-  })
+  @ApiProperty(
+    TrainerSchedulingDtoSwagger.UpdateTrainerAvailabilityResponse.ApiProperty
+      .DayOfWeek,
+  )
   @Expose()
   dayOfWeek: number;
 
-  @ApiProperty({
-    description: 'Availability start time.',
-    format: API_FORMATS.DATE_TIME,
-    type: Date,
-  })
+  @ApiProperty(
+    TrainerSchedulingDtoSwagger.UpdateTrainerAvailabilityResponse.ApiProperty
+      .StartTime,
+  )
   @Expose()
   startTime: Date;
 
-  @ApiProperty({
-    description: 'Availability end time.',
-    format: API_FORMATS.DATE_TIME,
-    type: Date,
-  })
+  @ApiProperty(
+    TrainerSchedulingDtoSwagger.UpdateTrainerAvailabilityResponse.ApiProperty
+      .EndTime,
+  )
   @Expose()
   endTime: Date;
 
-  @ApiPropertyOptional({
-    description: FIELD_DESCRIPTIONS.BOOKING.UPDATED_AT,
-  })
+  @ApiPropertyOptional(
+    TrainerSchedulingDtoSwagger.UpdateTrainerAvailabilityResponse
+      .ApiPropertyOptional.UpdatedAt,
+  )
   @Expose()
   updatedAt?: Date;
 }

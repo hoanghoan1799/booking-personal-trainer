@@ -1,43 +1,34 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { PartialType } from '@nestjs/mapped-types';
 import { IsEnum, IsNumber, IsOptional } from 'class-validator';
 
 // Commons
 import { UserRole } from '../../../common/enums/user/user.enum';
-import { FIELD_DESCRIPTIONS } from '../../../common/constants/message.constant';
+import { UserDtoSwagger } from '../constants/user-swagger-dto.constants';
 
 // DTOs
-import { CreateUserDto } from './create-user.dto';
-
-export class UpdateUserDto extends PartialType(CreateUserDto) {}
 
 export class UpdateUserRoleDto {
-  @ApiProperty({
-    description: FIELD_DESCRIPTIONS.USER.ROLE,
-    enum: UserRole,
-  })
+  @ApiProperty(UserDtoSwagger.UpdateUserRole.ApiProperty.Role)
   @IsEnum(UserRole)
   role: UserRole;
 }
 
 export class UpdateUserProfileDto {
-  @ApiPropertyOptional({
-    description: FIELD_DESCRIPTIONS.USER.AGE,
-  })
+  @ApiPropertyOptional(UserDtoSwagger.UpdateUserProfile.ApiPropertyOptional.Age)
   @IsOptional()
   @IsNumber()
   age?: number;
 
-  @ApiPropertyOptional({
-    description: FIELD_DESCRIPTIONS.USER.HEIGHT,
-  })
+  @ApiPropertyOptional(
+    UserDtoSwagger.UpdateUserProfile.ApiPropertyOptional.Height,
+  )
   @IsOptional()
   @IsNumber()
   height?: number;
 
-  @ApiPropertyOptional({
-    description: FIELD_DESCRIPTIONS.USER.WEIGHT,
-  })
+  @ApiPropertyOptional(
+    UserDtoSwagger.UpdateUserProfile.ApiPropertyOptional.Weight,
+  )
   @IsOptional()
   @IsNumber()
   weight?: number;

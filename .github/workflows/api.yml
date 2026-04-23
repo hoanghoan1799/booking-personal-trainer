@@ -97,3 +97,23 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
+  deploy-api-railway:
+    name: Deploy API to Railway
+    needs: docker-api
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Railway CLI
+        working-directory: .
+        run: npm install -g @railway/cli
+
+      - name: Redeploy service
+        working-directory: .
+        run: railway redeploy --service booking-personal-trainer --yes
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}

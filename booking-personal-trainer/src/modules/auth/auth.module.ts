@@ -7,7 +7,7 @@ import { JwtStrategy } from '../../common/strategies/jwt.strategy';
 import { TOKEN_EXPIRATION } from '../../common/constants/token.constants';
 
 // Services
-import { AuthService } from './auth.service';
+import { AuthService } from './services/auth.service';
 import { HashingService } from './services/hashing.service';
 import { BcryptService } from './services/bcrypt.service';
 import { RefreshTokenService } from './services/refresh-token.service';
@@ -15,7 +15,7 @@ import { AdminSeedService } from './services/admin-seed.service';
 import { TokenVerifierService } from './services/token-verifier.service';
 
 // Controllers
-import { AuthController } from './auth.controller';
+import { AuthController } from './controllers/auth.controller';
 
 // Modules
 import { UserModule } from '../user/user.module';

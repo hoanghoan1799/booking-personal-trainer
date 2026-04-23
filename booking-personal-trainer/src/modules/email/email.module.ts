@@ -2,9 +2,9 @@ import { Module } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
 
 import { EMAIL_QUEUE_NAME } from './constants/email-queue.constant';
-import { EmailProcessor } from './email.processor';
-import { EmailService } from './email.service';
-import { EmailSenderToken } from './email.types';
+import { EmailProcessor } from './workers/email.processor';
+import { EmailService } from './services/email.service';
+import { EmailSenderToken } from './types/email.types';
 import { ResendEmailSender } from './senders/resend-email.sender';
 
 @Module({

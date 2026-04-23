@@ -2,7 +2,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { IsNotEmpty, IsNumber, IsString } from 'class-validator';
 
 // Commons
-import { FIELD_DESCRIPTIONS } from '../../../common/constants/message.constant';
+import { AuthDtoSwagger } from '../constants/auth-swagger-dto.constants';
 
 export class RevokeTokenDto {
   @IsString()
@@ -23,28 +23,19 @@ export class RefreshTokenDto extends RefreshTokenRequestDto {
 }
 
 export class AccessTokenDto {
-  @ApiProperty({
-    description: FIELD_DESCRIPTIONS.AUTH.ACCESS_TOKEN,
-    example: FIELD_DESCRIPTIONS.AUTH.ACCESS_TOKEN_EXAMPLE,
-  })
+  @ApiProperty(AuthDtoSwagger.Token.ApiProperty.AccessToken)
   @IsString()
   @IsNotEmpty()
   accessToken: string;
 }
 
 export class TokensDto {
-  @ApiProperty({
-    description: FIELD_DESCRIPTIONS.AUTH.ACCESS_TOKEN,
-    example: FIELD_DESCRIPTIONS.AUTH.ACCESS_TOKEN_EXAMPLE,
-  })
+  @ApiProperty(AuthDtoSwagger.Token.ApiProperty.AccessToken)
   @IsString()
   @IsNotEmpty()
   accessToken: string;
 
-  @ApiProperty({
-    description: FIELD_DESCRIPTIONS.AUTH.JWT_REFRESH_TOKEN,
-    example: FIELD_DESCRIPTIONS.AUTH.ACCESS_TOKEN_EXAMPLE,
-  })
+  @ApiProperty(AuthDtoSwagger.Token.ApiProperty.RefreshToken)
   @IsString()
   @IsNotEmpty()
   refreshToken: string;
@@ -61,17 +52,11 @@ export class TokenResponseDto extends TokensDto {
  * Returns a new access token and refresh token.
  */
 export class RefreshTokenResponseDto {
-  @ApiProperty({
-    description: FIELD_DESCRIPTIONS.AUTH.REFRESH_TOKEN_RESPONSE,
-    example: FIELD_DESCRIPTIONS.AUTH.ACCESS_TOKEN_EXAMPLE,
-  })
+  @ApiProperty(AuthDtoSwagger.Token.ApiProperty.RefreshTokenResponse)
   @IsString()
   accessToken: string;
 
-  @ApiProperty({
-    description: FIELD_DESCRIPTIONS.AUTH.NEW_REFRESH_TOKEN,
-    example: FIELD_DESCRIPTIONS.AUTH.ACCESS_TOKEN_EXAMPLE,
-  })
+  @ApiProperty(AuthDtoSwagger.Token.ApiProperty.NewRefreshToken)
   @IsString()
   refreshToken: string;
 }
@@ -80,9 +65,6 @@ export class RefreshTokenResponseDto {
  * Response body for logout endpoint.
  */
 export class LogoutResponseDto {
-  @ApiProperty({
-    description: FIELD_DESCRIPTIONS.AUTH.LOGOUT_SUCCESS,
-    example: true,
-  })
+  @ApiProperty(AuthDtoSwagger.Token.ApiProperty.LogoutSuccess)
   success: boolean;
 }

@@ -10,32 +10,21 @@ import {
 import { Type } from 'class-transformer';
 
 // Commons
-import {
-  API_FORMATS,
-  ERROR_MESSAGES,
-  FIELD_DESCRIPTIONS,
-} from '../../../common/constants/message.constant';
+import { ERROR_MESSAGES } from '../../../common/constants/message.constant';
 
 // DTOs
 import { TokensDto } from './token.dto';
 import { ResponseUserDto } from '../../user/dtos/response-user.dto';
 
+import { AuthDtoSwagger } from '../constants/auth-swagger-dto.constants';
+
 export class LoginDto {
-  @ApiProperty({
-    description: FIELD_DESCRIPTIONS.COMMON.EMAIL,
-    example: FIELD_DESCRIPTIONS.COMMON.EMAIL_EXAMPLE,
-    format: API_FORMATS.EMAIL,
-  })
+  @ApiProperty(AuthDtoSwagger.Login.ApiProperty.Email)
   @IsEmail()
   @IsNotEmpty()
   email: string;
 
-  @ApiProperty({
-    description: FIELD_DESCRIPTIONS.COMMON.PASSWORD,
-    example: FIELD_DESCRIPTIONS.COMMON.PASSWORD_EXAMPLE,
-    minLength: 6,
-    writeOnly: true,
-  })
+  @ApiProperty(AuthDtoSwagger.Login.ApiProperty.Password)
   @IsString()
   @IsNotEmpty({ message: ERROR_MESSAGES.VALIDATION.PASSWORD_REQUIRED })
   password: string;
@@ -61,43 +50,32 @@ export class LoginResponseDto extends TokensDto {
  * Contains user information, tokens, and expiration times.
  */
 export class AuthResponseDataDto {
-  @ApiProperty({
-    description: FIELD_DESCRIPTIONS.AUTH.AUTHENTICATED_USER,
-    type: () => ResponseUserDto,
-  })
+  @ApiProperty(
+    AuthDtoSwagger.AuthResponseData.ApiProperty.AuthUser(ResponseUserDto),
+  )
   @IsObject()
   @ValidateNested()
   @Type(() => ResponseUserDto)
   user: ResponseUserDto;
 
-  @ApiProperty({
-    description: FIELD_DESCRIPTIONS.AUTH.ACCESS_TOKEN,
-    example: FIELD_DESCRIPTIONS.AUTH.ACCESS_TOKEN_EXAMPLE,
-  })
+  @ApiProperty(AuthDtoSwagger.AuthResponseData.ApiProperty.AccessToken)
   @IsString()
   @IsNotEmpty()
   accessToken: string;
 
-  @ApiProperty({
-    description: FIELD_DESCRIPTIONS.AUTH.JWT_REFRESH_TOKEN,
-    example: FIELD_DESCRIPTIONS.AUTH.ACCESS_TOKEN_EXAMPLE,
-  })
+  @ApiProperty(AuthDtoSwagger.AuthResponseData.ApiProperty.RefreshToken)
   @IsString()
   @IsNotEmpty()
   refreshToken: string;
 
-  @ApiProperty({
-    description: 'Access token expiration time in seconds',
-    example: 900,
-  })
+  @ApiProperty(AuthDtoSwagger.AuthResponseData.ApiProperty.AccessTokenExpiresIn)
   @IsNumber()
   @IsNotEmpty()
   accessTokenExpiresIn: number;
 
-  @ApiProperty({
-    description: 'Refresh token expiration time in seconds',
-    example: 604800,
-  })
+  @ApiProperty(
+    AuthDtoSwagger.AuthResponseData.ApiProperty.RefreshTokenExpiresIn,
+  )
   @IsNumber()
   @IsNotEmpty()
   refreshTokenExpiresIn: number;

@@ -1,17 +1,15 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsBoolean, IsInt, IsString, MinLength } from 'class-validator';
 
+import { ReportingDtoSwagger } from '../constants/reporting-swagger-dto.constants';
+
 export class RevenueBucketRowDto {
-  @ApiProperty({ example: '2026-01-01T00:00:00.000Z' })
+  @ApiProperty(ReportingDtoSwagger.RevenueBucketRow.ApiProperty.BucketStart)
   @IsString()
   @MinLength(10)
   bucketStart!: string;
 
-  @ApiProperty({
-    description:
-      'Exclusive end of the bucket (first instant after the period).',
-    example: '2026-02-01T00:00:00.000Z',
-  })
+  @ApiProperty(ReportingDtoSwagger.RevenueBucketRow.ApiProperty.BucketEnd)
   @IsString()
   @MinLength(10)
   bucketEnd!: string;
@@ -20,7 +18,7 @@ export class RevenueBucketRowDto {
   @IsString()
   currency!: string;
 
-  @ApiProperty({ description: 'Net gross (paid minus refunded) in cents.' })
+  @ApiProperty(ReportingDtoSwagger.RevenueBucketRow.ApiProperty.GmvNetCents)
   @IsInt()
   gmvNetCents!: number;
 
@@ -32,9 +30,7 @@ export class RevenueBucketRowDto {
   @IsInt()
   trainerShareNetCents!: number;
 
-  @ApiProperty({
-    description: 'True when any split in this bucket was estimated from bps.',
-  })
+  @ApiProperty(ReportingDtoSwagger.RevenueBucketRow.ApiProperty.IsEstimated)
   @IsBoolean()
   isEstimated!: boolean;
 }

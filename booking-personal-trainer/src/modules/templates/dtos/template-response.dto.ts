@@ -3,94 +3,118 @@ import { Expose, Type } from 'class-transformer';
 
 // Enums
 import { TemplateType } from '../enums/template-type.enum';
+import { TemplatesDtoSwagger } from '../constants/templates-swagger-dto.constants';
 
 export class ExerciseTemplateItemResponseDto {
-  @ApiProperty({ description: 'Template item id', format: 'uuid' })
+  @ApiProperty(TemplatesDtoSwagger.TemplateItemResponse.ApiProperty.Id)
   @Expose()
   id: string;
 
-  @ApiProperty({ description: 'Template id', format: 'uuid' })
+  @ApiProperty(TemplatesDtoSwagger.TemplateItemResponse.ApiProperty.TemplateId)
   @Expose()
   templateId: string;
 
-  @ApiProperty({ description: 'Exercise id', format: 'uuid' })
+  @ApiProperty(TemplatesDtoSwagger.TemplateItemResponse.ApiProperty.ExerciseId)
   @Expose()
   exerciseId: string;
 
-  @ApiProperty({ description: 'Order' })
+  @ApiProperty(TemplatesDtoSwagger.TemplateItemResponse.ApiProperty.Order)
   @Expose()
   order: number;
 
-  @ApiPropertyOptional({ description: 'Sets', nullable: true })
+  @ApiPropertyOptional(
+    TemplatesDtoSwagger.TemplateItemResponse.ApiPropertyOptional.Sets,
+  )
   @Expose()
   sets: number | null;
 
-  @ApiPropertyOptional({ description: 'Reps', nullable: true })
+  @ApiPropertyOptional(
+    TemplatesDtoSwagger.TemplateItemResponse.ApiPropertyOptional.Reps,
+  )
   @Expose()
   reps: number | null;
 
-  @ApiPropertyOptional({ description: 'Rest seconds', nullable: true })
+  @ApiPropertyOptional(
+    TemplatesDtoSwagger.TemplateItemResponse.ApiPropertyOptional.RestSeconds,
+  )
   @Expose()
   restSeconds: number | null;
 
-  @ApiPropertyOptional({ description: 'Notes' })
+  @ApiPropertyOptional(
+    TemplatesDtoSwagger.TemplateItemResponse.ApiPropertyOptional.Notes,
+  )
   @Expose()
   notes: string;
 
-  @ApiPropertyOptional({ description: 'Created at (ISO)' })
+  @ApiPropertyOptional(
+    TemplatesDtoSwagger.TemplateItemResponse.ApiPropertyOptional.CreatedAtIso,
+  )
   @Expose()
   createdAtIso: Date;
 
-  @ApiPropertyOptional({ description: 'Updated at (ISO)' })
+  @ApiPropertyOptional(
+    TemplatesDtoSwagger.TemplateItemResponse.ApiPropertyOptional.UpdatedAtIso,
+  )
   @Expose()
   updatedAtIso: Date;
 }
 
 export class ExerciseTemplateResponseDto {
-  @ApiProperty({ description: 'Template id', format: 'uuid' })
+  @ApiProperty(TemplatesDtoSwagger.TemplateResponse.ApiProperty.Id)
   @Expose()
   id: string;
 
-  @ApiProperty({ description: 'Template name' })
+  @ApiProperty(TemplatesDtoSwagger.TemplateResponse.ApiProperty.Name)
   @Expose()
   name: string;
 
-  @ApiPropertyOptional({ description: 'Template description' })
+  @ApiPropertyOptional(
+    TemplatesDtoSwagger.TemplateResponse.ApiPropertyOptional.Description,
+  )
   @Expose()
   description: string;
 
-  @ApiProperty({ description: 'Created by user id', format: 'uuid' })
+  @ApiProperty(TemplatesDtoSwagger.TemplateResponse.ApiProperty.CreatedBy)
   @Expose()
   createdBy: string;
 
-  @ApiProperty({ description: 'Template type', enum: TemplateType })
+  @ApiProperty(TemplatesDtoSwagger.TemplateResponse.ApiProperty.TemplateType)
   @Expose()
   templateType: TemplateType;
 
-  @ApiPropertyOptional({ description: 'Parent template id', nullable: true })
+  @ApiPropertyOptional(
+    TemplatesDtoSwagger.TemplateResponse.ApiPropertyOptional.ParentTemplateId,
+  )
   @Expose()
   parentTemplateId: string | null;
 
-  @ApiProperty({ description: 'Is deleted' })
+  @ApiProperty(TemplatesDtoSwagger.TemplateResponse.ApiProperty.IsDeleted)
   @Expose()
   isDeleted: boolean;
 
-  @ApiPropertyOptional({ description: 'Deleted at (ISO)', nullable: true })
+  @ApiPropertyOptional(
+    TemplatesDtoSwagger.TemplateResponse.ApiPropertyOptional.DeletedAtIso,
+  )
   @Expose()
   deletedAtIso: string | null;
 
-  @ApiPropertyOptional({ description: 'Created at (ISO)' })
+  @ApiPropertyOptional(
+    TemplatesDtoSwagger.TemplateResponse.ApiPropertyOptional.CreatedAtIso,
+  )
   @Expose()
   createdAtIso: Date;
 
-  @ApiPropertyOptional({ description: 'Updated at (ISO)' })
+  @ApiPropertyOptional(
+    TemplatesDtoSwagger.TemplateResponse.ApiPropertyOptional.UpdatedAtIso,
+  )
   @Expose()
   updatedAtIso: Date;
 
-  @ApiProperty({
-    description: 'Items',
-    type: [ExerciseTemplateItemResponseDto],
-  })
+  @ApiProperty(
+    TemplatesDtoSwagger.TemplateResponse.ApiProperty.Items(
+      ExerciseTemplateItemResponseDto,
+    ),
+  )
   @Expose()
   @Type(() => ExerciseTemplateItemResponseDto)
   items: ExerciseTemplateItemResponseDto[];
