@@ -8,4 +8,3 @@ describe('buildUserChannel', () => {
     expect(actual).toBe(`${NotificationsConstants.ChannelPrefix}user-1`);
   });
 });
-

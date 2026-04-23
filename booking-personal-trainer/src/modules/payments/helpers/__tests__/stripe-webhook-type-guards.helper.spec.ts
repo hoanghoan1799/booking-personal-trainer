@@ -6,7 +6,10 @@ import {
 describe('stripe-webhook-type-guards', () => {
   describe('isStripePaymentIntentLike', () => {
     it('should return true for valid shape', () => {
-      const actual = isStripePaymentIntentLike({ id: 'pi_1', status: 'succeeded' });
+      const actual = isStripePaymentIntentLike({
+        id: 'pi_1',
+        status: 'succeeded',
+      });
       expect(actual).toBe(true);
     });
 
@@ -37,4 +40,3 @@ describe('stripe-webhook-type-guards', () => {
     });
   });
 });
-

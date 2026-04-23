@@ -27,16 +27,28 @@ describe('booking-availability.helpers', () => {
   describe('isOverlapping', () => {
     it('should return true when ranges overlap', () => {
       const actual = isOverlapping(
-        { start: new Date('2030-01-01T10:00:00.000Z'), end: new Date('2030-01-01T11:00:00.000Z') },
-        { start: new Date('2030-01-01T10:30:00.000Z'), end: new Date('2030-01-01T11:30:00.000Z') },
+        {
+          start: new Date('2030-01-01T10:00:00.000Z'),
+          end: new Date('2030-01-01T11:00:00.000Z'),
+        },
+        {
+          start: new Date('2030-01-01T10:30:00.000Z'),
+          end: new Date('2030-01-01T11:30:00.000Z'),
+        },
       );
       expect(actual).toBe(true);
     });
 
     it('should return false when touching edges only', () => {
       const actual = isOverlapping(
-        { start: new Date('2030-01-01T10:00:00.000Z'), end: new Date('2030-01-01T11:00:00.000Z') },
-        { start: new Date('2030-01-01T11:00:00.000Z'), end: new Date('2030-01-01T12:00:00.000Z') },
+        {
+          start: new Date('2030-01-01T10:00:00.000Z'),
+          end: new Date('2030-01-01T11:00:00.000Z'),
+        },
+        {
+          start: new Date('2030-01-01T11:00:00.000Z'),
+          end: new Date('2030-01-01T12:00:00.000Z'),
+        },
       );
       expect(actual).toBe(false);
     });
@@ -61,7 +73,8 @@ describe('booking-availability.helpers', () => {
           trainerId: 't1',
           rangeStart: new Date('2030-01-01T10:00:00.000Z'),
           rangeEnd: new Date('2030-01-01T11:00:00.000Z'),
-          durationMinutes: BookingAvailabilityConstants.MinimumDurationMinutes - 1,
+          durationMinutes:
+            BookingAvailabilityConstants.MinimumDurationMinutes - 1,
           stepMinutes: BookingAvailabilityConstants.MinimumStepMinutes,
         }),
       ).toThrow(BadRequestException);
@@ -76,7 +89,9 @@ describe('booking-availability.helpers', () => {
           durationMinutes: 60,
           stepMinutes: BookingAvailabilityConstants.MinimumStepMinutes + 1,
         }),
-      ).toThrow(BookingAvailabilityConstants.StepMinutesMustBeThirtyMinuteIncrement);
+      ).toThrow(
+        BookingAvailabilityConstants.StepMinutesMustBeThirtyMinuteIncrement,
+      );
     });
 
     it('should throw when durationMinutes is not a multiple of stepMinutes', () => {
@@ -88,7 +103,9 @@ describe('booking-availability.helpers', () => {
           durationMinutes: 90,
           stepMinutes: 60,
         }),
-      ).toThrow(BookingAvailabilityConstants.DurationMustBeMultipleOfStepMinutes);
+      ).toThrow(
+        BookingAvailabilityConstants.DurationMustBeMultipleOfStepMinutes,
+      );
     });
   });
 
@@ -148,4 +165,3 @@ describe('booking-availability.helpers', () => {
     });
   });
 });
-
