@@ -14,6 +14,9 @@ describe('TrainerAvailabilityService', () => {
     findById: jest.Mock;
     save: jest.Mock;
     remove: jest.Mock;
+    findCoveringForTrainer?: jest.Mock;
+    findCoveringRanges?: jest.Mock;
+    findOverlappingRangesForTrainer?: jest.Mock;
   };
   let scheduleConflictService: {
     assertNoOverlap: jest.Mock;
@@ -26,6 +29,9 @@ describe('TrainerAvailabilityService', () => {
       findById: jest.fn(),
       save: jest.fn(),
       remove: jest.fn(),
+      findCoveringForTrainer: jest.fn(),
+      findCoveringRanges: jest.fn(),
+      findOverlappingRangesForTrainer: jest.fn(),
     };
     scheduleConflictService = {
       assertNoOverlap: jest.fn().mockResolvedValue(undefined),
@@ -48,6 +54,32 @@ describe('TrainerAvailabilityService', () => {
     service = module.get<TrainerAvailabilityService>(
       TrainerAvailabilityService,
     );
+  });
+
+  describe('getMyAvailabilities', () => {
+    it('should return paginated response', async () => {
+      const currentUser = { id: 'trainer-id' } as unknown as User;
+      availabilityRepository.findAndCount.mockResolvedValue([
+        [{ id: 'a1' }],
+        1,
+      ]);
+
+      const actual = await service.getMyAvailabilities(currentUser);
+
+      expect(availabilityRepository.findAndCount).toHaveBeenCalledWith(
+        { trainerId: 'trainer-id' },
+        expect.any(Object),
+      );
+      expect(actual.data).toHaveLength(1);
+      expect(actual.meta).toBeDefined();
+      const meta = actual.meta;
+      if (!meta) {
+        throw new Error('Expected pagination meta to be defined');
+      }
+      expect(meta.totalItems).toBe(1);
+      expect(meta.page).toBe(1);
+      expect(meta.limit).toBe(20);
+    });
   });
 
   describe('createMyAvailability', () => {
@@ -205,6 +237,106 @@ describe('TrainerAvailabilityService', () => {
         excludeAvailabilityId: 'a1',
       });
       expect(availabilityRepository.save).toHaveBeenCalled();
+    });
+  });
+
+  describe('deleteMyAvailability', () => {
+    it('should throw NotFoundException when missing', async () => {
+      const currentUser = { id: 'trainer-id' } as unknown as User;
+      availabilityRepository.findById.mockResolvedValue(null);
+
+      await expect(
+        service.deleteMyAvailability('missing', currentUser),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it('should throw NotFoundException when not owner', async () => {
+      const currentUser = { id: 'trainer-id' } as unknown as User;
+      availabilityRepository.findById.mockResolvedValue({
+        id: 'a1',
+        trainer: { id: 'other' },
+      });
+
+      await expect(
+        service.deleteMyAvailability('a1', currentUser),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it('should remove when owner', async () => {
+      const currentUser = { id: 'trainer-id' } as unknown as User;
+      availabilityRepository.findById.mockResolvedValue({
+        id: 'a1',
+        trainer: { id: 'trainer-id' },
+      });
+      availabilityRepository.remove.mockResolvedValue(undefined);
+
+      await service.deleteMyAvailability('a1', currentUser);
+
+      expect(availabilityRepository.remove).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'a1' }),
+      );
+    });
+  });
+
+  describe('covering/overlapping queries', () => {
+    it('should forward getCoveringAvailabilityForTrainer', async () => {
+      const expected = { id: 'a1' };
+      availabilityRepository.findCoveringForTrainer?.mockResolvedValue(
+        expected,
+      );
+
+      const actual = await service.getCoveringAvailabilityForTrainer(
+        'trainer-id',
+        new Date('2026-02-01T09:00:00.000Z'),
+        new Date('2026-02-01T10:00:00.000Z'),
+      );
+
+      expect(
+        availabilityRepository.findCoveringForTrainer,
+      ).toHaveBeenCalledWith(
+        'trainer-id',
+        new Date('2026-02-01T09:00:00.000Z'),
+        new Date('2026-02-01T10:00:00.000Z'),
+      );
+      expect(actual).toBe(expected);
+    });
+
+    it('should forward getCoveringAvailabilitiesForRange', async () => {
+      availabilityRepository.findCoveringRanges?.mockResolvedValue([
+        { id: 'a1' },
+      ]);
+
+      const actual = await service.getCoveringAvailabilitiesForRange(
+        new Date('2026-02-01T09:00:00.000Z'),
+        new Date('2026-02-01T10:00:00.000Z'),
+      );
+
+      expect(availabilityRepository.findCoveringRanges).toHaveBeenCalledWith(
+        new Date('2026-02-01T09:00:00.000Z'),
+        new Date('2026-02-01T10:00:00.000Z'),
+      );
+      expect(actual).toHaveLength(1);
+    });
+
+    it('should forward getOverlappingAvailabilityRangesForTrainer', async () => {
+      availabilityRepository.findOverlappingRangesForTrainer?.mockResolvedValue(
+        [{ id: 'a1' }],
+      );
+
+      const actual = await service.getOverlappingAvailabilityRangesForTrainer(
+        'trainer-id',
+        new Date('2026-02-01T09:00:00.000Z'),
+        new Date('2026-02-01T10:00:00.000Z'),
+      );
+
+      expect(
+        availabilityRepository.findOverlappingRangesForTrainer,
+      ).toHaveBeenCalledWith(
+        'trainer-id',
+        new Date('2026-02-01T09:00:00.000Z'),
+        new Date('2026-02-01T10:00:00.000Z'),
+      );
+      expect(actual).toHaveLength(1);
     });
   });
 });

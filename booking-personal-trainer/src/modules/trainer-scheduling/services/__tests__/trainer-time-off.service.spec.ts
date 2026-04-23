@@ -14,6 +14,8 @@ describe('TrainerTimeOffService', () => {
     findById: jest.Mock;
     save: jest.Mock;
     remove: jest.Mock;
+    findOverlappingForTrainer?: jest.Mock;
+    findOverlappingRangesForTrainer?: jest.Mock;
   };
   let scheduleConflictService: {
     assertNoOverlap: jest.Mock;
@@ -26,6 +28,8 @@ describe('TrainerTimeOffService', () => {
       findById: jest.fn(),
       save: jest.fn(),
       remove: jest.fn(),
+      findOverlappingForTrainer: jest.fn(),
+      findOverlappingRangesForTrainer: jest.fn(),
     };
     scheduleConflictService = {
       assertNoOverlap: jest.fn().mockResolvedValue(undefined),
@@ -46,6 +50,29 @@ describe('TrainerTimeOffService', () => {
     }).compile();
 
     service = module.get<TrainerTimeOffService>(TrainerTimeOffService);
+  });
+
+  describe('getMyTimeOff', () => {
+    it('should return paginated response', async () => {
+      const currentUser = { id: 'trainer-id' } as unknown as User;
+      timeOffRepository.findAndCount.mockResolvedValue([[{ id: 'o1' }], 1]);
+
+      const actual = await service.getMyTimeOff(currentUser);
+
+      expect(timeOffRepository.findAndCount).toHaveBeenCalledWith(
+        { trainerId: 'trainer-id' },
+        expect.any(Object),
+      );
+      expect(actual.data).toHaveLength(1);
+      expect(actual.meta).toBeDefined();
+      const meta = actual.meta;
+      if (!meta) {
+        throw new Error('Expected pagination meta to be defined');
+      }
+      expect(meta.totalItems).toBe(1);
+      expect(meta.page).toBe(1);
+      expect(meta.limit).toBe(20);
+    });
   });
 
   describe('createMyTimeOff', () => {
@@ -155,6 +182,43 @@ describe('TrainerTimeOffService', () => {
       });
       expect(timeOffRepository.save).toHaveBeenCalled();
     });
+
+    it('should throw NotFoundException when not owner', async () => {
+      const currentUser = { id: 'trainer-id' } as unknown as User;
+      timeOffRepository.findById.mockResolvedValue({
+        id: 't1',
+        trainer: { id: 'other' },
+        reason: 'old',
+        startTime: new Date('2026-02-01T09:00:00.000Z'),
+        endTime: new Date('2026-02-01T10:00:00.000Z'),
+      });
+
+      await expect(
+        service.updateMyTimeOff('t1', { reason: 'new' }, currentUser),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it('should throw BadRequestException when updated window under 30 minutes', async () => {
+      const currentUser = { id: 'trainer-id' } as unknown as User;
+      timeOffRepository.findById.mockResolvedValue({
+        id: 't1',
+        trainer: { id: 'trainer-id' },
+        reason: 'old',
+        startTime: new Date('2026-02-01T09:00:00.000Z'),
+        endTime: new Date('2026-02-01T10:00:00.000Z'),
+      });
+
+      await expect(
+        service.updateMyTimeOff(
+          't1',
+          {
+            startTime: '2026-02-01T09:00:00.000Z',
+            endTime: '2026-02-01T09:15:00.000Z',
+          },
+          currentUser,
+        ),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
   });
 
   describe('deleteMyTimeOff', () => {
@@ -178,6 +242,59 @@ describe('TrainerTimeOffService', () => {
       await service.deleteMyTimeOff('t1', currentUser);
 
       expect(timeOffRepository.remove).toHaveBeenCalled();
+    });
+
+    it('should throw NotFoundException when not owner', async () => {
+      const currentUser = { id: 'trainer-id' } as unknown as User;
+      timeOffRepository.findById.mockResolvedValue({
+        id: 't1',
+        trainer: { id: 'other' },
+      });
+
+      await expect(
+        service.deleteMyTimeOff('t1', currentUser),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+  });
+
+  describe('overlapping queries', () => {
+    it('should forward getOverlappingTimeOffForTrainer', async () => {
+      const expected = { id: 'o1' };
+      timeOffRepository.findOverlappingForTrainer?.mockResolvedValue(expected);
+
+      const actual = await service.getOverlappingTimeOffForTrainer(
+        'trainer-id',
+        new Date('2026-02-01T09:00:00.000Z'),
+        new Date('2026-02-01T10:00:00.000Z'),
+      );
+
+      expect(timeOffRepository.findOverlappingForTrainer).toHaveBeenCalledWith(
+        'trainer-id',
+        new Date('2026-02-01T09:00:00.000Z'),
+        new Date('2026-02-01T10:00:00.000Z'),
+      );
+      expect(actual).toBe(expected);
+    });
+
+    it('should forward getOverlappingTimeOffRangesForTrainer', async () => {
+      timeOffRepository.findOverlappingRangesForTrainer?.mockResolvedValue([
+        { id: 'o1' },
+      ]);
+
+      const actual = await service.getOverlappingTimeOffRangesForTrainer(
+        'trainer-id',
+        new Date('2026-02-01T09:00:00.000Z'),
+        new Date('2026-02-01T10:00:00.000Z'),
+      );
+
+      expect(
+        timeOffRepository.findOverlappingRangesForTrainer,
+      ).toHaveBeenCalledWith(
+        'trainer-id',
+        new Date('2026-02-01T09:00:00.000Z'),
+        new Date('2026-02-01T10:00:00.000Z'),
+      );
+      expect(actual).toHaveLength(1);
     });
   });
 });
