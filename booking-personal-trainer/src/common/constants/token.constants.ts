@@ -12,3 +12,8 @@ export const TOKEN_MAX_AGE = {
   ACCESS: 15 * 60 * 1000, // 15 minutes
   REFRESH: 7 * 24 * 60 * 60 * 1000, // 7 days
 };
+
+export const AUTHORIZATION_HEADER = 'authorization' as const;
+export const TOKEN_HASH_ALGORITHM = 'sha256' as const;
+export const TOKEN_HASH_ENCODING = 'hex' as const;
+export const BEARER_TOKEN_REGEX = /^\s*bearer\s+(.+)\s*$/i;

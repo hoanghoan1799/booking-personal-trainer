@@ -3,6 +3,12 @@ import type { Request } from 'express';
 
 // Constants
 import { RATE_LIMIT } from '../constants/rate-limit.constant';
+import {
+  AUTHORIZATION_HEADER,
+  TOKEN_HASH_ALGORITHM,
+  TOKEN_HASH_ENCODING,
+  BEARER_TOKEN_REGEX,
+} from '../constants/token.constants';
 
 type RateLimitTrackerKind =
   (typeof RATE_LIMIT.TRACKER_KIND)[keyof typeof RATE_LIMIT.TRACKER_KIND];
@@ -12,21 +18,13 @@ type RateLimitTrackerResult = Readonly<{
   kind: RateLimitTrackerKind;
 }>;
 
-const AUTHORIZATION_HEADER = 'authorization' as const;
-const BEARER_PREFIX = 'bearer ' as const;
-const TOKEN_HASH_ALGORITHM = 'sha256' as const;
-const TOKEN_HASH_ENCODING = 'hex' as const;
-
 const extractBearerToken = (
   authorizationHeaderValue: unknown,
 ): string | null => {
   if (typeof authorizationHeaderValue !== 'string') return null;
-  const normalizedValue = authorizationHeaderValue.trim().toLowerCase();
-  if (!normalizedValue.startsWith(BEARER_PREFIX)) return null;
-  const token = authorizationHeaderValue
-    .trim()
-    .slice(BEARER_PREFIX.length)
-    .trim();
+  const match = authorizationHeaderValue.match(BEARER_TOKEN_REGEX);
+  if (!match) return null;
+  const token = match[1]?.trim();
   if (!token) return null;
   return token;
 };

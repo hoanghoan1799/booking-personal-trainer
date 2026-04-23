@@ -120,7 +120,22 @@
       "^uuid$": "<rootDir>/__mocks__/uuid.ts"
     },
     "collectCoverageFrom": [
-      "**/*.(t|j)s"
+      "common/**/helpers/**/*.(t|j)s",
+      "common/**/utils/**/*.(t|j)s",
+      "modules/**/services/**/*.(t|j)s",
+      "modules/**/helpers/**/*.(t|j)s",
+      "modules/**/utils/**/*.(t|j)s",
+      "!**/*.module.(t|j)s",
+      "!**/dtos/**",
+      "!**/dto/**",
+      "!**/entities/**",
+      "!**/constants/**",
+      "!**/enums/**",
+      "!**/repositories/**",
+      "!**/*swagger*.*",
+      "!test/**",
+      "!main.(t|j)s",
+      "!app.module.(t|j)s"
     ],
     "coverageDirectory": "../coverage",
     "testEnvironment": "node"
