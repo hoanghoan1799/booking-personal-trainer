@@ -77,6 +77,7 @@ export class UserService {
     // Resolve circular dependency, wait for the module to be initialized before using it
     @Inject(forwardRef(() => BookingService))
     private readonly bookingService: BookingService,
+    @Inject(forwardRef(() => NotificationsService))
     private readonly notificationsService: NotificationsService,
     private readonly emailService: EmailService,
   ) {}

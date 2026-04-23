@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, forwardRef } from '@nestjs/common';
 import type { RedisClientType } from 'redis';
 
 // Commons
@@ -46,6 +46,7 @@ export class NotificationsService {
   constructor(
     @Inject(NotificationRepositoryToken)
     private readonly notificationRepo: NotificationRepository,
+    @Inject(forwardRef(() => UserService))
     private readonly userService: UserService,
     @Inject(REDIS_PUBLISHER_TOKEN)
     private readonly publisherClient: RedisClientType,
