@@ -1,11 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { EntityManager } from '@mikro-orm/core';
 
-import { PaymentStatus } from '../../../common/enums/billing/billing.enum';
+import { PaymentStatus } from '../../../../common/enums/billing/billing.enum';
 
-import { Payment } from '../../payments/entities/payment.entity';
-import { ReportBucket } from '../enums/report-bucket.enum';
-import { RevenueReportService } from './revenue-report.service';
+import { Payment } from '../../../payments/entities/payment.entity';
+import { ReportBucket } from '../../enums/report-bucket.enum';
+import { RevenueReportService } from '../revenue-report.service';
 
 type FakePayment = Pick<
   Payment,

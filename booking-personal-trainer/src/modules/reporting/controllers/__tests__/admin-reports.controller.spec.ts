@@ -2,12 +2,12 @@ import { INestApplication, CanActivate } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 
-import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
-import { RolesGuard } from '../../../common/guards/roles.guard';
-import { LoyalUsersReportService } from '../services/loyal-users-report.service';
-import { RevenueReportService } from '../services/revenue-report.service';
-import { TrainerKpiReportService } from '../services/trainer-kpi-report.service';
-import { AdminReportsController } from './admin-reports.controller';
+import { JwtAuthGuard } from '../../../../common/guards/jwt-auth.guard';
+import { RolesGuard } from '../../../../common/guards/roles.guard';
+import { LoyalUsersReportService } from '../../services/loyal-users-report.service';
+import { RevenueReportService } from '../../services/revenue-report.service';
+import { TrainerKpiReportService } from '../../services/trainer-kpi-report.service';
+import { AdminReportsController } from '../admin-reports.controller';
 
 const allowGuard: CanActivate = {
   canActivate(): boolean {

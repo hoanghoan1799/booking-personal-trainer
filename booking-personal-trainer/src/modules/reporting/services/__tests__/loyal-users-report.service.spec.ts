@@ -1,11 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { EntityManager } from '@mikro-orm/core';
 
-import { BookingStatus } from '../../../common/enums/booking/booking.enum';
+import { BookingStatus } from '../../../../common/enums/booking/booking.enum';
 
-import { Booking } from '../../booking/entities/booking.entity';
-import { User } from '../../user/entities/user.entity';
-import { LoyalUsersReportService } from './loyal-users-report.service';
+import { Booking } from '../../../booking/entities/booking.entity';
+import { User } from '../../../user/entities/user.entity';
+import { LoyalUsersReportService } from '../loyal-users-report.service';
 
 describe('LoyalUsersReportService', () => {
   let service: LoyalUsersReportService;

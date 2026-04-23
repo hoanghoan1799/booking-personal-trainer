@@ -1,15 +1,15 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { EntityManager } from '@mikro-orm/core';
 
-import { BookingStatus } from '../../../common/enums/booking/booking.enum';
-import { PaymentStatus } from '../../../common/enums/billing/billing.enum';
-import { WorkoutStatus } from '../../../common/enums/workout/workout.enum';
+import { BookingStatus } from '../../../../common/enums/booking/booking.enum';
+import { PaymentStatus } from '../../../../common/enums/billing/billing.enum';
+import { WorkoutStatus } from '../../../../common/enums/workout/workout.enum';
 
-import { Booking } from '../../booking/entities/booking.entity';
-import { Payment } from '../../payments/entities/payment.entity';
-import { User } from '../../user/entities/user.entity';
-import { Workout } from '../../workout/entities/workout.entity';
-import { TrainerKpiReportService } from './trainer-kpi-report.service';
+import { Booking } from '../../../booking/entities/booking.entity';
+import { Payment } from '../../../payments/entities/payment.entity';
+import { User } from '../../../user/entities/user.entity';
+import { Workout } from '../../../workout/entities/workout.entity';
+import { TrainerKpiReportService } from '../trainer-kpi-report.service';
 
 describe('TrainerKpiReportService', () => {
   let service: TrainerKpiReportService;

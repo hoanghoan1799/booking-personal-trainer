@@ -6,13 +6,13 @@ import {
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 
-import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
-import { RolesGuard } from '../../../common/guards/roles.guard';
-import { UserRole } from '../../../common/enums/user/user.enum';
-import { LoyalUsersReportService } from '../services/loyal-users-report.service';
-import { RevenueReportService } from '../services/revenue-report.service';
-import { TrainerKpiReportService } from '../services/trainer-kpi-report.service';
-import { TrainerReportsController } from './trainer-reports.controller';
+import { JwtAuthGuard } from '../../../../common/guards/jwt-auth.guard';
+import { RolesGuard } from '../../../../common/guards/roles.guard';
+import { UserRole } from '../../../../common/enums/user/user.enum';
+import { LoyalUsersReportService } from '../../services/loyal-users-report.service';
+import { RevenueReportService } from '../../services/revenue-report.service';
+import { TrainerKpiReportService } from '../../services/trainer-kpi-report.service';
+import { TrainerReportsController } from '../trainer-reports.controller';
 
 describe('TrainerReportsController', () => {
   let app: INestApplication;

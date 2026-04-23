@@ -1,5 +1,5 @@
-import { ReportBucket } from '../enums/report-bucket.enum';
-import { ReportPeriodBucketHelper } from './report-period-bucket.helper';
+import { ReportBucket } from '../../enums/report-bucket.enum';
+import { ReportPeriodBucketHelper } from '../report-period-bucket.helper';
 
 describe('ReportPeriodBucketHelper', () => {
   it('getMonthBucketStartUtc returns first day of month UTC', () => {

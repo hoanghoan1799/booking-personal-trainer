@@ -1,7 +1,7 @@
-import { PaymentStatus } from '../../../common/enums/billing/billing.enum';
+import { PaymentStatus } from '../../../../common/enums/billing/billing.enum';
 
-import { Payment } from '../entities/payment.entity';
-import { PaymentSplitAggregationHelper } from './payment-split-aggregation.helper';
+import { Payment } from '../../entities/payment.entity';
+import { PaymentSplitAggregationHelper } from '../payment-split-aggregation.helper';
 
 describe('PaymentSplitAggregationHelper', () => {
   it('buildPaidRefundedDateFilter uses paidAt for PAID and refundedAt for REFUNDED', () => {
@@ -41,3 +41,4 @@ describe('PaymentSplitAggregationHelper', () => {
     expect(actual).toBe('trainer-1');
   });
 });
+
