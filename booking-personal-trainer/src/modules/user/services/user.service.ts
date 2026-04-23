@@ -19,6 +19,10 @@ import {
   SortBy,
   SortOrder,
 } from '../../../common/enums/pagination/pagination.enum';
+import {
+  DEFAULT_LIMIT,
+  DEFAULT_PAGE,
+} from '../../../common/constants/pagination.constant';
 
 // Types
 import type { JwtAuthPayload } from '../../auth/types/jwt-auth.type';
@@ -134,8 +138,8 @@ export class UserService {
     currentUser: JwtAuthPayload,
   ): Promise<BaseResponseDto<ResponseUserDto[]>> {
     const {
-      page = 1,
-      limit = 20,
+      page = DEFAULT_PAGE,
+      limit = DEFAULT_LIMIT,
       userType,
       approvalStatus,
       search,

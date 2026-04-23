@@ -14,7 +14,7 @@ import { Workout } from '../../workout/entities/workout.entity';
 import { TrainerKpiQueryDto } from '../dtos/trainer-kpi-query.dto';
 import { TrainerKpiRowDto } from '../dtos/trainer-kpi-row.dto';
 
-const MILLISECONDS_PER_MINUTE = 60_000;
+import { TrainerKpiReportConstants } from '../constants/trainer-kpi-report.constants';
 
 type MutableTrainerKpi = {
   trainerId: string;
@@ -37,11 +37,12 @@ export class TrainerKpiReportService {
     readonly query: TrainerKpiQueryDto;
     readonly trainerUserIdFilter: string | null;
   }): Promise<TrainerKpiRowDto[]> {
-    const limit: number = input.query.limit ?? 50;
+    const limit: number =
+      input.query.limit ?? TrainerKpiReportConstants.DefaultLimit;
     const revenueCurrency: string =
       input.query.currency != null && input.query.currency.trim() !== ''
         ? input.query.currency.trim().toUpperCase()
-        : 'USD';
+        : TrainerKpiReportConstants.DefaultCurrency;
     const startTimeFilter: { $gte?: Date; $lt?: Date } | undefined =
       this.buildStartTimeRange({
         from: input.query.from,
@@ -129,7 +130,11 @@ export class TrainerKpiReportService {
       ) {
         continue;
       }
-      if ((payment.currency ?? 'USD').toUpperCase() !== revenueCurrency) {
+      if (
+        (
+          payment.currency ?? TrainerKpiReportConstants.DefaultCurrency
+        ).toUpperCase() !== revenueCurrency
+      ) {
         continue;
       }
       const isPaid: boolean = payment.status === PaymentStatus.PAID;
@@ -163,7 +168,8 @@ export class TrainerKpiReportService {
         rejectedBookingsCount: kpi.rejectedBookingsCount,
         workoutsDoneCount: kpi.workoutsDoneCount,
         deliveredMinutes: Math.floor(
-          kpi.deliveredMilliseconds / MILLISECONDS_PER_MINUTE,
+          kpi.deliveredMilliseconds /
+            TrainerKpiReportConstants.MillisecondsPerMinute,
         ),
         trainerShareNetCents: kpi.trainerShareNetCents,
       };

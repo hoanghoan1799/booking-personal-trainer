@@ -8,6 +8,9 @@ import { SortOrder } from '../../../common/enums/pagination/pagination.enum';
 import { UserRole } from '../../../common/enums/user/user.enum';
 import { REDIS_PUBLISHER_TOKEN } from '../../../common/constants/cache.constant';
 
+import { NotificationsConstants } from '../constants/notifications.constants';
+import { buildUserChannel } from '../helpers/notifications-channel.helper';
+
 // Repositories
 import {
   NotificationRepositoryToken,
@@ -52,10 +55,6 @@ export class NotificationsService {
     private readonly publisherClient: RedisClientType,
   ) {}
 
-  public buildUserChannel(userId: string): string {
-    return `notifications:user:${userId}`;
-  }
-
   public async createAndPublishToUsers(input: {
     readonly notifications: CreateNotificationInput[];
   }): Promise<Notification[]> {
@@ -86,8 +85,8 @@ export class NotificationsService {
     const [admins] = await this.userRepo.findAndCount(
       { role: UserRole.ADMIN },
       {
-        limit: 500,
-        offset: 0,
+        limit: NotificationsConstants.AdminsQuery.Limit,
+        offset: NotificationsConstants.AdminsQuery.Offset,
         orderBy: { createdAt: SortOrder.DESC },
       },
     );
@@ -111,8 +110,14 @@ export class NotificationsService {
     readonly limit: number;
     readonly isRead?: boolean;
   }): Promise<BaseResponseDto<Notification[]>> {
-    const page = input.page > 0 ? input.page : 1;
-    const limit = input.limit > 0 ? input.limit : 20;
+    const page =
+      input.page > 0
+        ? input.page
+        : NotificationsConstants.ListForUser.DefaultPage;
+    const limit =
+      input.limit > 0
+        ? input.limit
+        : NotificationsConstants.ListForUser.DefaultLimit;
     const offset = (page - 1) * limit;
     const [notifications, totalItems] =
       await this.notificationRepo.findAndCount(
@@ -174,7 +179,7 @@ export class NotificationsService {
       data: (input.notification.data as Record<string, unknown> | null) ?? null,
       createdAt: (input.notification.createdAt ?? utcNowAsDate()).toISOString(),
     };
-    const channel = this.buildUserChannel(input.recipientUserId);
+    const channel = buildUserChannel(input.recipientUserId);
     await this.publisherClient.publish(channel, JSON.stringify(payload));
   }
 }

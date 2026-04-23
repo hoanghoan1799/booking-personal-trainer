@@ -33,6 +33,11 @@ import {
 import { ImportTemplatesCsvResponseDto } from '../dtos/import-templates-csv-response.dto';
 import { parseCsv } from '../utils/csv/parse-csv';
 import { TemplateType } from '../enums/template-type.enum';
+import { TemplatesConstants } from '../constants/templates.constants';
+import {
+  normalizeTemplateType,
+  parseNullableNonNegativeInt,
+} from '../helpers/templates-csv-import.helper';
 
 @Injectable()
 export class TemplatesService {
@@ -53,8 +58,8 @@ export class TemplatesService {
       totalPages: number;
     };
   }> {
-    const page = query.page ?? 1;
-    const limit = query.limit ?? 20;
+    const page = query.page ?? TemplatesConstants.List.DefaultPage;
+    const limit = query.limit ?? TemplatesConstants.List.DefaultLimit;
     const offset = (page - 1) * limit;
     const filter: TemplateFindManyFilter = {
       isDeleted: query.includeDeleted ? undefined : false,
@@ -89,7 +94,9 @@ export class TemplatesService {
   async getOne(id: string): Promise<ExerciseTemplateResponseDto> {
     const template = await this.templatesRepository.findTemplateById(id);
     if (!template || template.isDeleted) {
-      throw new NotFoundException('Template not found');
+      throw new NotFoundException(
+        TemplatesConstants.ImportCsv.ErrorMessages.TemplateNotFound,
+      );
     }
     return this.mapTemplateToResponseDto(template);
   }
@@ -109,7 +116,9 @@ export class TemplatesService {
       template.id,
     );
     if (!reloaded) {
-      throw new NotFoundException('Template not found');
+      throw new NotFoundException(
+        TemplatesConstants.ImportCsv.ErrorMessages.TemplateNotFound,
+      );
     }
     return this.mapTemplateToResponseDto(reloaded);
   }
@@ -122,12 +131,16 @@ export class TemplatesService {
       currentUser.role !== UserRole.ADMIN &&
       currentUser.role !== UserRole.TRAINER
     ) {
-      throw new BadRequestException('Forbidden');
+      throw new BadRequestException(
+        TemplatesConstants.ImportCsv.ErrorMessages.Forbidden,
+      );
     }
     const existing =
       await this.templatesRepository.findTemplateById(templateId);
     if (!existing || existing.isDeleted) {
-      throw new NotFoundException('Template not found');
+      throw new NotFoundException(
+        TemplatesConstants.ImportCsv.ErrorMessages.TemplateNotFound,
+      );
     }
     if (
       existing.templateType === TemplateType.TRAINER &&
@@ -150,7 +163,9 @@ export class TemplatesService {
     const existing =
       await this.templatesRepository.findTemplateById(templateId);
     if (!existing || existing.isDeleted) {
-      throw new NotFoundException('Template not found');
+      throw new NotFoundException(
+        TemplatesConstants.ImportCsv.ErrorMessages.TemplateNotFound,
+      );
     }
     const isAdmin = currentUser.role === UserRole.ADMIN;
     const isOwner = existing.createdBy.id === currentUser.id;
@@ -165,7 +180,9 @@ export class TemplatesService {
     });
     const updated = await this.templatesRepository.findTemplateById(templateId);
     if (!updated) {
-      throw new NotFoundException('Template not found');
+      throw new NotFoundException(
+        TemplatesConstants.ImportCsv.ErrorMessages.TemplateNotFound,
+      );
     }
     return this.mapTemplateToResponseDto(updated);
   }
@@ -177,7 +194,9 @@ export class TemplatesService {
     const existing =
       await this.templatesRepository.findTemplateById(templateId);
     if (!existing || existing.isDeleted) {
-      throw new NotFoundException('Template not found');
+      throw new NotFoundException(
+        TemplatesConstants.ImportCsv.ErrorMessages.TemplateNotFound,
+      );
     }
     const isAdmin = currentUser.role === UserRole.ADMIN;
     const isOwner = existing.createdBy.id === currentUser.id;
@@ -187,7 +206,9 @@ export class TemplatesService {
     const deleted =
       await this.templatesRepository.softDeleteTemplate(templateId);
     if (!deleted) {
-      throw new NotFoundException('Template not found');
+      throw new NotFoundException(
+        TemplatesConstants.ImportCsv.ErrorMessages.TemplateNotFound,
+      );
     }
   }
 
@@ -199,7 +220,9 @@ export class TemplatesService {
     const template =
       await this.templatesRepository.findTemplateById(templateId);
     if (!template || template.isDeleted) {
-      throw new NotFoundException('Template not found');
+      throw new NotFoundException(
+        TemplatesConstants.ImportCsv.ErrorMessages.TemplateNotFound,
+      );
     }
     const isAdmin = currentUser.role === UserRole.ADMIN;
     const isOwner = template.createdBy.id === currentUser.id;
@@ -219,7 +242,9 @@ export class TemplatesService {
       item.id,
     );
     if (!reloaded) {
-      throw new NotFoundException('Template item not found');
+      throw new NotFoundException(
+        TemplatesConstants.ImportCsv.ErrorMessages.TemplateItemNotFound,
+      );
     }
     return this.mapItemToResponseDto(reloaded);
   }
@@ -232,12 +257,16 @@ export class TemplatesService {
   ): Promise<ExerciseTemplateItemResponseDto> {
     const item = await this.templatesRepository.findTemplateItemById(itemId);
     if (!item || item.template.id !== templateId) {
-      throw new NotFoundException('Template item not found');
+      throw new NotFoundException(
+        TemplatesConstants.ImportCsv.ErrorMessages.TemplateItemNotFound,
+      );
     }
     const template =
       await this.templatesRepository.findTemplateById(templateId);
     if (!template || template.isDeleted) {
-      throw new NotFoundException('Template not found');
+      throw new NotFoundException(
+        TemplatesConstants.ImportCsv.ErrorMessages.TemplateNotFound,
+      );
     }
     const isAdmin = currentUser.role === UserRole.ADMIN;
     const isOwner = template.createdBy.id === currentUser.id;
@@ -254,7 +283,9 @@ export class TemplatesService {
     });
     const updated = await this.templatesRepository.findTemplateItemById(itemId);
     if (!updated) {
-      throw new NotFoundException('Template item not found');
+      throw new NotFoundException(
+        TemplatesConstants.ImportCsv.ErrorMessages.TemplateItemNotFound,
+      );
     }
     return this.mapItemToResponseDto(updated);
   }
@@ -266,12 +297,16 @@ export class TemplatesService {
   ): Promise<void> {
     const item = await this.templatesRepository.findTemplateItemById(itemId);
     if (!item || item.template.id !== templateId) {
-      throw new NotFoundException('Template item not found');
+      throw new NotFoundException(
+        TemplatesConstants.ImportCsv.ErrorMessages.TemplateItemNotFound,
+      );
     }
     const template =
       await this.templatesRepository.findTemplateById(templateId);
     if (!template || template.isDeleted) {
-      throw new NotFoundException('Template not found');
+      throw new NotFoundException(
+        TemplatesConstants.ImportCsv.ErrorMessages.TemplateNotFound,
+      );
     }
     const isAdmin = currentUser.role === UserRole.ADMIN;
     const isOwner = template.createdBy.id === currentUser.id;
@@ -280,7 +315,9 @@ export class TemplatesService {
     }
     const deleted = await this.templatesRepository.deleteTemplateItem(itemId);
     if (!deleted) {
-      throw new NotFoundException('Template item not found');
+      throw new NotFoundException(
+        TemplatesConstants.ImportCsv.ErrorMessages.TemplateItemNotFound,
+      );
     }
   }
 
@@ -292,11 +329,15 @@ export class TemplatesService {
       currentUser.role !== UserRole.ADMIN &&
       currentUser.role !== UserRole.TRAINER
     ) {
-      throw new BadRequestException('Forbidden');
+      throw new BadRequestException(
+        TemplatesConstants.ImportCsv.ErrorMessages.Forbidden,
+      );
     }
     const rows = parseCsv(csvText);
     if (rows.length === 0) {
-      throw new BadRequestException('CSV is empty');
+      throw new BadRequestException(
+        TemplatesConstants.ImportCsv.ErrorMessages.CsvIsEmpty,
+      );
     }
     const createdTemplateIds: string[] = [];
     let createdTemplates = 0;
@@ -310,15 +351,10 @@ export class TemplatesService {
       }
       const description = (row.valuesByHeader.description ?? '').trim();
       const templateTypeRaw = (row.valuesByHeader.templateType ?? '').trim();
-      const templateType =
-        templateTypeRaw === ''
-          ? TemplateType.TRAINER
-          : (templateTypeRaw as TemplateType);
-      if (!Object.values(TemplateType).includes(templateType)) {
-        throw new BadRequestException(
-          `Row ${row.rowNumber}: templateType must be SYSTEM|TRAINER|PUBLIC`,
-        );
-      }
+      const templateType: TemplateType = normalizeTemplateType({
+        templateTypeRaw,
+        rowNumber: row.rowNumber,
+      });
       const templateKey = `${templateType}|${name}`;
       let templateId = templateIdByKey.get(templateKey);
       if (!templateId) {
@@ -349,22 +385,18 @@ export class TemplatesService {
         );
       }
       nextOrderByTemplateId.set(templateId, Math.max(nextOrder, order + 1));
-      const parseNullableInt = (raw: string): number | null => {
-        const value = raw.trim();
-        if (value === '') return null;
-        const parsed = Number.parseInt(value, 10);
-        if (!Number.isFinite(parsed) || parsed < 0) {
-          throw new BadRequestException(
-            `Row ${row.rowNumber}: numeric fields must be >= 0`,
-          );
-        }
-        return parsed;
-      };
-      const sets = parseNullableInt(row.valuesByHeader.sets ?? '');
-      const reps = parseNullableInt(row.valuesByHeader.reps ?? '');
-      const restSeconds = parseNullableInt(
-        row.valuesByHeader.restSeconds ?? '',
-      );
+      const sets = parseNullableNonNegativeInt({
+        raw: row.valuesByHeader.sets ?? '',
+        rowNumber: row.rowNumber,
+      });
+      const reps = parseNullableNonNegativeInt({
+        raw: row.valuesByHeader.reps ?? '',
+        rowNumber: row.rowNumber,
+      });
+      const restSeconds = parseNullableNonNegativeInt({
+        raw: row.valuesByHeader.restSeconds ?? '',
+        rowNumber: row.rowNumber,
+      });
       const notes = (row.valuesByHeader.notes ?? '').trim();
       await this.templatesRepository.createTemplateItem({
         templateId,

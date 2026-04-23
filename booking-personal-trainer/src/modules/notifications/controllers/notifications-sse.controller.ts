@@ -23,6 +23,7 @@ import { REDIS_SUBSCRIBER_TOKEN } from '../../../common/constants/cache.constant
 
 // Services
 import { NotificationsService } from '../services/notifications.service';
+import { buildUserChannel } from '../helpers/notifications-channel.helper';
 
 // Types
 import type { CurrentRequestUser } from '../../../common/interfaces/request.interface';
@@ -45,7 +46,7 @@ export class NotificationsSseController {
   @ApiResponse(NotificationsSwagger.Controller.ApiResponse.StreamOk)
   stream(@Req() req: CurrentRequestUser): Observable<MessageEvent> {
     const userId: string = req.user.id;
-    const channel: string = this.notificationsService.buildUserChannel(userId);
+    const channel: string = buildUserChannel(userId);
     return new Observable<MessageEvent>((observer) => {
       let isClosed = false;
       const handleMessage = (message: string) => {

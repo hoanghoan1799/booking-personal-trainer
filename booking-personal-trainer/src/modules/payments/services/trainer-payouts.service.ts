@@ -10,11 +10,7 @@ import {
   TrainerPayoutsResponseDto,
   TrainerPayoutsTransferRowDto,
 } from '../dtos/trainer-payouts-response.dto';
-
-const PLATFORM_WORKOUT_FEE_BPS_ENV = 'PLATFORM_WORKOUT_FEE_BPS' as const;
-const MAX_BPS = 10_000;
-const DEFAULT_CURRENCY = 'USD' as const;
-const MAX_ROWS = 50;
+import { TrainerPayoutsConstants } from '../constants/trainer-payouts.constants';
 
 @Injectable()
 export class TrainerPayoutsService {
@@ -54,7 +50,7 @@ export class TrainerPayoutsService {
       }
 
       const currency: string = (
-        payment.currency ?? DEFAULT_CURRENCY
+        payment.currency ?? TrainerPayoutsConstants.DefaultCurrency
       ).toUpperCase();
       const summary = this.getOrCreateCurrencySummary(
         summaryByCurrency,
@@ -88,7 +84,7 @@ export class TrainerPayoutsService {
       summary.netTrainerShareCents =
         summary.paidTrainerShareCents - summary.refundedTrainerShareCents;
 
-      if (rows.length < MAX_ROWS) {
+      if (rows.length < TrainerPayoutsConstants.MaxRows) {
         rows.push({
           paymentId: payment.id,
           currency,
@@ -222,13 +218,17 @@ export class TrainerPayoutsService {
     readonly platformFeeCents: number;
     readonly trainerShareCents: number;
   } {
-    const raw: string | undefined = process.env[PLATFORM_WORKOUT_FEE_BPS_ENV];
+    const raw: string | undefined =
+      process.env[TrainerPayoutsConstants.PlatformWorkoutFeeBpsEnv];
     const parsed: number = raw != null && raw !== '' ? Number(raw) : 0;
     const bps: number = Number.isFinite(parsed)
-      ? Math.min(Math.max(Math.trunc(parsed), 0), MAX_BPS)
+      ? Math.min(
+          Math.max(Math.trunc(parsed), 0),
+          TrainerPayoutsConstants.MaxBps,
+        )
       : 0;
     const platformFeeCents: number = Math.floor(
-      (input.grossCents * bps) / MAX_BPS,
+      (input.grossCents * bps) / TrainerPayoutsConstants.MaxBps,
     );
     const trainerShareCents: number = Math.max(
       0,

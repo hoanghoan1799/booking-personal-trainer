@@ -30,13 +30,12 @@ import {
 } from '../repositories/trainer-time-off.repository.interface';
 
 import { TrainerScheduleConflictService } from './trainer-schedule-conflict.service';
+import { TrainerSchedulingConstants } from '../constants/trainer-scheduling.constants';
 
 type GetMyTimeOffResult = BaseResponseDto<TrainerTimeOff[]>;
 
 @Injectable()
 export class TrainerTimeOffService {
-  private static readonly TIME_OFF_MIN_DURATION_MS = 30 * 60 * 1000;
-
   constructor(
     @Inject(TrainerTimeOffRepositoryToken)
     private readonly timeOffRepo: TrainerTimeOffRepository,
@@ -48,7 +47,10 @@ export class TrainerTimeOffService {
       throw new BadRequestException(ERROR_MESSAGES.BOOKING.INVALID_TIME_RANGE);
     }
     const durationMs = end.getTime() - start.getTime();
-    if (durationMs < TrainerTimeOffService.TIME_OFF_MIN_DURATION_MS) {
+    if (
+      durationMs <
+      TrainerSchedulingConstants.TimeOff.MinimumDurationMilliseconds
+    ) {
       throw new BadRequestException(
         ERROR_MESSAGES.TRAINER.TIME_OFF_MIN_THIRTY_MINUTES,
       );

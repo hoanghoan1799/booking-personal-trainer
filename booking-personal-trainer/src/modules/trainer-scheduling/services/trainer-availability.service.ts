@@ -26,13 +26,12 @@ import {
 } from '../repositories/trainer-availability.repository.interface';
 
 import { TrainerScheduleConflictService } from './trainer-schedule-conflict.service';
+import { TrainerSchedulingConstants } from '../constants/trainer-scheduling.constants';
 
 type GetMyAvailabilitiesResult = BaseResponseDto<TrainerAvailability[]>;
 
 @Injectable()
 export class TrainerAvailabilityService {
-  private static readonly AVAILABILITY_MIN_DURATION_MS = 60 * 60 * 1000;
-
   constructor(
     @Inject(TrainerAvailabilityRepositoryToken)
     private readonly availabilityRepo: TrainerAvailabilityRepository,
@@ -44,7 +43,10 @@ export class TrainerAvailabilityService {
       throw new BadRequestException(ERROR_MESSAGES.BOOKING.INVALID_TIME_RANGE);
     }
     const durationMs = end.getTime() - start.getTime();
-    if (durationMs < TrainerAvailabilityService.AVAILABILITY_MIN_DURATION_MS) {
+    if (
+      durationMs <
+      TrainerSchedulingConstants.Availability.MinimumDurationMilliseconds
+    ) {
       throw new BadRequestException(
         ERROR_MESSAGES.TRAINER.AVAILABILITY_MIN_ONE_HOUR,
       );

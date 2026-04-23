@@ -16,8 +16,7 @@ import { HashingService } from './hashing.service';
 import { UserRepositoryToken } from '../../user/repositories/user.repository.interface';
 import type { UserRepository } from '../../user/repositories/user.repository.interface';
 
-const DEFAULT_ADMIN_EMAIL = 'hoan.hoang@asnet.com.vn' as const;
-const DEFAULT_ADMIN_PASSWORD = 'Abcd@123' as const;
+import { AuthAdminSeedConstants } from '../constants/auth-admin-seed.constants';
 
 @Injectable()
 export class AdminSeedService implements OnModuleInit {
@@ -31,11 +30,11 @@ export class AdminSeedService implements OnModuleInit {
   async onModuleInit() {
     const adminEmail = this.configService.get<string>(
       'DEFAULT_ADMIN_EMAIL',
-      DEFAULT_ADMIN_EMAIL,
+      AuthAdminSeedConstants.DefaultAdminEmail,
     );
     const adminPassword = this.configService.get<string>(
       'DEFAULT_ADMIN_PASSWORD',
-      DEFAULT_ADMIN_PASSWORD,
+      AuthAdminSeedConstants.DefaultAdminPassword,
     );
 
     if (!adminEmail || !adminPassword) {

@@ -22,6 +22,14 @@ import type { TrainerTimeOffRepository } from '../../trainer-scheduling/reposito
 import { TrainerTimeOffRepositoryToken } from '../../trainer-scheduling/repositories/trainer-time-off.repository.interface';
 
 import type { User } from '../../user/entities/user.entity';
+import {
+  assertValidSlotQueryInput,
+  buildDateLocalsForRollingPeriod,
+  buildDayjsUtcFromLocalDateAndClockTime,
+  buildUniqueTimeSlotKey,
+  isOverlapping,
+  toCeilStepDate,
+} from '../helpers/booking-availability.helpers';
 
 export type BookingTimeRange = {
   readonly start: Date;
@@ -44,84 +52,6 @@ type GetAvailableSlotsInput = {
 type GetAvailableTrainersForRangeInput = {
   readonly start: Date;
   readonly end: Date;
-};
-
-const MIN_DURATION_MINUTES = 60;
-const MIN_STEP_MINUTES = 30;
-const DATE_LOCAL_FORMAT = 'YYYY-MM-DD';
-
-const toCeilStepDate = (input: { date: Date; stepMinutes: number }): Date => {
-  const stepMs = input.stepMinutes * 60 * 1000;
-  const ms = dayjs.utc(input.date).valueOf();
-  const ceilMs = Math.ceil(ms / stepMs) * stepMs;
-  return dayjs.utc(ceilMs).toDate();
-};
-
-const isOverlapping = (a: BookingTimeRange, b: BookingTimeRange): boolean => {
-  return (
-    a.start.getTime() < b.end.getTime() && b.start.getTime() < a.end.getTime()
-  );
-};
-
-const assertValidSlotQueryInput = (input: GetAvailableSlotsInput): void => {
-  if (input.rangeStart >= input.rangeEnd) {
-    throw new BadRequestException(ERROR_MESSAGES.BOOKING.INVALID_TIME_RANGE);
-  }
-  if (input.durationMinutes < MIN_DURATION_MINUTES) {
-    throw new BadRequestException(
-      ERROR_MESSAGES.TRAINER.AVAILABILITY_MIN_ONE_HOUR,
-    );
-  }
-  if (
-    input.stepMinutes < MIN_STEP_MINUTES ||
-    input.stepMinutes % MIN_STEP_MINUTES !== 0
-  ) {
-    throw new BadRequestException('Step minutes must be 30-minute increments');
-  }
-  if (input.durationMinutes % input.stepMinutes !== 0) {
-    throw new BadRequestException(
-      'Duration must be a multiple of step minutes',
-    );
-  }
-};
-
-const buildDayjsUtcFromLocalDateAndClockTime = (input: {
-  readonly dateLocal: string;
-  readonly clockTime: string;
-}): dayjs.Dayjs | null => {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(input.dateLocal)) {
-    return null;
-  }
-  if (!/^\d{2}:\d{2}$/.test(input.clockTime)) {
-    return null;
-  }
-  const dt = dayjs.utc(
-    `${input.dateLocal} ${input.clockTime}`,
-    'YYYY-MM-DD HH:mm',
-    true,
-  );
-  return dt.isValid() ? dt : null;
-};
-
-const buildDateLocalsForRollingPeriod = (input: {
-  readonly startDateLocal: string;
-  readonly period: 'week' | 'month' | 'year';
-}): readonly string[] => {
-  const start = dayjs
-    .utc(input.startDateLocal, DATE_LOCAL_FORMAT, true)
-    .startOf('day');
-  if (!start.isValid()) return [];
-  const endExclusive =
-    input.period === 'week'
-      ? start.add(7, 'day')
-      : input.period === 'month'
-        ? start.add(1, 'month')
-        : start.add(1, 'year');
-  const dayCount = endExclusive.diff(start, 'day');
-  if (!Number.isFinite(dayCount) || dayCount <= 0) return [];
-  return Array.from({ length: dayCount }).map((_, i) =>
-    start.add(i, 'day').format(DATE_LOCAL_FORMAT),
-  );
 };
 
 @Injectable()
@@ -374,10 +304,8 @@ export class BookingAvailabilityService {
         cursor = dayjs.utc(cursor.getTime() + stepMs).toDate();
       }
     });
-    const uniqueKey = (s: BookingTimeSlot): string =>
-      `${s.startTime}|${s.endTime}`;
     const dedup = new Map<string, BookingTimeSlot>();
-    slots.forEach((s) => dedup.set(uniqueKey(s), s));
+    slots.forEach((s) => dedup.set(buildUniqueTimeSlotKey(s), s));
     return [...dedup.values()].sort(
       (a, b) =>
         dayjs.utc(a.startTime).valueOf() - dayjs.utc(b.startTime).valueOf(),

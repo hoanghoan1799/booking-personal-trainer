@@ -56,6 +56,9 @@ import { NotificationTemplates } from '../../notifications/constants/notificatio
 import { EmailService } from '../../email/services/email.service';
 import { EmailTemplates } from '../../email/constants/email-template.constant';
 
+import { WorkoutConstants } from '../constants/workout.constants';
+import { isUniqueViolation } from '../helpers/workout-database-error.helper';
+
 @Injectable()
 export class WorkoutService {
   private readonly logger = new Logger(WorkoutService.name);
@@ -149,9 +152,7 @@ export class WorkoutService {
     const amountCents = this.resolveWorkoutPriceCents({
       amountCents: dto.amountCents,
     });
-    const currency = dto.currency ?? 'USD';
-    const isUniqueViolation = (err: unknown): boolean =>
-      (err as { code?: unknown } | null | undefined)?.code === '23505';
+    const currency = dto.currency ?? WorkoutConstants.DefaultCurrency;
     const workout = await this.em
       .transactional(async (em: EntityManager) => {
         const booking = await em.findOne(

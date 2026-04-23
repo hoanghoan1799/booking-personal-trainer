@@ -22,6 +22,7 @@ import {
   BillingChargeRepositoryToken,
   type BillingChargeRepository,
 } from '../repositories/billing-charge.repository.interface';
+import { BillingConstants } from '../constants/billing.constants';
 
 export type CreateWorkoutChargeInput = {
   readonly workoutId: string;
@@ -46,7 +47,7 @@ export class BillingService {
   async createWorkoutCharge(
     input: CreateWorkoutChargeInput,
   ): Promise<BillingCharge> {
-    if (input.amountCents <= 0) {
+    if (input.amountCents < BillingConstants.MinimumAmountCents) {
       throw new BadRequestException('Amount must be greater than 0');
     }
     const workout: Workout | null = await this.em.findOne(Workout, {
@@ -61,7 +62,7 @@ export class BillingService {
       targetId: input.workoutId,
       payerUserId: input.payerUserId,
       amountCents: input.amountCents,
-      currency: input.currency ?? 'USD',
+      currency: input.currency ?? BillingConstants.DefaultCurrency,
       status: BillingChargeStatus.DRAFT,
       metadata: input.metadata ?? null,
       expiresAt: input.expiresAt ?? null,
@@ -129,7 +130,7 @@ export class BillingService {
     readonly metadata?: Record<string, unknown> | null;
     readonly expiresAt?: Date | null;
   }): Promise<BillingCharge> {
-    if (input.amountCents <= 0) {
+    if (input.amountCents < BillingConstants.MinimumAmountCents) {
       throw new BadRequestException('Amount must be greater than 0');
     }
     const workout: Workout | null = await input.em.findOne(Workout, {

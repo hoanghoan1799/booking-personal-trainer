@@ -21,44 +21,14 @@ import { collectAdminEmailAddresses } from '../../email/helpers/collect-admin-em
 import { ProcessedWebhookEvent } from '../entities/processed-webhook-event.entity';
 import { Payment } from '../entities/payment.entity';
 
-const STRIPE_PAYMENT_INTENT_SUCCEEDED = 'payment_intent.succeeded' as const;
-const STRIPE_PAYMENT_INTENT_FAILED = 'payment_intent.payment_failed' as const;
-const STRIPE_PAYMENT_INTENT_CANCELED = 'payment_intent.canceled' as const;
-const STRIPE_CHARGE_REFUNDED = 'charge.refunded' as const;
+import { StripeWebhookConstants } from '../constants/stripe-webhook.constants';
+import {
+  isStripeChargeRefundedLike,
+  isStripePaymentIntentLike,
+} from '../helpers/stripe-webhook-type-guards.helper';
 
 type StripeWebhookEventType =
-  | typeof STRIPE_PAYMENT_INTENT_SUCCEEDED
-  | typeof STRIPE_PAYMENT_INTENT_FAILED
-  | typeof STRIPE_PAYMENT_INTENT_CANCELED
-  | typeof STRIPE_CHARGE_REFUNDED;
-
-type StripePaymentIntentLike = {
-  readonly id: string;
-  readonly status: string;
-  readonly last_payment_error?: { readonly message?: string | null } | null;
-};
-
-type StripeChargeRefundedLike = {
-  readonly id: string;
-  readonly payment_intent?: string | null;
-};
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null;
-
-const isStripePaymentIntentLike = (
-  value: unknown,
-): value is StripePaymentIntentLike => {
-  if (!isRecord(value)) return false;
-  return typeof value.id === 'string' && typeof value.status === 'string';
-};
-
-const isStripeChargeRefundedLike = (
-  value: unknown,
-): value is StripeChargeRefundedLike => {
-  if (!isRecord(value)) return false;
-  return typeof value.id === 'string';
-};
+  (typeof StripeWebhookConstants.EventTypes)[keyof typeof StripeWebhookConstants.EventTypes];
 
 @Injectable()
 export class StripeWebhookService {
@@ -79,15 +49,15 @@ export class StripeWebhookService {
     data: { object: unknown };
   }): Promise<void> {
     const shouldProcess: boolean =
-      event.type === STRIPE_PAYMENT_INTENT_SUCCEEDED ||
-      event.type === STRIPE_PAYMENT_INTENT_FAILED ||
-      event.type === STRIPE_PAYMENT_INTENT_CANCELED ||
-      event.type === STRIPE_CHARGE_REFUNDED;
+      event.type === StripeWebhookConstants.EventTypes.PaymentIntentSucceeded ||
+      event.type === StripeWebhookConstants.EventTypes.PaymentIntentFailed ||
+      event.type === StripeWebhookConstants.EventTypes.PaymentIntentCanceled ||
+      event.type === StripeWebhookConstants.EventTypes.ChargeRefunded;
     if (!shouldProcess) return;
     await this.em.transactional(async (em) => {
       try {
         const processed = em.create(ProcessedWebhookEvent, {
-          provider: 'stripe',
+          provider: StripeWebhookConstants.Provider,
           eventId: event.id,
           receivedAt: utcNowAsDate(),
         });
@@ -103,19 +73,19 @@ export class StripeWebhookService {
         event.type as StripeWebhookEventType;
       const eventObject: unknown = event.data.object;
       switch (eventType) {
-        case STRIPE_PAYMENT_INTENT_SUCCEEDED:
+        case StripeWebhookConstants.EventTypes.PaymentIntentSucceeded:
           if (!isStripePaymentIntentLike(eventObject)) return;
           await this.handlePaymentIntentSucceeded(em, eventObject);
           return;
-        case STRIPE_PAYMENT_INTENT_FAILED:
+        case StripeWebhookConstants.EventTypes.PaymentIntentFailed:
           if (!isStripePaymentIntentLike(eventObject)) return;
           await this.handlePaymentIntentFailed(em, eventObject);
           return;
-        case STRIPE_PAYMENT_INTENT_CANCELED:
+        case StripeWebhookConstants.EventTypes.PaymentIntentCanceled:
           if (!isStripePaymentIntentLike(eventObject)) return;
           await this.handlePaymentIntentCanceled(em, eventObject);
           return;
-        case STRIPE_CHARGE_REFUNDED:
+        case StripeWebhookConstants.EventTypes.ChargeRefunded:
           if (!isStripeChargeRefundedLike(eventObject)) return;
           await this.handleChargeRefunded(em, eventObject);
           return;

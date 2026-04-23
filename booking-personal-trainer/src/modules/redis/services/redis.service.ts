@@ -15,9 +15,7 @@ import { utcNowIso } from '../../../common/utils/date-time/utc-date-time.helper'
 import { KeyDto, SetKeyDto } from '../dtos/key.dto';
 import type { RedisHealthResponse } from '../types/redis-health-response.type';
 
-const REDIS_HEALTH_KEY_PREFIX = 'healthcheck' as const;
-const REDIS_HEALTH_KEY_TTL_SECONDS = 10 as const;
-const MILLISECONDS_PER_SECOND = 1000 as const;
+import { RedisConstants } from '../constants/redis.constants';
 
 @Injectable()
 export class RedisService implements OnModuleInit, OnApplicationShutdown {
@@ -150,10 +148,12 @@ export class RedisService implements OnModuleInit, OnApplicationShutdown {
   }
 
   private async executeSetGetProbe(): Promise<boolean> {
-    const probeKey: string = `${REDIS_HEALTH_KEY_PREFIX}:${process.pid}:${Date.now()}`;
-    const expectedValue: string = `ok:${Math.floor(Date.now() / MILLISECONDS_PER_SECOND)}`;
+    const probeKey: string = `${RedisConstants.Health.KeyPrefix}:${process.pid}:${Date.now()}`;
+    const expectedValue: string = `ok:${Math.floor(
+      Date.now() / RedisConstants.Time.MillisecondsPerSecond,
+    )}`;
     await this.client.set(probeKey, expectedValue, {
-      EX: REDIS_HEALTH_KEY_TTL_SECONDS,
+      EX: RedisConstants.Health.KeyTtlSeconds,
     });
     const actualValue: string | null = await this.client.get(probeKey);
     await this.client.del(probeKey);

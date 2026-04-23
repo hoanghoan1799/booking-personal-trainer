@@ -8,7 +8,7 @@ import { RedisService } from '../../redis/services/redis.service';
 import { HashingService } from './hashing.service';
 import { RefreshTokenDto, RevokeTokenDto } from '../dtos/token.dto';
 
-const REFRESH_TOKEN_KEY_PREFIX = 'refresh_token:';
+import { AuthRefreshTokenConstants } from '../constants/auth-refresh-token.constants';
 
 /**
  * Service responsible for managing refresh tokens in Redis.
@@ -89,6 +89,6 @@ export class RefreshTokenService {
    * @returns {string} The built Redis key.
    */
   private buildKey(userId: string): string {
-    return `${REFRESH_TOKEN_KEY_PREFIX}${userId}`;
+    return `${AuthRefreshTokenConstants.RefreshTokenKeyPrefix}${userId}`;
   }
 }
