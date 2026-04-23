@@ -3,7 +3,7 @@ import * as jwt from 'jsonwebtoken';
 import {
   AUTH0_JWT_SIGNING_ALGORITHM,
   AUTH0_JWKS_WELL_KNOWN_PATH,
-} from '../constants/auth0-jwt.constant';
+} from '../../constants/auth0-jwt.constant';
 import {
   buildAuth0Issuer,
   buildAuth0JwksUri,
@@ -12,7 +12,7 @@ import {
   mapJwtPayloadToAuth0VerifiedClaims,
   normalizeAuth0Domain,
   verifyJwtWithJwks,
-} from './token-verifier.helper';
+} from '../token-verifier.helper';
 
 describe('token-verifier.helper', () => {
   describe('normalizeAuth0Domain', () => {
