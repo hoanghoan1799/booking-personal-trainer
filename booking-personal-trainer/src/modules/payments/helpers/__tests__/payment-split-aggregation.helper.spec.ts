@@ -41,4 +41,3 @@ describe('PaymentSplitAggregationHelper', () => {
     expect(actual).toBe('trainer-1');
   });
 });
-
