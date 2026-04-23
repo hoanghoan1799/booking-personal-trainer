@@ -10,64 +10,41 @@ import {
   IsUUID,
   Min,
 } from 'class-validator';
-import {
-  API_FORMATS,
-  FIELD_DESCRIPTIONS,
-} from '../../../common/constants/message.constant';
+import { WorkoutDtoSwagger } from '../constants/workout-swagger-dto.constants';
 
 export class CreateWorkoutDto {
-  @ApiProperty({
-    description: FIELD_DESCRIPTIONS.WORKOUT.TRAINEE_ID,
-    format: API_FORMATS.UUID,
-    example: FIELD_DESCRIPTIONS.USER.ID_EXAMPLE,
-  })
+  @ApiProperty(WorkoutDtoSwagger.CreateWorkout.ApiProperty.TraineeId)
   @IsUUID()
   @IsNotEmpty()
   traineeId: string;
 
-  @ApiProperty({
-    description: FIELD_DESCRIPTIONS.WORKOUT.EXERCISE_IDS,
-    type: [String],
-    format: API_FORMATS.UUID,
-    example: [FIELD_DESCRIPTIONS.USER.ID_EXAMPLE],
-  })
+  @ApiProperty(WorkoutDtoSwagger.CreateWorkout.ApiProperty.ExerciseIds)
   @IsArray()
   @ArrayNotEmpty()
   @IsUUID('4', { each: true })
   exerciseIds!: string[];
 
-  @ApiPropertyOptional({
-    description:
-      'Workout price in cents (quote). If omitted, server uses DEFAULT_WORKOUT_PRICE_CENTS.',
-    minimum: 1,
-  })
+  @ApiPropertyOptional(
+    WorkoutDtoSwagger.CreateWorkout.ApiPropertyOptional.AmountCents,
+  )
   @IsOptional()
   @IsInt()
   @Min(1)
   amountCents?: number;
 
-  @ApiPropertyOptional({
-    description: 'Currency for the workout quote. Defaults to USD.',
-    example: 'USD',
-  })
+  @ApiPropertyOptional(
+    WorkoutDtoSwagger.CreateWorkout.ApiPropertyOptional.Currency,
+  )
   @IsOptional()
   @IsString()
   currency?: string;
 
-  @ApiProperty({
-    description: FIELD_DESCRIPTIONS.WORKOUT.START_TIME,
-    format: API_FORMATS.DATE_TIME,
-    example: FIELD_DESCRIPTIONS.COMMON.DATE_TIME_START_EXAMPLE,
-  })
+  @ApiProperty(WorkoutDtoSwagger.CreateWorkout.ApiProperty.StartTime)
   @IsNotEmpty()
   @IsDateString()
   startTime: string;
 
-  @ApiProperty({
-    description: FIELD_DESCRIPTIONS.WORKOUT.END_TIME,
-    format: API_FORMATS.DATE_TIME,
-    example: FIELD_DESCRIPTIONS.COMMON.DATE_TIME_END_EXAMPLE,
-  })
+  @ApiProperty(WorkoutDtoSwagger.CreateWorkout.ApiProperty.EndTime)
   @IsNotEmpty()
   @IsDateString()
   endTime: string;

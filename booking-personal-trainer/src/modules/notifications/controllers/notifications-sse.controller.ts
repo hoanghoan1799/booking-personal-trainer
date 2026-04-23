@@ -27,6 +27,8 @@ import { NotificationsService } from '../services/notifications.service';
 // Types
 import type { CurrentRequestUser } from '../../../common/interfaces/request.interface';
 
+import { NotificationsSwagger } from '../constants/notifications-swagger.constants';
+
 @ApiTags('Notifications')
 @ApiBearerAuth(SWAGGER_ACCESS_TOKEN)
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -39,8 +41,8 @@ export class NotificationsSseController {
   ) {}
 
   @Sse('stream')
-  @ApiOperation({ summary: 'SSE stream for notifications' })
-  @ApiResponse({ status: 200, description: 'SSE stream started' })
+  @ApiOperation(NotificationsSwagger.Controller.ApiOperation.Stream)
+  @ApiResponse(NotificationsSwagger.Controller.ApiResponse.StreamOk)
   stream(@Req() req: CurrentRequestUser): Observable<MessageEvent> {
     const userId: string = req.user.id;
     const channel: string = this.notificationsService.buildUserChannel(userId);

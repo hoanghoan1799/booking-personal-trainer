@@ -8,32 +8,25 @@ import {
   Min,
 } from 'class-validator';
 
-import { API_FORMATS } from '../../../common/constants/message.constant';
+import { WorkoutDtoSwagger } from '../constants/workout-swagger-dto.constants';
 
 export class CreateBookingWorkoutDto {
-  @ApiProperty({
-    description: 'Exercise template id to snapshot into the workout',
-    format: API_FORMATS.UUID,
-    example: '9b3b77d0-3e3c-4c0b-8a0d-1c4d2b2e2b0a',
-  })
+  @ApiProperty(WorkoutDtoSwagger.CreateBookingWorkout.ApiProperty.TemplateId)
   @IsUUID()
   @IsNotEmpty()
   templateId!: string;
 
-  @ApiPropertyOptional({
-    description:
-      'Workout price in cents (quote). If omitted, server uses DEFAULT_WORKOUT_PRICE_CENTS.',
-    minimum: 1,
-  })
+  @ApiPropertyOptional(
+    WorkoutDtoSwagger.CreateBookingWorkout.ApiPropertyOptional.AmountCents,
+  )
   @IsOptional()
   @IsInt()
   @Min(1)
   amountCents?: number;
 
-  @ApiPropertyOptional({
-    description: 'Currency for the workout quote. Defaults to USD.',
-    example: 'USD',
-  })
+  @ApiPropertyOptional(
+    WorkoutDtoSwagger.CreateBookingWorkout.ApiPropertyOptional.Currency,
+  )
   @IsOptional()
   @IsString()
   currency?: string;

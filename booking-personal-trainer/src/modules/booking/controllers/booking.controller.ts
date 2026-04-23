@@ -8,7 +8,6 @@ import {
   Query,
   Post,
   Req,
-  HttpStatus,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import {
@@ -19,7 +18,6 @@ import {
   ApiBearerAuth,
   ApiExtraModels,
   ApiParam,
-  getSchemaPath,
 } from '@nestjs/swagger';
 
 // Commons
@@ -30,13 +28,6 @@ import { Roles } from '../../../common/decorators/role.decorator';
 import { UserRole } from '../../../common/enums/user/user.enum';
 import { BaseResponseDto } from '../../../common/dtos/base-response.dto';
 import { Serialize } from '../../../common/decorators/serialize.decorator';
-import {
-  API_DESCRIPTIONS,
-  API_PARAM_NAMES,
-  ERROR_MESSAGES,
-  SUCCESS_MESSAGES,
-  FIELD_DESCRIPTIONS,
-} from '../../../common/constants/message.constant';
 import { SWAGGER_ACCESS_TOKEN } from '../../../common/constants/api-document.constants';
 
 // DTOs
@@ -45,10 +36,10 @@ import { CreateBookingDto } from '../dtos/create-booking.dto';
 import { CreateBookingsBulkDto } from '../dtos/create-bookings-bulk.dto';
 import { UpdateBookingStatusDto } from '../dtos/update-booking-status.dto';
 import { BookingResponseDto } from '../dtos/response-booking.dto';
-import { ResponseUserDto } from '../../user/dtos/response-user.dto';
 
 // Services
 import { BookingService } from '../services/booking.service';
+import { BookingSwagger } from '../constants/booking-swagger.constants';
 
 // Rate limiting
 import {
@@ -58,7 +49,10 @@ import {
 
 @ApiTags('Booking')
 @ApiBearerAuth(SWAGGER_ACCESS_TOKEN)
-@ApiExtraModels(BookingResponseDto, ResponseUserDto)
+@ApiExtraModels(
+  BookingSwagger.Controller.ApiExtraModels.Booking,
+  BookingSwagger.Controller.ApiExtraModels.User,
+)
 @UseGuards(JwtAuthGuard)
 @Controller('bookings')
 export class BookingController {
@@ -84,12 +78,8 @@ export class BookingController {
     },
   })
   @Serialize(BookingResponseDto)
-  @ApiOperation({
-    summary: 'Bulk create bookings in a transaction',
-    description:
-      'Creates multiple bookings (day/week/month/year) atomically. If any occurrence fails, none are created.',
-  })
-  @ApiBody({ type: CreateBookingsBulkDto })
+  @ApiOperation(BookingSwagger.Controller.ApiOperation.CreateBulk)
+  @ApiBody(BookingSwagger.Controller.ApiBody.CreateBulk)
   async createBulk(
     @Req() req: CurrentRequestUser,
     @Body() data: CreateBookingsBulkDto,
@@ -125,33 +115,12 @@ export class BookingController {
     },
   })
   @Serialize(BookingResponseDto)
-  @ApiOperation({
-    summary: API_DESCRIPTIONS.BOOKING.CREATE_SUMMARY,
-    description: API_DESCRIPTIONS.BOOKING.CREATE_DESCRIPTION,
-  })
-  @ApiBody({ type: CreateBookingDto })
-  @ApiResponse({
-    status: HttpStatus.CREATED,
-    description: SUCCESS_MESSAGES.BOOKING.CREATED,
-    schema: {
-      required: ['data'],
-      properties: {
-        data: { $ref: getSchemaPath(BookingResponseDto) },
-      },
-    },
-  })
-  @ApiResponse({
-    status: HttpStatus.UNAUTHORIZED,
-    description: ERROR_MESSAGES.AUTH.ACCESS_TOKEN_INVALID,
-  })
-  @ApiResponse({
-    status: HttpStatus.BAD_REQUEST,
-    description: `${ERROR_MESSAGES.BOOKING.INVALID_TIME_RANGE} or ${ERROR_MESSAGES.BOOKING.CANNOT_BOOK_IN_PAST} or ${ERROR_MESSAGES.BOOKING.MUST_BOOK_BEFORE_30_MINUTES} or ${ERROR_MESSAGES.BOOKING.CANNOT_BOOK_SELF} or ${ERROR_MESSAGES.BOOKING.TIME_SLOT_NOT_AVAILABLE}`,
-  })
-  @ApiResponse({
-    status: HttpStatus.NOT_FOUND,
-    description: ERROR_MESSAGES.USER.TRAINER_NOT_AVAILABLE,
-  })
+  @ApiOperation(BookingSwagger.Controller.ApiOperation.Create)
+  @ApiBody(BookingSwagger.Controller.ApiBody.Create)
+  @ApiResponse(BookingSwagger.Controller.ApiResponse.CreateCreated)
+  @ApiResponse(BookingSwagger.Controller.ApiResponse.Unauthorized)
+  @ApiResponse(BookingSwagger.Controller.ApiResponse.CreateBadRequest)
+  @ApiResponse(BookingSwagger.Controller.ApiResponse.CreateNotFound)
   async create(
     @Req() req: CurrentRequestUser,
     @Body() data: CreateBookingDto,
@@ -161,36 +130,9 @@ export class BookingController {
 
   @Get()
   @Serialize(BookingResponseDto)
-  @ApiOperation({
-    summary: API_DESCRIPTIONS.BOOKING.GET_ALL_SUMMARY,
-    description: API_DESCRIPTIONS.BOOKING.GET_ALL_DESCRIPTION,
-  })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: SUCCESS_MESSAGES.BOOKING.LIST_RETRIEVED,
-    schema: {
-      required: ['data', 'meta'],
-      properties: {
-        data: {
-          type: 'array',
-          items: { $ref: getSchemaPath(BookingResponseDto) },
-        },
-        meta: {
-          type: 'object',
-          properties: {
-            page: { type: 'number' },
-            limit: { type: 'number' },
-            totalItems: { type: 'number' },
-            totalPages: { type: 'number' },
-          },
-        },
-      },
-    },
-  })
-  @ApiResponse({
-    status: HttpStatus.UNAUTHORIZED,
-    description: ERROR_MESSAGES.AUTH.ACCESS_TOKEN_INVALID,
-  })
+  @ApiOperation(BookingSwagger.Controller.ApiOperation.GetAll)
+  @ApiResponse(BookingSwagger.Controller.ApiResponse.GetAllOk)
+  @ApiResponse(BookingSwagger.Controller.ApiResponse.Unauthorized)
   getAll(
     @Query() query: GetBookingsQueryDto,
     @Req() req: CurrentRequestUser,
@@ -200,33 +142,11 @@ export class BookingController {
 
   @Get(':id')
   @Serialize(BookingResponseDto)
-  @ApiOperation({
-    summary: API_DESCRIPTIONS.BOOKING.GET_ONE_SUMMARY,
-    description: API_DESCRIPTIONS.BOOKING.GET_ONE_DESCRIPTION,
-  })
-  @ApiParam({
-    name: API_PARAM_NAMES.ID,
-    description: FIELD_DESCRIPTIONS.BOOKING.ID,
-    type: String,
-  })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: SUCCESS_MESSAGES.BOOKING.RETRIEVED,
-    schema: {
-      required: ['data'],
-      properties: {
-        data: { $ref: getSchemaPath(BookingResponseDto) },
-      },
-    },
-  })
-  @ApiResponse({
-    status: HttpStatus.UNAUTHORIZED,
-    description: ERROR_MESSAGES.AUTH.ACCESS_TOKEN_INVALID,
-  })
-  @ApiResponse({
-    status: HttpStatus.NOT_FOUND,
-    description: ERROR_MESSAGES.BOOKING.NOT_FOUND,
-  })
+  @ApiOperation(BookingSwagger.Controller.ApiOperation.GetOne)
+  @ApiParam(BookingSwagger.Controller.ApiParam.Id)
+  @ApiResponse(BookingSwagger.Controller.ApiResponse.GetOneOk)
+  @ApiResponse(BookingSwagger.Controller.ApiResponse.Unauthorized)
+  @ApiResponse(BookingSwagger.Controller.ApiResponse.GetOneNotFound)
   findOne(@Param('id') id: string) {
     return this.bookingService.getOne(id);
   }
@@ -264,42 +184,14 @@ export class BookingController {
     },
   })
   @Serialize(BookingResponseDto)
-  @ApiOperation({
-    summary: API_DESCRIPTIONS.BOOKING.UPDATE_STATUS_SUMMARY,
-    description: API_DESCRIPTIONS.BOOKING.UPDATE_STATUS_DESCRIPTION,
-  })
-  @ApiParam({
-    name: API_PARAM_NAMES.ID,
-    description: FIELD_DESCRIPTIONS.BOOKING.ID,
-    type: String,
-  })
-  @ApiBody({ type: UpdateBookingStatusDto })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: SUCCESS_MESSAGES.BOOKING.STATUS_UPDATED,
-    schema: {
-      required: ['data'],
-      properties: {
-        data: { $ref: getSchemaPath(BookingResponseDto) },
-      },
-    },
-  })
-  @ApiResponse({
-    status: HttpStatus.UNAUTHORIZED,
-    description: ERROR_MESSAGES.AUTH.ACCESS_TOKEN_INVALID,
-  })
-  @ApiResponse({
-    status: HttpStatus.FORBIDDEN,
-    description: ERROR_MESSAGES.AUTH.FORBIDDEN,
-  })
-  @ApiResponse({
-    status: HttpStatus.BAD_REQUEST,
-    description: ERROR_MESSAGES.BOOKING.CANNOT_UPDATE_STATUS,
-  })
-  @ApiResponse({
-    status: HttpStatus.NOT_FOUND,
-    description: ERROR_MESSAGES.BOOKING.NOT_FOUND,
-  })
+  @ApiOperation(BookingSwagger.Controller.ApiOperation.UpdateStatus)
+  @ApiParam(BookingSwagger.Controller.ApiParam.Id)
+  @ApiBody(BookingSwagger.Controller.ApiBody.UpdateStatus)
+  @ApiResponse(BookingSwagger.Controller.ApiResponse.UpdateStatusOk)
+  @ApiResponse(BookingSwagger.Controller.ApiResponse.Unauthorized)
+  @ApiResponse(BookingSwagger.Controller.ApiResponse.Forbidden)
+  @ApiResponse(BookingSwagger.Controller.ApiResponse.UpdateStatusBadRequest)
+  @ApiResponse(BookingSwagger.Controller.ApiResponse.UpdateStatusNotFound)
   async updateStatus(
     @Param('id') id: string,
     @Body() body: UpdateBookingStatusDto,

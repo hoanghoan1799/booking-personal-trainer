@@ -26,6 +26,40 @@ const STRIPE_PAYMENT_INTENT_FAILED = 'payment_intent.payment_failed' as const;
 const STRIPE_PAYMENT_INTENT_CANCELED = 'payment_intent.canceled' as const;
 const STRIPE_CHARGE_REFUNDED = 'charge.refunded' as const;
 
+type StripeWebhookEventType =
+  | typeof STRIPE_PAYMENT_INTENT_SUCCEEDED
+  | typeof STRIPE_PAYMENT_INTENT_FAILED
+  | typeof STRIPE_PAYMENT_INTENT_CANCELED
+  | typeof STRIPE_CHARGE_REFUNDED;
+
+type StripePaymentIntentLike = {
+  readonly id: string;
+  readonly status: string;
+  readonly last_payment_error?: { readonly message?: string | null } | null;
+};
+
+type StripeChargeRefundedLike = {
+  readonly id: string;
+  readonly payment_intent?: string | null;
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null;
+
+const isStripePaymentIntentLike = (
+  value: unknown,
+): value is StripePaymentIntentLike => {
+  if (!isRecord(value)) return false;
+  return typeof value.id === 'string' && typeof value.status === 'string';
+};
+
+const isStripeChargeRefundedLike = (
+  value: unknown,
+): value is StripeChargeRefundedLike => {
+  if (!isRecord(value)) return false;
+  return typeof value.id === 'string';
+};
+
 @Injectable()
 export class StripeWebhookService {
   constructor(
@@ -44,14 +78,12 @@ export class StripeWebhookService {
     type: string;
     data: { object: unknown };
   }): Promise<void> {
-    const shouldProcess =
+    const shouldProcess: boolean =
       event.type === STRIPE_PAYMENT_INTENT_SUCCEEDED ||
       event.type === STRIPE_PAYMENT_INTENT_FAILED ||
       event.type === STRIPE_PAYMENT_INTENT_CANCELED ||
       event.type === STRIPE_CHARGE_REFUNDED;
-    if (!shouldProcess) {
-      return;
-    }
+    if (!shouldProcess) return;
     await this.em.transactional(async (em) => {
       try {
         const processed = em.create(ProcessedWebhookEvent, {
@@ -67,18 +99,25 @@ export class StripeWebhookService {
         }
         throw err;
       }
-      switch (event.type) {
+      const eventType: StripeWebhookEventType =
+        event.type as StripeWebhookEventType;
+      const eventObject: unknown = event.data.object;
+      switch (eventType) {
         case STRIPE_PAYMENT_INTENT_SUCCEEDED:
-          await this.handlePaymentIntentSucceeded(em, event.data.object as any);
+          if (!isStripePaymentIntentLike(eventObject)) return;
+          await this.handlePaymentIntentSucceeded(em, eventObject);
           return;
         case STRIPE_PAYMENT_INTENT_FAILED:
-          await this.handlePaymentIntentFailed(em, event.data.object as any);
+          if (!isStripePaymentIntentLike(eventObject)) return;
+          await this.handlePaymentIntentFailed(em, eventObject);
           return;
         case STRIPE_PAYMENT_INTENT_CANCELED:
-          await this.handlePaymentIntentCanceled(em, event.data.object as any);
+          if (!isStripePaymentIntentLike(eventObject)) return;
+          await this.handlePaymentIntentCanceled(em, eventObject);
           return;
         case STRIPE_CHARGE_REFUNDED:
-          await this.handleChargeRefunded(em, event.data.object as any);
+          if (!isStripeChargeRefundedLike(eventObject)) return;
+          await this.handleChargeRefunded(em, eventObject);
           return;
         default:
           return;

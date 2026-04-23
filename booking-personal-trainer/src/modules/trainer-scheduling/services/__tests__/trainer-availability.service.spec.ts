@@ -1,10 +1,10 @@
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
 import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 
 import { TrainerAvailabilityService } from '../trainer-availability.service';
 import { TrainerAvailabilityRepositoryToken } from '../../repositories/trainer-availability.repository.interface';
 import { TrainerScheduleConflictService } from '../trainer-schedule-conflict.service';
+import type { User } from '../../../user/entities/user.entity';
 
 describe('TrainerAvailabilityService', () => {
   let service: TrainerAvailabilityService;
@@ -52,6 +52,7 @@ describe('TrainerAvailabilityService', () => {
 
   describe('createMyAvailability', () => {
     it('should throw BadRequestException when startTime >= endTime', async () => {
+      const currentUser = { id: 'trainer-id' } as unknown as User;
       await expect(
         service.createMyAvailability(
           {
@@ -59,12 +60,13 @@ describe('TrainerAvailabilityService', () => {
             startTime: '2026-02-01T10:00:00.000Z',
             endTime: '2026-02-01T09:00:00.000Z',
           },
-          { id: 'trainer-id' } as any,
+          currentUser,
         ),
       ).rejects.toBeInstanceOf(BadRequestException);
     });
 
     it('should throw BadRequestException when duration is under 1 hour', async () => {
+      const currentUser = { id: 'trainer-id' } as unknown as User;
       await expect(
         service.createMyAvailability(
           {
@@ -72,12 +74,13 @@ describe('TrainerAvailabilityService', () => {
             startTime: '2026-02-01T09:00:00.000Z',
             endTime: '2026-02-01T09:30:00.000Z',
           },
-          { id: 'trainer-id' } as any,
+          currentUser,
         ),
       ).rejects.toBeInstanceOf(BadRequestException);
     });
 
     it('should create availability for current user', async () => {
+      const currentUser = { id: 'trainer-id' } as unknown as User;
       availabilityRepository.create.mockResolvedValue({ id: 'a1' });
 
       await service.createMyAvailability(
@@ -86,7 +89,7 @@ describe('TrainerAvailabilityService', () => {
           startTime: '2026-02-01T09:00:00.000Z',
           endTime: '2026-02-01T10:00:00.000Z',
         },
-        { id: 'trainer-id' } as any,
+        currentUser,
       );
 
       expect(availabilityRepository.create).toHaveBeenCalledWith(
@@ -103,6 +106,7 @@ describe('TrainerAvailabilityService', () => {
     });
 
     it('should throw when schedule conflict service rejects', async () => {
+      const currentUser = { id: 'trainer-id' } as unknown as User;
       scheduleConflictService.assertNoOverlap.mockRejectedValue(
         new BadRequestException('overlap'),
       );
@@ -114,7 +118,7 @@ describe('TrainerAvailabilityService', () => {
             startTime: '2026-02-01T09:00:00.000Z',
             endTime: '2026-02-01T10:00:00.000Z',
           },
-          { id: 'trainer-id' } as any,
+          currentUser,
         ),
       ).rejects.toBeInstanceOf(BadRequestException);
 
@@ -124,18 +128,20 @@ describe('TrainerAvailabilityService', () => {
 
   describe('updateMyAvailability', () => {
     it('should throw NotFoundException when missing', async () => {
+      const currentUser = { id: 'trainer-id' } as unknown as User;
       availabilityRepository.findById.mockResolvedValue(null);
 
       await expect(
         service.updateMyAvailability(
           'missing',
           { startTime: '2026-02-01T09:00:00.000Z' },
-          { id: 'trainer-id' } as any,
+          currentUser,
         ),
       ).rejects.toBeInstanceOf(NotFoundException);
     });
 
     it('should throw NotFoundException when not owner', async () => {
+      const currentUser = { id: 'trainer-id' } as unknown as User;
       availabilityRepository.findById.mockResolvedValue({
         id: 'a1',
         trainer: { id: 'other' },
@@ -147,12 +153,13 @@ describe('TrainerAvailabilityService', () => {
         service.updateMyAvailability(
           'a1',
           { startTime: '2026-02-01T09:00:00.000Z' },
-          { id: 'trainer-id' } as any,
+          currentUser,
         ),
       ).rejects.toBeInstanceOf(NotFoundException);
     });
 
     it('should throw BadRequestException when updated window is under 1 hour', async () => {
+      const currentUser = { id: 'trainer-id' } as unknown as User;
       availabilityRepository.findById.mockResolvedValue({
         id: 'a1',
         trainer: { id: 'trainer-id' },
@@ -167,12 +174,13 @@ describe('TrainerAvailabilityService', () => {
             startTime: '2026-02-01T09:00:00.000Z',
             endTime: '2026-02-01T09:45:00.000Z',
           },
-          { id: 'trainer-id' } as any,
+          currentUser,
         ),
       ).rejects.toBeInstanceOf(BadRequestException);
     });
 
     it('should call assertNoOverlap before save when valid', async () => {
+      const currentUser = { id: 'trainer-id' } as unknown as User;
       availabilityRepository.findById.mockResolvedValue({
         id: 'a1',
         trainer: { id: 'trainer-id' },
@@ -187,7 +195,7 @@ describe('TrainerAvailabilityService', () => {
           startTime: '2026-02-01T10:00:00.000Z',
           endTime: '2026-02-01T12:00:00.000Z',
         },
-        { id: 'trainer-id' } as any,
+        currentUser,
       );
 
       expect(scheduleConflictService.assertNoOverlap).toHaveBeenCalledWith({

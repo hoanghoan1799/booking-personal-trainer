@@ -11,42 +11,44 @@ import {
 
 // Enums
 import { TemplateType } from '../enums/template-type.enum';
+import { TemplatesDtoSwagger } from '../constants/templates-swagger-dto.constants';
 
 export class TemplatesQueryDto {
-  @ApiPropertyOptional({ description: 'Page (1-based)', default: 1 })
+  @ApiPropertyOptional(
+    TemplatesDtoSwagger.TemplatesQuery.ApiPropertyOptional.Page,
+  )
   @Type(() => Number)
   @IsInt()
   @Min(1)
   @IsOptional()
   page?: number;
 
-  @ApiPropertyOptional({ description: 'Limit', default: 20 })
+  @ApiPropertyOptional(
+    TemplatesDtoSwagger.TemplatesQuery.ApiPropertyOptional.Limit,
+  )
   @Type(() => Number)
   @IsInt()
   @Min(1)
   @IsOptional()
   limit?: number;
 
-  @ApiPropertyOptional({
-    description: 'Filter by template type',
-    enum: TemplateType,
-  })
+  @ApiPropertyOptional(
+    TemplatesDtoSwagger.TemplatesQuery.ApiPropertyOptional.TemplateType,
+  )
   @IsEnum(TemplateType)
   @IsOptional()
   templateType?: TemplateType;
 
-  @ApiPropertyOptional({
-    description: 'Filter by createdBy (admin only)',
-    format: 'uuid',
-  })
+  @ApiPropertyOptional(
+    TemplatesDtoSwagger.TemplatesQuery.ApiPropertyOptional.CreatedById,
+  )
   @IsUUID()
   @IsOptional()
   createdById?: string;
 
-  @ApiPropertyOptional({
-    description: 'Include deleted templates',
-    default: false,
-  })
+  @ApiPropertyOptional(
+    TemplatesDtoSwagger.TemplatesQuery.ApiPropertyOptional.IncludeDeleted,
+  )
   @Type(() => Boolean)
   @IsBoolean()
   @IsOptional()

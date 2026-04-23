@@ -19,7 +19,6 @@ import {
   ApiParam,
   ApiResponse,
   ApiTags,
-  getSchemaPath,
 } from '@nestjs/swagger';
 
 // Commons
@@ -30,11 +29,6 @@ import { Roles } from '../../../common/decorators/role.decorator';
 import { UserRole } from '../../../common/enums/user/user.enum';
 import { BaseResponseDto } from '../../../common/dtos/base-response.dto';
 import { Serialize } from '../../../common/decorators/serialize.decorator';
-import {
-  API_DESCRIPTIONS,
-  ERROR_MESSAGES,
-  SUCCESS_MESSAGES,
-} from '../../../common/constants/message.constant';
 import { SWAGGER_ACCESS_TOKEN } from '../../../common/constants/api-document.constants';
 
 // DTOs
@@ -49,13 +43,14 @@ import { TrainerTimeOffResponseDto } from '../dtos/trainer-time-off-response.dto
 // Services
 import { TrainerAvailabilityService } from '../services/trainer-availability.service';
 import { TrainerTimeOffService } from '../services/trainer-time-off.service';
+import { TrainerSchedulingSwagger } from '../constants/trainer-scheduling-swagger.constants';
 
 @ApiTags('Trainer scheduling')
 @ApiBearerAuth(SWAGGER_ACCESS_TOKEN)
 @ApiExtraModels(
-  TrainerAvailabilityResponseDto,
-  UpdateTrainerAvailabilityResponseDto,
-  TrainerTimeOffResponseDto,
+  TrainerSchedulingSwagger.Controller.ApiExtraModels.Availability,
+  TrainerSchedulingSwagger.Controller.ApiExtraModels.AvailabilityUpdate,
+  TrainerSchedulingSwagger.Controller.ApiExtraModels.TimeOff,
 )
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(UserRole.TRAINER)
@@ -68,38 +63,13 @@ export class TrainersController {
 
   @Get('me/availabilities')
   @Serialize(TrainerAvailabilityResponseDto)
-  @ApiOperation({
-    summary: API_DESCRIPTIONS.TRAINER_SCHEDULING.GET_MY_AVAILABILITIES_SUMMARY,
-    description:
-      API_DESCRIPTIONS.TRAINER_SCHEDULING.GET_MY_AVAILABILITIES_DESCRIPTION,
-  })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description:
-      SUCCESS_MESSAGES.TRAINER_SCHEDULING.AVAILABILITY_LIST_RETRIEVED,
-    schema: {
-      required: ['data', 'meta'],
-      properties: {
-        data: {
-          type: 'array',
-          items: { $ref: getSchemaPath(TrainerAvailabilityResponseDto) },
-        },
-        meta: {
-          type: 'object',
-          properties: {
-            page: { type: 'number' },
-            limit: { type: 'number' },
-            totalItems: { type: 'number' },
-            totalPages: { type: 'number' },
-          },
-        },
-      },
-    },
-  })
-  @ApiResponse({
-    status: HttpStatus.UNAUTHORIZED,
-    description: ERROR_MESSAGES.AUTH.ACCESS_TOKEN_INVALID,
-  })
+  @ApiOperation(
+    TrainerSchedulingSwagger.Controller.ApiOperation.GetMyAvailabilities,
+  )
+  @ApiResponse(
+    TrainerSchedulingSwagger.Controller.ApiResponse.GetMyAvailabilitiesOk,
+  )
+  @ApiResponse(TrainerSchedulingSwagger.Controller.ApiResponse.Unauthorized)
   getMyAvailabilities(
     @Req() req: CurrentRequestUser,
   ): Promise<BaseResponseDto<TrainerAvailabilityResponseDto[]>> {
@@ -108,26 +78,14 @@ export class TrainersController {
 
   @Post('me/availabilities')
   @Serialize(TrainerAvailabilityResponseDto)
-  @ApiOperation({
-    summary: API_DESCRIPTIONS.TRAINER_SCHEDULING.CREATE_MY_AVAILABILITY_SUMMARY,
-    description:
-      API_DESCRIPTIONS.TRAINER_SCHEDULING.CREATE_MY_AVAILABILITY_DESCRIPTION,
-  })
-  @ApiBody({ type: CreateTrainerAvailabilityDto })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: SUCCESS_MESSAGES.TRAINER_SCHEDULING.AVAILABILITY_CREATED,
-    schema: {
-      required: ['data'],
-      properties: {
-        data: { $ref: getSchemaPath(TrainerAvailabilityResponseDto) },
-      },
-    },
-  })
-  @ApiResponse({
-    status: HttpStatus.UNAUTHORIZED,
-    description: ERROR_MESSAGES.AUTH.ACCESS_TOKEN_INVALID,
-  })
+  @ApiOperation(
+    TrainerSchedulingSwagger.Controller.ApiOperation.CreateMyAvailability,
+  )
+  @ApiBody(TrainerSchedulingSwagger.Controller.ApiBody.CreateMyAvailability)
+  @ApiResponse(
+    TrainerSchedulingSwagger.Controller.ApiResponse.CreateMyAvailabilityOk,
+  )
+  @ApiResponse(TrainerSchedulingSwagger.Controller.ApiResponse.Unauthorized)
   async createMyAvailability(
     @Body() body: CreateTrainerAvailabilityDto,
     @Req() req: CurrentRequestUser,
@@ -143,27 +101,15 @@ export class TrainersController {
 
   @Patch('me/availabilities/:availabilityId')
   @Serialize(UpdateTrainerAvailabilityResponseDto)
-  @ApiOperation({
-    summary: API_DESCRIPTIONS.TRAINER_SCHEDULING.UPDATE_MY_AVAILABILITY_SUMMARY,
-    description:
-      API_DESCRIPTIONS.TRAINER_SCHEDULING.UPDATE_MY_AVAILABILITY_DESCRIPTION,
-  })
-  @ApiParam({ name: 'availabilityId', type: String })
-  @ApiBody({ type: UpdateTrainerAvailabilityDto })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: SUCCESS_MESSAGES.TRAINER_SCHEDULING.AVAILABILITY_UPDATED,
-    schema: {
-      required: ['data'],
-      properties: {
-        data: { $ref: getSchemaPath(UpdateTrainerAvailabilityResponseDto) },
-      },
-    },
-  })
-  @ApiResponse({
-    status: HttpStatus.UNAUTHORIZED,
-    description: ERROR_MESSAGES.AUTH.ACCESS_TOKEN_INVALID,
-  })
+  @ApiOperation(
+    TrainerSchedulingSwagger.Controller.ApiOperation.UpdateMyAvailability,
+  )
+  @ApiParam(TrainerSchedulingSwagger.Controller.ApiParam.AvailabilityId)
+  @ApiBody(TrainerSchedulingSwagger.Controller.ApiBody.UpdateMyAvailability)
+  @ApiResponse(
+    TrainerSchedulingSwagger.Controller.ApiResponse.UpdateMyAvailabilityOk,
+  )
+  @ApiResponse(TrainerSchedulingSwagger.Controller.ApiResponse.Unauthorized)
   async updateMyAvailability(
     @Param('availabilityId') availabilityId: string,
     @Body() body: UpdateTrainerAvailabilityDto,
@@ -181,20 +127,14 @@ export class TrainersController {
 
   @Delete('me/availabilities/:availabilityId')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({
-    summary: API_DESCRIPTIONS.TRAINER_SCHEDULING.DELETE_MY_AVAILABILITY_SUMMARY,
-    description:
-      API_DESCRIPTIONS.TRAINER_SCHEDULING.DELETE_MY_AVAILABILITY_DESCRIPTION,
-  })
-  @ApiParam({ name: 'availabilityId', type: String })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: SUCCESS_MESSAGES.TRAINER_SCHEDULING.AVAILABILITY_DELETED,
-  })
-  @ApiResponse({
-    status: HttpStatus.UNAUTHORIZED,
-    description: ERROR_MESSAGES.AUTH.ACCESS_TOKEN_INVALID,
-  })
+  @ApiOperation(
+    TrainerSchedulingSwagger.Controller.ApiOperation.DeleteMyAvailability,
+  )
+  @ApiParam(TrainerSchedulingSwagger.Controller.ApiParam.AvailabilityId)
+  @ApiResponse(
+    TrainerSchedulingSwagger.Controller.ApiResponse.DeleteMyAvailabilityOk,
+  )
+  @ApiResponse(TrainerSchedulingSwagger.Controller.ApiResponse.Unauthorized)
   async deleteMyAvailability(
     @Param('availabilityId') availabilityId: string,
     @Req() req: CurrentRequestUser,
@@ -207,37 +147,9 @@ export class TrainersController {
 
   @Get('me/time-off')
   @Serialize(TrainerTimeOffResponseDto)
-  @ApiOperation({
-    summary: API_DESCRIPTIONS.TRAINER_SCHEDULING.GET_MY_TIME_OFF_SUMMARY,
-    description:
-      API_DESCRIPTIONS.TRAINER_SCHEDULING.GET_MY_TIME_OFF_DESCRIPTION,
-  })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: SUCCESS_MESSAGES.TRAINER_SCHEDULING.TIME_OFF_LIST_RETRIEVED,
-    schema: {
-      required: ['data', 'meta'],
-      properties: {
-        data: {
-          type: 'array',
-          items: { $ref: getSchemaPath(TrainerTimeOffResponseDto) },
-        },
-        meta: {
-          type: 'object',
-          properties: {
-            page: { type: 'number' },
-            limit: { type: 'number' },
-            totalItems: { type: 'number' },
-            totalPages: { type: 'number' },
-          },
-        },
-      },
-    },
-  })
-  @ApiResponse({
-    status: HttpStatus.UNAUTHORIZED,
-    description: ERROR_MESSAGES.AUTH.ACCESS_TOKEN_INVALID,
-  })
+  @ApiOperation(TrainerSchedulingSwagger.Controller.ApiOperation.GetMyTimeOff)
+  @ApiResponse(TrainerSchedulingSwagger.Controller.ApiResponse.GetMyTimeOffOk)
+  @ApiResponse(TrainerSchedulingSwagger.Controller.ApiResponse.Unauthorized)
   getMyTimeOff(
     @Req() req: CurrentRequestUser,
   ): Promise<BaseResponseDto<TrainerTimeOffResponseDto[]>> {
@@ -246,26 +158,14 @@ export class TrainersController {
 
   @Post('me/time-off')
   @Serialize(TrainerTimeOffResponseDto)
-  @ApiOperation({
-    summary: API_DESCRIPTIONS.TRAINER_SCHEDULING.CREATE_MY_TIME_OFF_SUMMARY,
-    description:
-      API_DESCRIPTIONS.TRAINER_SCHEDULING.CREATE_MY_TIME_OFF_DESCRIPTION,
-  })
-  @ApiBody({ type: CreateTrainerTimeOffDto })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: SUCCESS_MESSAGES.TRAINER_SCHEDULING.TIME_OFF_CREATED,
-    schema: {
-      required: ['data'],
-      properties: {
-        data: { $ref: getSchemaPath(TrainerTimeOffResponseDto) },
-      },
-    },
-  })
-  @ApiResponse({
-    status: HttpStatus.UNAUTHORIZED,
-    description: ERROR_MESSAGES.AUTH.ACCESS_TOKEN_INVALID,
-  })
+  @ApiOperation(
+    TrainerSchedulingSwagger.Controller.ApiOperation.CreateMyTimeOff,
+  )
+  @ApiBody(TrainerSchedulingSwagger.Controller.ApiBody.CreateMyTimeOff)
+  @ApiResponse(
+    TrainerSchedulingSwagger.Controller.ApiResponse.CreateMyTimeOffOk,
+  )
+  @ApiResponse(TrainerSchedulingSwagger.Controller.ApiResponse.Unauthorized)
   async createMyTimeOff(
     @Body() body: CreateTrainerTimeOffDto,
     @Req() req: CurrentRequestUser,
@@ -279,27 +179,15 @@ export class TrainersController {
 
   @Patch('me/time-off/:timeOffId')
   @Serialize(TrainerTimeOffResponseDto)
-  @ApiOperation({
-    summary: API_DESCRIPTIONS.TRAINER_SCHEDULING.UPDATE_MY_TIME_OFF_SUMMARY,
-    description:
-      API_DESCRIPTIONS.TRAINER_SCHEDULING.UPDATE_MY_TIME_OFF_DESCRIPTION,
-  })
-  @ApiParam({ name: 'timeOffId', type: String })
-  @ApiBody({ type: UpdateTrainerTimeOffDto })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: SUCCESS_MESSAGES.TRAINER_SCHEDULING.TIME_OFF_UPDATED,
-    schema: {
-      required: ['data'],
-      properties: {
-        data: { $ref: getSchemaPath(TrainerTimeOffResponseDto) },
-      },
-    },
-  })
-  @ApiResponse({
-    status: HttpStatus.UNAUTHORIZED,
-    description: ERROR_MESSAGES.AUTH.ACCESS_TOKEN_INVALID,
-  })
+  @ApiOperation(
+    TrainerSchedulingSwagger.Controller.ApiOperation.UpdateMyTimeOff,
+  )
+  @ApiParam(TrainerSchedulingSwagger.Controller.ApiParam.TimeOffId)
+  @ApiBody(TrainerSchedulingSwagger.Controller.ApiBody.UpdateMyTimeOff)
+  @ApiResponse(
+    TrainerSchedulingSwagger.Controller.ApiResponse.UpdateMyTimeOffOk,
+  )
+  @ApiResponse(TrainerSchedulingSwagger.Controller.ApiResponse.Unauthorized)
   async updateMyTimeOff(
     @Param('timeOffId') timeOffId: string,
     @Body() body: UpdateTrainerTimeOffDto,
@@ -315,20 +203,14 @@ export class TrainersController {
 
   @Delete('me/time-off/:timeOffId')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({
-    summary: API_DESCRIPTIONS.TRAINER_SCHEDULING.DELETE_MY_TIME_OFF_SUMMARY,
-    description:
-      API_DESCRIPTIONS.TRAINER_SCHEDULING.DELETE_MY_TIME_OFF_DESCRIPTION,
-  })
-  @ApiParam({ name: 'timeOffId', type: String })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: SUCCESS_MESSAGES.TRAINER_SCHEDULING.TIME_OFF_DELETED,
-  })
-  @ApiResponse({
-    status: HttpStatus.UNAUTHORIZED,
-    description: ERROR_MESSAGES.AUTH.ACCESS_TOKEN_INVALID,
-  })
+  @ApiOperation(
+    TrainerSchedulingSwagger.Controller.ApiOperation.DeleteMyTimeOff,
+  )
+  @ApiParam(TrainerSchedulingSwagger.Controller.ApiParam.TimeOffId)
+  @ApiResponse(
+    TrainerSchedulingSwagger.Controller.ApiResponse.DeleteMyTimeOffOk,
+  )
+  @ApiResponse(TrainerSchedulingSwagger.Controller.ApiResponse.Unauthorized)
   async deleteMyTimeOff(
     @Param('timeOffId') timeOffId: string,
     @Req() req: CurrentRequestUser,

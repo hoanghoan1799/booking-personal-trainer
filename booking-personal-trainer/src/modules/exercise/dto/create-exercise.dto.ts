@@ -13,59 +13,48 @@ import {
   Equipment,
   MuscleGroup,
 } from '../../../common/enums/exercise/exercise.enum';
-import {
-  API_FORMATS,
-  FIELD_DESCRIPTIONS,
-} from '../../../common/constants/message.constant';
+
+// Constants
+import { ExerciseDtoSwagger } from '../constants/exercise-swagger-dto.constants';
 
 export class CreateExerciseDto {
-  @ApiProperty({
-    description: FIELD_DESCRIPTIONS.EXERCISE.NAME,
-  })
+  @ApiProperty(ExerciseDtoSwagger.CreateExercise.ApiProperty.Name)
   @IsString()
   @IsNotEmpty()
   name!: string;
 
-  @ApiPropertyOptional({
-    description: FIELD_DESCRIPTIONS.EXERCISE.DESCRIPTION,
-  })
+  @ApiPropertyOptional(
+    ExerciseDtoSwagger.CreateExercise.ApiPropertyOptional.Description,
+  )
   @IsString()
   @IsOptional()
   description!: string;
 
-  @ApiProperty({
-    description: FIELD_DESCRIPTIONS.EXERCISE.MUSCLE_GROUP,
-    enum: MuscleGroup,
-  })
+  @ApiProperty(ExerciseDtoSwagger.CreateExercise.ApiProperty.MuscleGroup)
   @IsEnum(MuscleGroup)
   muscleGroup!: MuscleGroup;
 
-  @ApiProperty({
-    description: FIELD_DESCRIPTIONS.EXERCISE.EQUIPMENT,
-    enum: Equipment,
-  })
+  @ApiProperty(ExerciseDtoSwagger.CreateExercise.ApiProperty.Equipment)
   @IsEnum(Equipment)
   equipment!: Equipment;
 
-  @ApiPropertyOptional({
-    description: FIELD_DESCRIPTIONS.EXERCISE.THUMBNAIL_URL,
-    format: API_FORMATS.URI,
-  })
+  @ApiPropertyOptional(
+    ExerciseDtoSwagger.CreateExercise.ApiPropertyOptional.ThumbnailUrl,
+  )
   @IsUrl()
   @IsOptional()
   thumbnailUrl?: string;
 
-  @ApiPropertyOptional({
-    description: FIELD_DESCRIPTIONS.EXERCISE.VIDEO_URL,
-    format: API_FORMATS.URI,
-  })
+  @ApiPropertyOptional(
+    ExerciseDtoSwagger.CreateExercise.ApiPropertyOptional.VideoUrl,
+  )
   @IsUrl()
   @IsOptional()
   videoUrl?: string;
 
-  @ApiPropertyOptional({
-    description: FIELD_DESCRIPTIONS.EXERCISE.IS_DELETED,
-  })
+  @ApiPropertyOptional(
+    ExerciseDtoSwagger.CreateExercise.ApiPropertyOptional.IsDeleted,
+  )
   @IsOptional()
   @IsBoolean()
   isDeleted?: boolean;

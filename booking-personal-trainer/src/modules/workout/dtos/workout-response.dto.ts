@@ -5,145 +5,117 @@ import { Expose, Type } from 'class-transformer';
 import { WorkoutStatus } from '../../../common/enums/workout/workout.enum';
 import { ExerciseResponseDto } from '../../exercise/dto/exercise-response.dto';
 import { ResponseUserDto } from '../../user/dtos/response-user.dto';
-import {
-  API_FORMATS,
-  FIELD_DESCRIPTIONS,
-} from '../../../common/constants/message.constant';
+import { WorkoutDtoSwagger } from '../constants/workout-swagger-dto.constants';
 
 export class WorkoutExerciseResponseDto {
-  @ApiProperty({
-    description: FIELD_DESCRIPTIONS.WORKOUT.WORKOUT_EXERCISE_ID,
-    format: API_FORMATS.UUID,
-    example: FIELD_DESCRIPTIONS.USER.ID_EXAMPLE,
-  })
+  @ApiProperty(WorkoutDtoSwagger.WorkoutResponse.ApiProperty.WorkoutExerciseId)
   @Expose()
   id: string;
 
-  @ApiProperty({
-    description: FIELD_DESCRIPTIONS.WORKOUT.ORDER,
-  })
+  @ApiProperty(WorkoutDtoSwagger.WorkoutResponse.ApiProperty.Order)
   @Expose()
   order: number;
 
-  @ApiPropertyOptional({ description: 'Sets', nullable: true })
+  @ApiPropertyOptional(
+    WorkoutDtoSwagger.WorkoutResponse.ApiPropertyOptional.Sets,
+  )
   @Expose()
   sets?: number | null;
 
-  @ApiPropertyOptional({ description: 'Reps', nullable: true })
+  @ApiPropertyOptional(
+    WorkoutDtoSwagger.WorkoutResponse.ApiPropertyOptional.Reps,
+  )
   @Expose()
   reps?: number | null;
 
-  @ApiPropertyOptional({ description: 'Rest seconds', nullable: true })
+  @ApiPropertyOptional(
+    WorkoutDtoSwagger.WorkoutResponse.ApiPropertyOptional.RestSeconds,
+  )
   @Expose()
   restSeconds?: number | null;
 
-  @ApiPropertyOptional({ description: 'Notes' })
+  @ApiPropertyOptional(
+    WorkoutDtoSwagger.WorkoutResponse.ApiPropertyOptional.Notes,
+  )
   @Expose()
   notes?: string;
 
-  @ApiProperty({
-    description: FIELD_DESCRIPTIONS.WORKOUT.IS_COMPLETED,
-  })
+  @ApiProperty(WorkoutDtoSwagger.WorkoutResponse.ApiProperty.IsCompleted)
   @Expose()
   isCompleted: boolean;
 
-  @ApiProperty({
-    description: FIELD_DESCRIPTIONS.EXERCISE.NAME,
-    type: () => ExerciseResponseDto,
-  })
+  @ApiProperty(WorkoutDtoSwagger.WorkoutResponse.ApiProperty.Exercise)
   @Expose()
   exercise: ExerciseResponseDto;
 }
 
 export class WorkoutResponseDto {
-  @ApiProperty({
-    description: FIELD_DESCRIPTIONS.WORKOUT.ID,
-    format: API_FORMATS.UUID,
-    example: FIELD_DESCRIPTIONS.USER.ID_EXAMPLE,
-  })
+  @ApiProperty(WorkoutDtoSwagger.WorkoutResponse.ApiProperty.Id)
   @Expose()
   id: string;
 
-  @ApiPropertyOptional({
-    description: 'Booking id',
-    format: API_FORMATS.UUID,
-    nullable: true,
-  })
+  @ApiPropertyOptional(
+    WorkoutDtoSwagger.WorkoutResponse.ApiPropertyOptional.BookingId,
+  )
   @Expose()
   bookingId?: string | null;
 
-  @ApiPropertyOptional({
-    description: 'Template id',
-    format: API_FORMATS.UUID,
-    nullable: true,
-  })
+  @ApiPropertyOptional(
+    WorkoutDtoSwagger.WorkoutResponse.ApiPropertyOptional.TemplateId,
+  )
   @Expose()
   templateId?: string | null;
 
-  @ApiProperty({
-    description: FIELD_DESCRIPTIONS.WORKOUT.START_TIME,
-    type: Date,
-  })
+  @ApiProperty(WorkoutDtoSwagger.WorkoutResponse.ApiProperty.StartTime)
   @Expose()
   startTime: Date;
 
-  @ApiProperty({
-    description: FIELD_DESCRIPTIONS.WORKOUT.END_TIME,
-    type: Date,
-  })
+  @ApiProperty(WorkoutDtoSwagger.WorkoutResponse.ApiProperty.EndTime)
   @Expose()
   endTime: Date;
 
-  @ApiProperty({
-    description: FIELD_DESCRIPTIONS.WORKOUT.STATUS,
-    enum: WorkoutStatus,
-  })
+  @ApiProperty(WorkoutDtoSwagger.WorkoutResponse.ApiProperty.Status)
   @Expose()
   status: WorkoutStatus;
 
-  @ApiProperty({
-    description: FIELD_DESCRIPTIONS.WORKOUT.TRAINER,
-    type: () => ResponseUserDto,
-  })
+  @ApiProperty(WorkoutDtoSwagger.WorkoutResponse.ApiProperty.Trainer)
   @Expose()
   trainer: ResponseUserDto;
 
-  @ApiProperty({
-    description: FIELD_DESCRIPTIONS.WORKOUT.TRAINEE,
-    type: () => ResponseUserDto,
-  })
+  @ApiProperty(WorkoutDtoSwagger.WorkoutResponse.ApiProperty.Trainee)
   @Expose()
   trainee: ResponseUserDto;
 
-  @ApiProperty({
-    description: FIELD_DESCRIPTIONS.WORKOUT.EXERCISES,
-    type: [WorkoutExerciseResponseDto],
-  })
+  @ApiProperty(
+    WorkoutDtoSwagger.WorkoutResponse.ApiProperty.Exercises(
+      WorkoutExerciseResponseDto,
+    ),
+  )
   @Expose()
   @Type(() => WorkoutExerciseResponseDto)
   exercises: WorkoutExerciseResponseDto[];
 
-  @ApiPropertyOptional({
-    description: FIELD_DESCRIPTIONS.WORKOUT.TOTAL_EXERCISES,
-  })
+  @ApiPropertyOptional(
+    WorkoutDtoSwagger.WorkoutResponse.ApiPropertyOptional.TotalExercises,
+  )
   @Expose()
   totalExercises?: number;
 
-  @ApiPropertyOptional({
-    description: FIELD_DESCRIPTIONS.WORKOUT.COMPLETED_EXERCISES,
-  })
+  @ApiPropertyOptional(
+    WorkoutDtoSwagger.WorkoutResponse.ApiPropertyOptional.CompletedExercises,
+  )
   @Expose()
   completedExercises?: number;
 
-  @ApiPropertyOptional({
-    description: FIELD_DESCRIPTIONS.WORKOUT.CREATED_AT,
-  })
+  @ApiPropertyOptional(
+    WorkoutDtoSwagger.WorkoutResponse.ApiPropertyOptional.CreatedAt,
+  )
   @Expose()
   createdAt?: Date;
 
-  @ApiPropertyOptional({
-    description: FIELD_DESCRIPTIONS.WORKOUT.UPDATED_AT,
-  })
+  @ApiPropertyOptional(
+    WorkoutDtoSwagger.WorkoutResponse.ApiPropertyOptional.UpdatedAt,
+  )
   @Expose()
   updatedAt?: Date;
 }

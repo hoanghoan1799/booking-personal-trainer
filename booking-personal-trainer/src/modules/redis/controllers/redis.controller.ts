@@ -7,6 +7,7 @@ import { Public } from '../../../common/decorators/public.decorator';
 // Services
 import { RedisService } from '../services/redis.service';
 import type { RedisHealthResponse } from '../types/redis-health-response.type';
+import { RedisSwagger } from '../constants/redis-swagger.constants';
 
 @ApiTags('Redis')
 @Controller('redis')
@@ -15,14 +16,8 @@ export class RedisController {
 
   @Public()
   @Get('health')
-  @ApiOperation({
-    summary: 'Redis health check',
-    description: 'Verifies Redis connectivity via PING and SET/GET probe.',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Redis health status',
-  })
+  @ApiOperation(RedisSwagger.Controller.ApiOperation.Health)
+  @ApiResponse(RedisSwagger.Controller.ApiResponse.HealthOk)
   public async getHealth(): Promise<RedisHealthResponse> {
     return await this.redisService.checkHealth();
   }

@@ -1,54 +1,41 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Expose } from 'class-transformer';
-import {
-  API_FORMATS,
-  FIELD_DESCRIPTIONS,
-} from '../../../common/constants/message.constant';
+
+// Constants
+import { ExerciseDtoSwagger } from '../constants/exercise-swagger-dto.constants';
 
 export class ExerciseResponseDto {
-  @ApiProperty({
-    description: FIELD_DESCRIPTIONS.EXERCISE.ID,
-    format: API_FORMATS.UUID,
-    example: FIELD_DESCRIPTIONS.USER.ID_EXAMPLE,
-  })
+  @ApiProperty(ExerciseDtoSwagger.ExerciseResponse.ApiProperty.Id)
   @Expose()
   id: string;
 
-  @ApiProperty({
-    description: FIELD_DESCRIPTIONS.EXERCISE.NAME,
-  })
+  @ApiProperty(ExerciseDtoSwagger.ExerciseResponse.ApiProperty.Name)
   @Expose()
   name: string;
 
-  @ApiPropertyOptional({
-    description: FIELD_DESCRIPTIONS.EXERCISE.DESCRIPTION,
-  })
+  @ApiPropertyOptional(
+    ExerciseDtoSwagger.ExerciseResponse.ApiPropertyOptional.Description,
+  )
   @Expose()
   description?: string;
 
-  @ApiPropertyOptional({
-    description: FIELD_DESCRIPTIONS.EXERCISE.THUMBNAIL_URL,
-    format: API_FORMATS.URI,
-  })
+  @ApiPropertyOptional(
+    ExerciseDtoSwagger.ExerciseResponse.ApiPropertyOptional.ThumbnailUrl,
+  )
   @Expose()
   thumbnailUrl?: string;
 
-  @ApiPropertyOptional({
-    description: FIELD_DESCRIPTIONS.EXERCISE.VIDEO_URL,
-    format: API_FORMATS.URI,
-  })
+  @ApiPropertyOptional(
+    ExerciseDtoSwagger.ExerciseResponse.ApiPropertyOptional.VideoUrl,
+  )
   @Expose()
   videoUrl?: string;
 
-  @ApiProperty({
-    description: FIELD_DESCRIPTIONS.EXERCISE.MUSCLE_GROUP,
-  })
+  @ApiProperty(ExerciseDtoSwagger.ExerciseResponse.ApiProperty.MuscleGroup)
   @Expose()
   muscleGroup: string;
 
-  @ApiProperty({
-    description: FIELD_DESCRIPTIONS.EXERCISE.EQUIPMENT,
-  })
+  @ApiProperty(ExerciseDtoSwagger.ExerciseResponse.ApiProperty.Equipment)
   @Expose()
   equipment: string;
 }

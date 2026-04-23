@@ -23,6 +23,7 @@ import { StripeConnectOnboardingLinkResponseDto } from '../dtos/stripe-connect-o
 
 // Services
 import { TrainerStripeConnectService } from '../services/trainer-stripe-connect.service';
+import { PaymentsSwagger } from '../constants/payments-swagger.constants';
 
 @ApiTags('Payments')
 @ApiBearerAuth(SWAGGER_ACCESS_TOKEN)
@@ -35,16 +36,12 @@ export class TrainerStripeConnectController {
 
   @Roles(UserRole.TRAINER)
   @Post('onboard')
-  @ApiOperation({
-    summary: 'Start Stripe Connect onboarding (trainer)',
-    description:
-      'Creates (or reuses) the trainer Stripe account and returns an onboarding link URL.',
-  })
-  @ApiResponse({
-    status: 201,
-    description: 'Onboarding link created',
-    type: StripeConnectOnboardingLinkResponseDto,
-  })
+  @ApiOperation(
+    PaymentsSwagger.Controller.TrainerStripeConnect.ApiOperation.Onboard,
+  )
+  @ApiResponse(
+    PaymentsSwagger.Controller.TrainerStripeConnect.ApiResponse.OnboardCreated,
+  )
   async createOnboardingLink(
     @CurrentUser() currentUser: JwtAuthPayload,
   ): Promise<BaseResponseDto<StripeConnectOnboardingLinkResponseDto>> {

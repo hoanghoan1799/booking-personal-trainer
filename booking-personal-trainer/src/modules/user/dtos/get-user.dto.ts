@@ -9,44 +9,34 @@ import {
 } from '../../../common/enums/user/user.enum';
 import { SortBy } from '../../../common/enums/pagination/pagination.enum';
 import { BaseQueryDto } from '../../../common/dtos/base-query.dto';
-import { FIELD_DESCRIPTIONS } from '../../../common/constants/message.constant';
+import { UserDtoSwagger } from '../constants/user-swagger-dto.constants';
 
 export class GetUsersQueryDto extends BaseQueryDto {
-  @ApiPropertyOptional({
-    description: FIELD_DESCRIPTIONS.QUERY.USER_TYPE_FILTER,
-    enum: UserType,
-  })
+  @ApiPropertyOptional(
+    UserDtoSwagger.GetUsersQuery.ApiPropertyOptional.UserType,
+  )
   @IsOptional()
   @IsEnum(UserType)
   userType?: UserType;
 
-  @ApiPropertyOptional({
-    description: FIELD_DESCRIPTIONS.QUERY.ROLE_FILTER,
-    enum: UserRole,
-  })
+  @ApiPropertyOptional(UserDtoSwagger.GetUsersQuery.ApiPropertyOptional.Role)
   @IsOptional()
   @IsEnum(UserRole)
   role?: UserRole;
 
-  @ApiPropertyOptional({
-    description: FIELD_DESCRIPTIONS.QUERY.APPROVAL_STATUS_FILTER,
-    enum: TrainerApprovalStatus,
-  })
+  @ApiPropertyOptional(
+    UserDtoSwagger.GetUsersQuery.ApiPropertyOptional.ApprovalStatus,
+  )
   @IsOptional()
   @IsEnum(TrainerApprovalStatus)
   approvalStatus?: TrainerApprovalStatus;
 
-  @ApiPropertyOptional({
-    description: FIELD_DESCRIPTIONS.QUERY.SEARCH,
-  })
+  @ApiPropertyOptional(UserDtoSwagger.GetUsersQuery.ApiPropertyOptional.Search)
   @IsOptional()
   @IsString()
   search?: string;
 
-  @ApiPropertyOptional({
-    description: FIELD_DESCRIPTIONS.QUERY.SORT_BY,
-    enum: SortBy,
-  })
+  @ApiPropertyOptional(UserDtoSwagger.GetUsersQuery.ApiPropertyOptional.SortBy)
   @IsOptional()
   @IsEnum(SortBy)
   sortBy?: SortBy;

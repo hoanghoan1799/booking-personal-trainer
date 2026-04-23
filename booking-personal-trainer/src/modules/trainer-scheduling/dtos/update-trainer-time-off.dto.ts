@@ -2,20 +2,29 @@ import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsDateString, IsOptional, IsString, MaxLength } from 'class-validator';
 
 import { VALIDATION } from '../../../common/constants/validation.constant';
+import { TrainerSchedulingDtoSwagger } from '../constants/trainer-scheduling-swagger-dto.constants';
 
 export class UpdateTrainerTimeOffDto {
-  @ApiPropertyOptional({ example: 'personal' })
+  @ApiPropertyOptional(
+    TrainerSchedulingDtoSwagger.UpdateTrainerTimeOff.ApiPropertyOptional.Reason,
+  )
   @IsOptional()
   @IsString()
   @MaxLength(VALIDATION.NAME_MAX_LENGTH)
   reason?: string;
 
-  @ApiPropertyOptional({ example: '2026-02-01T09:00:00Z' })
+  @ApiPropertyOptional(
+    TrainerSchedulingDtoSwagger.UpdateTrainerTimeOff.ApiPropertyOptional
+      .StartTime,
+  )
   @IsOptional()
   @IsDateString()
   startTime?: string;
 
-  @ApiPropertyOptional({ example: '2026-02-01T10:00:00Z' })
+  @ApiPropertyOptional(
+    TrainerSchedulingDtoSwagger.UpdateTrainerTimeOff.ApiPropertyOptional
+      .EndTime,
+  )
   @IsOptional()
   @IsDateString()
   endTime?: string;

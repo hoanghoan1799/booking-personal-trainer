@@ -1,4 +1,4 @@
-import { Controller, Get, HttpStatus, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -24,6 +24,7 @@ import { TrainerKpiRowDto } from '../dtos/trainer-kpi-row.dto';
 import { LoyalUsersReportService } from '../services/loyal-users-report.service';
 import { RevenueReportService } from '../services/revenue-report.service';
 import { TrainerKpiReportService } from '../services/trainer-kpi-report.service';
+import { ReportingSwagger } from '../constants/reporting-swagger.constants';
 
 @ApiTags('Reporting (Trainer)')
 @ApiBearerAuth(SWAGGER_ACCESS_TOKEN)
@@ -38,10 +39,8 @@ export class TrainerReportsController {
 
   @Roles(UserRole.TRAINER)
   @Get('revenue')
-  @ApiOperation({
-    summary: 'Monthly or quarterly revenue for the authenticated trainer.',
-  })
-  @ApiResponse({ status: HttpStatus.OK, type: [RevenueBucketRowDto] })
+  @ApiOperation(ReportingSwagger.Controller.TrainerReports.ApiOperation.Revenue)
+  @ApiResponse(ReportingSwagger.Controller.TrainerReports.ApiResponse.RevenueOk)
   public async getRevenue(
     @CurrentUser() currentUser: JwtAuthPayload,
     @Query() query: RevenueReportQueryDto,
@@ -56,8 +55,8 @@ export class TrainerReportsController {
 
   @Roles(UserRole.TRAINER)
   @Get('kpi')
-  @ApiOperation({ summary: 'KPI metrics for the authenticated trainer.' })
-  @ApiResponse({ status: HttpStatus.OK, type: [TrainerKpiRowDto] })
+  @ApiOperation(ReportingSwagger.Controller.TrainerReports.ApiOperation.Kpi)
+  @ApiResponse(ReportingSwagger.Controller.TrainerReports.ApiResponse.KpiOk)
   public async getKpi(
     @CurrentUser() currentUser: JwtAuthPayload,
     @Query() query: TrainerKpiQueryDto,
@@ -72,10 +71,12 @@ export class TrainerReportsController {
 
   @Roles(UserRole.TRAINER)
   @Get('loyal-users')
-  @ApiOperation({
-    summary: 'Trainees ranked by booking count for this trainer.',
-  })
-  @ApiResponse({ status: HttpStatus.OK, type: [LoyalUserRowDto] })
+  @ApiOperation(
+    ReportingSwagger.Controller.TrainerReports.ApiOperation.LoyalUsers,
+  )
+  @ApiResponse(
+    ReportingSwagger.Controller.TrainerReports.ApiResponse.LoyalUsersOk,
+  )
   public async getLoyalUsers(
     @CurrentUser() currentUser: JwtAuthPayload,
     @Query() query: LoyalUsersQueryDto,

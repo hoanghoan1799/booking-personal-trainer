@@ -1,14 +1,15 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Expose } from 'class-transformer';
 
+import { NotificationsSwagger } from '../constants/notifications-swagger.constants';
 import { NotificationType } from '../enums/notification-type.enum';
 
 export class NotificationResponseDto {
-  @ApiProperty({ description: 'Notification id' })
+  @ApiProperty(NotificationsSwagger.Dto.NotificationResponse.ApiProperty.Id)
   @Expose()
   id: string;
 
-  @ApiProperty({ enum: NotificationType })
+  @ApiProperty(NotificationsSwagger.Dto.NotificationResponse.ApiProperty.Type)
   @Expose()
   type: NotificationType;
 
@@ -20,7 +21,9 @@ export class NotificationResponseDto {
   @Expose()
   message: string;
 
-  @ApiPropertyOptional({ nullable: true, type: Object })
+  @ApiPropertyOptional(
+    NotificationsSwagger.Dto.NotificationResponse.ApiPropertyOptional.Data,
+  )
   @Expose()
   data?: Record<string, unknown> | null;
 
@@ -28,7 +31,9 @@ export class NotificationResponseDto {
   @Expose()
   isRead: boolean;
 
-  @ApiPropertyOptional({ type: Date })
+  @ApiPropertyOptional(
+    NotificationsSwagger.Dto.NotificationResponse.ApiPropertyOptional.CreatedAt,
+  )
   @Expose()
   createdAt?: Date;
 }

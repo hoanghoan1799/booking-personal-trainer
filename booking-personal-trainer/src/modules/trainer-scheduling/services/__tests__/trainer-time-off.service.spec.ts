@@ -1,10 +1,10 @@
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
 import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 
 import { TrainerTimeOffService } from '../../services/trainer-time-off.service';
 import { TrainerTimeOffRepositoryToken } from '../../repositories/trainer-time-off.repository.interface';
 import { TrainerScheduleConflictService } from '../../services/trainer-schedule-conflict.service';
+import type { User } from '../../../../modules/user/entities/user.entity';
 
 describe('TrainerTimeOffService', () => {
   let service: TrainerTimeOffService;
@@ -50,6 +50,7 @@ describe('TrainerTimeOffService', () => {
 
   describe('createMyTimeOff', () => {
     it('should throw BadRequestException when startTime >= endTime', async () => {
+      const currentUser = { id: 'trainer-id' } as unknown as User;
       await expect(
         service.createMyTimeOff(
           {
@@ -57,12 +58,13 @@ describe('TrainerTimeOffService', () => {
             startTime: '2026-02-01T10:00:00.000Z',
             endTime: '2026-02-01T09:00:00.000Z',
           },
-          { id: 'trainer-id' } as any,
+          currentUser,
         ),
       ).rejects.toBeInstanceOf(BadRequestException);
     });
 
     it('should throw BadRequestException when duration is under 30 minutes', async () => {
+      const currentUser = { id: 'trainer-id' } as unknown as User;
       await expect(
         service.createMyTimeOff(
           {
@@ -70,12 +72,13 @@ describe('TrainerTimeOffService', () => {
             startTime: '2026-02-01T09:00:00.000Z',
             endTime: '2026-02-01T09:15:00.000Z',
           },
-          { id: 'trainer-id' } as any,
+          currentUser,
         ),
       ).rejects.toBeInstanceOf(BadRequestException);
     });
 
     it('should create time off when duration is exactly 30 minutes', async () => {
+      const currentUser = { id: 'trainer-id' } as unknown as User;
       timeOffRepository.create.mockResolvedValue({ id: 't1' });
 
       await service.createMyTimeOff(
@@ -84,7 +87,7 @@ describe('TrainerTimeOffService', () => {
           startTime: '2026-02-01T09:00:00.000Z',
           endTime: '2026-02-01T09:30:00.000Z',
         },
-        { id: 'trainer-id' } as any,
+        currentUser,
       );
 
       expect(timeOffRepository.create).toHaveBeenCalled();
@@ -92,6 +95,7 @@ describe('TrainerTimeOffService', () => {
     });
 
     it('should create time off for current user', async () => {
+      const currentUser = { id: 'trainer-id' } as unknown as User;
       timeOffRepository.create.mockResolvedValue({ id: 't1' });
 
       await service.createMyTimeOff(
@@ -101,7 +105,7 @@ describe('TrainerTimeOffService', () => {
           endTime: '2026-02-01T10:00:00.000Z',
         },
 
-        { id: 'trainer-id' } as any,
+        currentUser,
       );
 
       expect(timeOffRepository.create).toHaveBeenCalledWith(
@@ -115,22 +119,23 @@ describe('TrainerTimeOffService', () => {
 
   describe('updateMyTimeOff', () => {
     it('should throw BadRequestException when body is empty', async () => {
+      const currentUser = { id: 'trainer-id' } as unknown as User;
       await expect(
-        service.updateMyTimeOff('t1', {}, { id: 'trainer-id' } as any),
+        service.updateMyTimeOff('t1', {}, currentUser),
       ).rejects.toBeInstanceOf(BadRequestException);
     });
 
     it('should throw NotFoundException when missing', async () => {
+      const currentUser = { id: 'trainer-id' } as unknown as User;
       timeOffRepository.findById.mockResolvedValue(null);
 
       await expect(
-        service.updateMyTimeOff('missing', { reason: 'x' }, {
-          id: 'trainer-id',
-        } as any),
+        service.updateMyTimeOff('missing', { reason: 'x' }, currentUser),
       ).rejects.toBeInstanceOf(NotFoundException);
     });
 
     it('should update reason only', async () => {
+      const currentUser = { id: 'trainer-id' } as unknown as User;
       timeOffRepository.findById.mockResolvedValue({
         id: 't1',
         trainer: { id: 'trainer-id' },
@@ -140,9 +145,7 @@ describe('TrainerTimeOffService', () => {
       });
       timeOffRepository.save.mockResolvedValue(undefined);
 
-      await service.updateMyTimeOff('t1', { reason: 'new' }, {
-        id: 'trainer-id',
-      } as any);
+      await service.updateMyTimeOff('t1', { reason: 'new' }, currentUser);
 
       expect(scheduleConflictService.assertNoOverlap).toHaveBeenCalledWith({
         trainerId: 'trainer-id',
@@ -156,21 +159,23 @@ describe('TrainerTimeOffService', () => {
 
   describe('deleteMyTimeOff', () => {
     it('should throw NotFoundException when missing', async () => {
+      const currentUser = { id: 'trainer-id' } as unknown as User;
       timeOffRepository.findById.mockResolvedValue(null);
 
       await expect(
-        service.deleteMyTimeOff('missing', { id: 'trainer-id' } as any),
+        service.deleteMyTimeOff('missing', currentUser),
       ).rejects.toBeInstanceOf(NotFoundException);
     });
 
     it('should remove when owner', async () => {
+      const currentUser = { id: 'trainer-id' } as unknown as User;
       timeOffRepository.findById.mockResolvedValue({
         id: 't1',
         trainer: { id: 'trainer-id' },
       });
       timeOffRepository.remove.mockResolvedValue(undefined);
 
-      await service.deleteMyTimeOff('t1', { id: 'trainer-id' } as any);
+      await service.deleteMyTimeOff('t1', currentUser);
 
       expect(timeOffRepository.remove).toHaveBeenCalled();
     });

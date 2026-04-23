@@ -3,93 +3,71 @@ import { Expose, Type } from 'class-transformer';
 
 // Commons
 import { BookingStatus } from '../../../common/enums/booking/booking.enum';
-import {
-  API_FORMATS,
-  FIELD_DESCRIPTIONS,
-} from '../../../common/constants/message.constant';
+import { BookingDtoSwagger } from '../constants/booking-swagger-dto.constants';
 
 // DTOs
 import { ResponseUserDto } from '../../user/dtos/response-user.dto';
 
 export class BookingResponseDto {
-  @ApiProperty({
-    description: FIELD_DESCRIPTIONS.BOOKING.ID,
-    format: API_FORMATS.UUID,
-    example: FIELD_DESCRIPTIONS.USER.ID_EXAMPLE,
-  })
+  @ApiProperty(BookingDtoSwagger.BookingResponse.ApiProperty.Id)
   @Expose()
   id: string;
 
-  @ApiProperty({
-    description: FIELD_DESCRIPTIONS.BOOKING.TRAINER,
-    type: () => ResponseUserDto,
-  })
+  @ApiProperty(BookingDtoSwagger.BookingResponse.ApiProperty.Trainer)
   @Expose()
   @Type(() => ResponseUserDto)
   trainer: ResponseUserDto;
 
-  @ApiProperty({
-    description: FIELD_DESCRIPTIONS.BOOKING.TRAINEE,
-    type: () => ResponseUserDto,
-  })
+  @ApiProperty(BookingDtoSwagger.BookingResponse.ApiProperty.Trainee)
   @Expose()
   @Type(() => ResponseUserDto)
   trainee: ResponseUserDto;
 
-  @ApiProperty({
-    description: FIELD_DESCRIPTIONS.BOOKING.STATUS,
-    enum: BookingStatus,
-  })
+  @ApiProperty(BookingDtoSwagger.BookingResponse.ApiProperty.Status)
   @Expose()
   status: BookingStatus;
 
-  @ApiPropertyOptional({
-    description: 'Status changed at',
-    type: Date,
-    nullable: true,
-  })
+  @ApiPropertyOptional(
+    BookingDtoSwagger.BookingResponse.ApiPropertyOptional.StatusChangedAt,
+  )
   @Expose()
   statusChangedAt?: Date | null;
 
-  @ApiPropertyOptional({
-    description: 'Cancelled by user id',
-    format: API_FORMATS.UUID,
-    nullable: true,
-  })
+  @ApiPropertyOptional(
+    BookingDtoSwagger.BookingResponse.ApiPropertyOptional.CancelledById,
+  )
   @Expose()
   cancelledById?: string | null;
 
-  @ApiPropertyOptional({ description: 'Cancellation reason', nullable: true })
+  @ApiPropertyOptional(
+    BookingDtoSwagger.BookingResponse.ApiPropertyOptional.CancellationReason,
+  )
   @Expose()
   cancellationReason?: string | null;
 
-  @ApiPropertyOptional({ description: 'Rejection reason', nullable: true })
+  @ApiPropertyOptional(
+    BookingDtoSwagger.BookingResponse.ApiPropertyOptional.RejectionReason,
+  )
   @Expose()
   rejectionReason?: string | null;
 
-  @ApiProperty({
-    description: FIELD_DESCRIPTIONS.BOOKING.START_TIME,
-    type: Date,
-  })
+  @ApiProperty(BookingDtoSwagger.BookingResponse.ApiProperty.StartTime)
   @Expose()
   startTime: Date;
 
-  @ApiProperty({
-    description: FIELD_DESCRIPTIONS.BOOKING.END_TIME,
-    type: Date,
-  })
+  @ApiProperty(BookingDtoSwagger.BookingResponse.ApiProperty.EndTime)
   @Expose()
   endTime: Date;
 
-  @ApiPropertyOptional({
-    description: FIELD_DESCRIPTIONS.BOOKING.CREATED_AT,
-  })
+  @ApiPropertyOptional(
+    BookingDtoSwagger.BookingResponse.ApiPropertyOptional.CreatedAt,
+  )
   @Expose()
   createdAt?: Date;
 
-  @ApiPropertyOptional({
-    description: FIELD_DESCRIPTIONS.BOOKING.UPDATED_AT,
-  })
+  @ApiPropertyOptional(
+    BookingDtoSwagger.BookingResponse.ApiPropertyOptional.UpdatedAt,
+  )
   @Expose()
   updatedAt?: Date;
 }

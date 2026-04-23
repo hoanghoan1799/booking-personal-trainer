@@ -8,6 +8,7 @@ import { StripeService } from '../../../shared/stripe/stripe.service';
 
 // Services
 import { StripeWebhookService } from '../services/stripe-webhook.service';
+import { PaymentsSwagger } from '../constants/payments-swagger.constants';
 
 type StripeWebhookRequest = Request & { rawBody?: Buffer };
 
@@ -21,11 +22,8 @@ export class StripeWebhookController {
 
   @Post('webhook')
   @HttpCode(200)
-  @ApiOperation({
-    summary: 'Stripe webhook endpoint',
-    description: 'Receives Stripe events and synchronizes payment state.',
-  })
-  @ApiResponse({ status: 200, description: 'Webhook received' })
+  @ApiOperation(PaymentsSwagger.Controller.StripeWebhook.ApiOperation.Webhook)
+  @ApiResponse(PaymentsSwagger.Controller.StripeWebhook.ApiResponse.WebhookOk)
   async handleWebhook(
     @Req() req: StripeWebhookRequest,
     @Body() _ignoredBody: unknown,

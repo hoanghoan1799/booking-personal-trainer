@@ -16,6 +16,7 @@ import {
 import { GetAvailableTrainersQueryDto } from '../dtos/get-available-trainers.dto';
 import { GetAvailableSlotsQueryDto } from '../dtos/get-available-slots.dto';
 import { GetAvailableTrainersForPeriodQueryDto } from '../dtos/get-available-trainers-for-period.dto';
+import { BookingSwagger } from '../constants/booking-swagger.constants';
 
 @ApiTags('Booking discovery')
 @ApiBearerAuth(SWAGGER_ACCESS_TOKEN)
@@ -28,9 +29,7 @@ export class BookingDiscoveryController {
 
   @Get('available-trainers')
   @Serialize(ResponseUserDto)
-  @ApiOperation({
-    summary: 'List available trainers for a time range',
-  })
+  @ApiOperation(BookingSwagger.Controller.ApiOperation.AvailableTrainers)
   async getAvailableTrainers(
     @Query() query: GetAvailableTrainersQueryDto,
   ): Promise<BaseResponseDto<ResponseUserDto[]>> {
@@ -43,9 +42,7 @@ export class BookingDiscoveryController {
   }
 
   @Get('available-slots')
-  @ApiOperation({
-    summary: 'List available slots for a trainer in a range',
-  })
+  @ApiOperation(BookingSwagger.Controller.ApiOperation.AvailableSlots)
   async getAvailableSlots(
     @Query() query: GetAvailableSlotsQueryDto,
   ): Promise<BaseResponseDto<BookingTimeSlot[]>> {
@@ -61,9 +58,9 @@ export class BookingDiscoveryController {
 
   @Get('available-trainers-for-period')
   @Serialize(ResponseUserDto)
-  @ApiOperation({
-    summary: 'List available trainers for a period (week/month/year)',
-  })
+  @ApiOperation(
+    BookingSwagger.Controller.ApiOperation.AvailableTrainersForPeriod,
+  )
   async getAvailableTrainersForPeriod(
     @Query() query: GetAvailableTrainersForPeriodQueryDto,
   ): Promise<BaseResponseDto<ResponseUserDto[]>> {

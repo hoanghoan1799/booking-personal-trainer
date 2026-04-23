@@ -1,4 +1,4 @@
-import { Controller, Get, HttpStatus, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -16,6 +16,7 @@ import { UserRole } from '../../../common/enums/user/user.enum';
 import { AdminEarningsQueryDto } from '../dtos/admin-earnings-query.dto';
 import { AdminEarningsResponseDto } from '../dtos/admin-earnings-response.dto';
 import { AdminEarningsService } from '../services/admin-earnings.service';
+import { PaymentsSwagger } from '../constants/payments-swagger.constants';
 
 @ApiTags('Payments')
 @ApiBearerAuth(SWAGGER_ACCESS_TOKEN)
@@ -26,16 +27,12 @@ export class AdminEarningsController {
 
   @Roles(UserRole.ADMIN)
   @Get()
-  @ApiOperation({
-    summary: 'Admin earnings dashboard',
-    description:
-      'Aggregated totals and payers/payees derived from Payments (paid/refunded) grouped by currency.',
-  })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: 'Earnings snapshot',
-    type: AdminEarningsResponseDto,
-  })
+  @ApiOperation(
+    PaymentsSwagger.Controller.AdminEarnings.ApiOperation.GetEarnings,
+  )
+  @ApiResponse(
+    PaymentsSwagger.Controller.AdminEarnings.ApiResponse.GetEarningsOk,
+  )
   async getEarnings(
     @Query() query: AdminEarningsQueryDto,
   ): Promise<BaseResponseDto<AdminEarningsResponseDto>> {

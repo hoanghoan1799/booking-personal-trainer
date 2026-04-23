@@ -8,110 +8,83 @@ import {
   UserStatus,
   UserType,
 } from '../../../common/enums/user/user.enum';
-import {
-  API_FORMATS,
-  FIELD_DESCRIPTIONS,
-} from '../../../common/constants/message.constant';
+import { UserDtoSwagger } from '../constants/user-swagger-dto.constants';
 
 export class ResponseUserDto {
-  @ApiProperty({
-    description: FIELD_DESCRIPTIONS.USER.ID,
-    format: API_FORMATS.UUID,
-    example: FIELD_DESCRIPTIONS.USER.ID_EXAMPLE,
-  })
+  @ApiProperty(UserDtoSwagger.ResponseUser.ApiProperty.Id)
   @Expose()
   id: string;
 
-  @ApiProperty({
-    description: FIELD_DESCRIPTIONS.USER.USERNAME,
-    example: FIELD_DESCRIPTIONS.COMMON.USERNAME_EXAMPLE,
-  })
+  @ApiProperty(UserDtoSwagger.ResponseUser.ApiProperty.UserName)
   @Expose()
   userName: string;
 
-  @ApiProperty({
-    description: FIELD_DESCRIPTIONS.USER.EMAIL,
-    example: FIELD_DESCRIPTIONS.COMMON.EMAIL_EXAMPLE,
-  })
+  @ApiProperty(UserDtoSwagger.ResponseUser.ApiProperty.Email)
   @Expose()
   email: string;
 
-  @ApiProperty({
-    description: FIELD_DESCRIPTIONS.USER.FIRST_NAME,
-    example: FIELD_DESCRIPTIONS.COMMON.FIRST_NAME_EXAMPLE,
-  })
+  @ApiProperty(UserDtoSwagger.ResponseUser.ApiProperty.FirstName)
   @Expose()
   firstName: string;
 
-  @ApiProperty({
-    description: FIELD_DESCRIPTIONS.USER.LAST_NAME,
-    example: FIELD_DESCRIPTIONS.COMMON.LAST_NAME_EXAMPLE,
-  })
+  @ApiProperty(UserDtoSwagger.ResponseUser.ApiProperty.LastName)
   @Expose()
   lastName: string;
 
-  @ApiProperty({
-    description: FIELD_DESCRIPTIONS.USER.ROLE,
-    enum: UserRole,
-  })
+  @ApiProperty(UserDtoSwagger.ResponseUser.ApiProperty.Role)
   @Expose()
   role: UserRole;
 
-  @ApiProperty({
-    description: FIELD_DESCRIPTIONS.USER.USER_TYPE,
-    enum: UserType,
-  })
+  @ApiProperty(UserDtoSwagger.ResponseUser.ApiProperty.UserType)
   @Expose()
   userType: UserType;
 
-  @ApiProperty({
-    description: FIELD_DESCRIPTIONS.USER.APPROVAL_STATUS,
-    enum: TrainerApprovalStatus,
-  })
+  @ApiProperty(UserDtoSwagger.ResponseUser.ApiProperty.ApprovalStatus)
   @Expose()
   approvalStatus: TrainerApprovalStatus;
 
-  @ApiProperty({
-    description: FIELD_DESCRIPTIONS.USER.ACCOUNT_STATUS,
-    enum: UserStatus,
-  })
+  @ApiProperty(UserDtoSwagger.ResponseUser.ApiProperty.Status)
   @Expose()
   status: UserStatus;
 
-  @ApiPropertyOptional({ description: FIELD_DESCRIPTIONS.USER.CREATED_AT })
+  @ApiPropertyOptional(
+    UserDtoSwagger.ResponseUser.ApiPropertyOptional.CreatedAt,
+  )
   @Expose()
   createdAt?: Date;
 
-  @ApiPropertyOptional({ description: FIELD_DESCRIPTIONS.USER.UPDATED_AT })
+  @ApiPropertyOptional(
+    UserDtoSwagger.ResponseUser.ApiPropertyOptional.UpdatedAt,
+  )
   @Expose()
   updatedAt?: Date;
 }
 
 export class ResponseFullUserDto extends ResponseUserDto {
-  @ApiProperty({
-    description: 'Whether the account has a local password set.',
-    example: true,
-  })
+  @ApiProperty(UserDtoSwagger.ResponseFullUser.ApiProperty.HasPassword)
   @Expose()
   @Transform(({ obj }: { obj: { password?: string } }) => Boolean(obj.password))
   hasPassword!: boolean;
 
-  @ApiPropertyOptional({ description: FIELD_DESCRIPTIONS.USER.AGE })
+  @ApiPropertyOptional(UserDtoSwagger.ResponseFullUser.ApiPropertyOptional.Age)
   @Expose()
   age?: number;
 
-  @ApiPropertyOptional({ description: FIELD_DESCRIPTIONS.USER.HEIGHT })
+  @ApiPropertyOptional(
+    UserDtoSwagger.ResponseFullUser.ApiPropertyOptional.Height,
+  )
   @Expose()
   height?: number;
 
-  @ApiPropertyOptional({ description: FIELD_DESCRIPTIONS.USER.WEIGHT })
+  @ApiPropertyOptional(
+    UserDtoSwagger.ResponseFullUser.ApiPropertyOptional.Weight,
+  )
   @Expose()
   weight?: number;
 
-  @ApiPropertyOptional({
-    description: 'Stripe Connect account id for trainer payouts.',
-    nullable: true,
-  })
+  @ApiPropertyOptional(
+    UserDtoSwagger.ResponseFullUser.ApiPropertyOptional.StripeAccountId,
+  )
   @Expose()
   stripeAccountId?: string | null;
 }

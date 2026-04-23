@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-return */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 
@@ -24,6 +22,21 @@ import { Workout } from '../../entities/workout.entity';
 const createItemsCollection = <T>(items: T[]): { getItems: () => T[] } => ({
   getItems: () => items,
 });
+
+type TransactionalEntityManagerMock = {
+  readonly findOne: jest.Mock;
+  readonly create: jest.Mock;
+  readonly persist: jest.Mock;
+  readonly flush: jest.Mock;
+  readonly nativeUpdate?: jest.Mock;
+  readonly getReference?: jest.Mock;
+};
+
+type TransactionalHandler<T> = (
+  em: TransactionalEntityManagerMock,
+) => Promise<T>;
+
+type EntityClass = typeof Booking | typeof ExerciseTemplate | typeof Workout;
 
 describe('WorkoutService', () => {
   let service: WorkoutService;
@@ -114,14 +127,14 @@ describe('WorkoutService', () => {
           userName: 'trainee',
           email: 'trainee@test.com',
         },
-      } as any;
+      } as unknown as Booking;
       const template = {
         id: 'template-id',
         templateType: TemplateType.SYSTEM,
         isDeleted: false,
         createdBy: { id: 'admin-id' },
         items: createItemsCollection([]),
-      } as any;
+      } as unknown as ExerciseTemplate;
       const workout = {
         id: 'workout-id',
         booking: { id: 'booking-id' },
@@ -132,16 +145,16 @@ describe('WorkoutService', () => {
         trainer: { id: 'trainer-id' },
         trainee: { id: 'trainee-id' },
         exercises: { getItems: () => [], add: jest.fn() },
-      } as any;
+      } as unknown as Workout;
       em.transactional.mockImplementation(
-        async (handler: (innerEm: any) => Promise<any>) =>
+        async (handler: TransactionalHandler<Workout>) =>
           handler({
-            findOne: jest.fn().mockImplementation((entity: any) => {
+            findOne: jest.fn().mockImplementation((entity: EntityClass) => {
               if (entity === Booking) return booking;
               if (entity === ExerciseTemplate) return template;
               return null;
             }),
-            create: jest.fn().mockImplementation((entity: any) => {
+            create: jest.fn().mockImplementation((entity: EntityClass) => {
               if (entity === Workout) return workout;
               return {};
             }),
@@ -168,7 +181,7 @@ describe('WorkoutService', () => {
 
     it('should throw NotFoundException when booking missing', async () => {
       em.transactional.mockImplementation(
-        async (handler: (innerEm: any) => Promise<any>) =>
+        async (handler: TransactionalHandler<unknown>) =>
           handler({
             findOne: jest.fn().mockResolvedValue(null),
             create: jest.fn(),
@@ -192,11 +205,11 @@ describe('WorkoutService', () => {
         status: BookingStatus.PENDING,
         trainer: { id: 'trainer-id' },
         trainee: { id: 'trainee-id' },
-      } as any;
+      } as unknown as Booking;
       em.transactional.mockImplementation(
-        async (handler: (innerEm: any) => Promise<any>) =>
+        async (handler: TransactionalHandler<unknown>) =>
           handler({
-            findOne: jest.fn().mockImplementation((entity: any) => {
+            findOne: jest.fn().mockImplementation((entity: EntityClass) => {
               if (entity === Booking) return booking;
               if (entity === ExerciseTemplate)
                 return {
@@ -205,7 +218,7 @@ describe('WorkoutService', () => {
                   isDeleted: false,
                   createdBy: { id: 'admin-id' },
                   items: createItemsCollection([]),
-                };
+                } as unknown as ExerciseTemplate;
               return null;
             }),
             create: jest.fn(),

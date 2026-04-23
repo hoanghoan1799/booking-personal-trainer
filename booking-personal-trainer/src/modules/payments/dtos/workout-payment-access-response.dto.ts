@@ -7,39 +7,39 @@ import {
   IsUUID,
 } from 'class-validator';
 
+import { PaymentsDtoSwagger } from '../constants/payments-swagger-dto.constants';
+
 export class WorkoutPaymentAccessResponseDto {
-  @ApiProperty({ description: 'Whether the workout is fully unlocked (paid).' })
+  @ApiProperty(
+    PaymentsDtoSwagger.WorkoutPaymentAccessResponse.ApiProperty.IsPaid,
+  )
   @IsBoolean()
   isPaid!: boolean;
 
-  @ApiProperty({
-    description: 'Trainee view mode derived from payment state.',
-    enum: ['LIMITED', 'FULL'],
-  })
+  @ApiProperty(PaymentsDtoSwagger.WorkoutPaymentAccessResponse.ApiProperty.View)
   @IsString()
   view!: 'LIMITED' | 'FULL';
 
-  @ApiPropertyOptional({
-    description: 'Active billing charge id (quote) for the workout, if any.',
-    format: 'uuid',
-    nullable: true,
-  })
+  @ApiPropertyOptional(
+    PaymentsDtoSwagger.WorkoutPaymentAccessResponse.ApiPropertyOptional
+      .BillingChargeId,
+  )
   @IsOptional()
   @IsUUID()
   billingChargeId?: string | null;
 
-  @ApiPropertyOptional({
-    description: 'Quoted price in cents from billing_charges.',
-    nullable: true,
-  })
+  @ApiPropertyOptional(
+    PaymentsDtoSwagger.WorkoutPaymentAccessResponse.ApiPropertyOptional
+      .AmountCents,
+  )
   @IsOptional()
   @IsInt()
   amountCents?: number | null;
 
-  @ApiPropertyOptional({
-    description: 'Currency for the quoted price (from billing_charges).',
-    nullable: true,
-  })
+  @ApiPropertyOptional(
+    PaymentsDtoSwagger.WorkoutPaymentAccessResponse.ApiPropertyOptional
+      .Currency,
+  )
   @IsOptional()
   @IsString()
   currency?: string | null;

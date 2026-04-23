@@ -32,6 +32,7 @@ import { PaymentsService } from '../services/payments.service';
 import { WorkoutPaymentPolicyService } from '../services/workout-payment-policy.service';
 import { EntityManager } from '@mikro-orm/core';
 import { Workout } from '../../workout/entities/workout.entity';
+import { PaymentsSwagger } from '../constants/payments-swagger.constants';
 
 @ApiTags('Payments')
 @ApiBearerAuth(SWAGGER_ACCESS_TOKEN)
@@ -46,16 +47,12 @@ export class WorkoutPaymentsController {
 
   @Roles(UserRole.ADMIN, UserRole.TRAINER, UserRole.TRAINEE)
   @Get('access')
-  @ApiOperation({
-    summary: 'Get workout payment access + quoted price',
-    description:
-      'Returns whether the workout is paid/unlocked for the current user, and the quoted price from billing_charges.',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Access snapshot',
-    type: WorkoutPaymentAccessResponseDto,
-  })
+  @ApiOperation(
+    PaymentsSwagger.Controller.WorkoutPayments.ApiOperation.GetAccess,
+  )
+  @ApiResponse(
+    PaymentsSwagger.Controller.WorkoutPayments.ApiResponse.GetAccessOk,
+  )
   async getAccess(
     @Param('id') workoutId: string,
     @Req() req: CurrentRequestUser,
@@ -91,16 +88,12 @@ export class WorkoutPaymentsController {
 
   @Roles(UserRole.TRAINEE)
   @Post('intent')
-  @ApiOperation({
-    summary: 'Create a Stripe PaymentIntent for a workout',
-    description:
-      'Creates a PaymentIntent for the latest ACTIVE billing charge of the workout and returns its client_secret.',
-  })
-  @ApiResponse({
-    status: 201,
-    description: 'Payment intent created',
-    type: CreateWorkoutPaymentIntentResponseDto,
-  })
+  @ApiOperation(
+    PaymentsSwagger.Controller.WorkoutPayments.ApiOperation.CreateIntent,
+  )
+  @ApiResponse(
+    PaymentsSwagger.Controller.WorkoutPayments.ApiResponse.CreateIntentCreated,
+  )
   async createIntent(
     @Param('id') workoutId: string,
     @Req() req: CurrentRequestUser,

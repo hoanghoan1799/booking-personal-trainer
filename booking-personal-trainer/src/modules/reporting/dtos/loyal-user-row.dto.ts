@@ -1,6 +1,8 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsInt, IsString } from 'class-validator';
 
+import { ReportingDtoSwagger } from '../constants/reporting-swagger-dto.constants';
+
 export class LoyalUserRowDto {
   @ApiProperty()
   @IsString()
@@ -14,7 +16,7 @@ export class LoyalUserRowDto {
   @IsString()
   userEmail!: string;
 
-  @ApiProperty({ description: 'Bookings in scope (by createdAt).' })
+  @ApiProperty(ReportingDtoSwagger.LoyalUserRow.ApiProperty.BookingsCount)
   @IsInt()
   bookingsCount!: number;
 

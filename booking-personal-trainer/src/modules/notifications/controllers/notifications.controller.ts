@@ -33,6 +33,7 @@ import { Notification } from '../entities/notification.entity';
 
 // Services
 import { NotificationsService } from '../services/notifications.service';
+import { NotificationsSwagger } from '../constants/notifications-swagger.constants';
 
 @ApiTags('Notifications')
 @ApiBearerAuth(SWAGGER_ACCESS_TOKEN)
@@ -43,8 +44,8 @@ export class NotificationsController {
 
   @Get()
   @Serialize(NotificationResponseDto)
-  @ApiOperation({ summary: 'List notifications for current user' })
-  @ApiResponse({ status: 200, description: 'Notifications list' })
+  @ApiOperation(NotificationsSwagger.Controller.ApiOperation.List)
+  @ApiResponse(NotificationsSwagger.Controller.ApiResponse.ListOk)
   async list(
     @Query() query: GetNotificationsQueryDto,
     @CurrentUser() currentUser: JwtAuthPayload,
@@ -58,8 +59,8 @@ export class NotificationsController {
   }
 
   @Get('unread-count')
-  @ApiOperation({ summary: 'Get unread notification count' })
-  @ApiResponse({ status: 200, description: 'Unread count' })
+  @ApiOperation(NotificationsSwagger.Controller.ApiOperation.UnreadCount)
+  @ApiResponse(NotificationsSwagger.Controller.ApiResponse.UnreadCountOk)
   async unreadCount(
     @CurrentUser() currentUser: JwtAuthPayload,
   ): Promise<BaseResponseDto<{ unreadCount: number }>> {
@@ -69,8 +70,8 @@ export class NotificationsController {
   }
 
   @Patch(':id/read')
-  @ApiOperation({ summary: 'Mark a notification as read' })
-  @ApiResponse({ status: 200, description: 'Marked as read' })
+  @ApiOperation(NotificationsSwagger.Controller.ApiOperation.MarkRead)
+  @ApiResponse(NotificationsSwagger.Controller.ApiResponse.MarkReadOk)
   async markRead(
     @Param('id') id: string,
     @CurrentUser() currentUser: JwtAuthPayload,
@@ -82,8 +83,8 @@ export class NotificationsController {
   }
 
   @Patch('read-all')
-  @ApiOperation({ summary: 'Mark all notifications as read' })
-  @ApiResponse({ status: 200, description: 'Marked all as read' })
+  @ApiOperation(NotificationsSwagger.Controller.ApiOperation.MarkAllRead)
+  @ApiResponse(NotificationsSwagger.Controller.ApiResponse.MarkAllReadOk)
   async markAllRead(
     @CurrentUser() currentUser: JwtAuthPayload,
   ): Promise<BaseResponseDto<{ updated: number }>> {

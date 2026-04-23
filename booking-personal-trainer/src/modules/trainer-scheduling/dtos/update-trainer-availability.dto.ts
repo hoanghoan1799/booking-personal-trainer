@@ -1,13 +1,21 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsDateString, IsOptional } from 'class-validator';
 
+import { TrainerSchedulingDtoSwagger } from '../constants/trainer-scheduling-swagger-dto.constants';
+
 export class UpdateTrainerAvailabilityDto {
-  @ApiPropertyOptional({ example: '2026-02-01T09:00:00Z' })
+  @ApiPropertyOptional(
+    TrainerSchedulingDtoSwagger.UpdateTrainerAvailability.ApiPropertyOptional
+      .StartTime,
+  )
   @IsOptional()
   @IsDateString()
   startTime?: string;
 
-  @ApiPropertyOptional({ example: '2026-02-01T10:00:00Z' })
+  @ApiPropertyOptional(
+    TrainerSchedulingDtoSwagger.UpdateTrainerAvailability.ApiPropertyOptional
+      .EndTime,
+  )
   @IsOptional()
   @IsDateString()
   endTime?: string;

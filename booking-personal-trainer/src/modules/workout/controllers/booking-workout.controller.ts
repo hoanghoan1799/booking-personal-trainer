@@ -1,11 +1,4 @@
-import {
-  Body,
-  Controller,
-  HttpStatus,
-  Param,
-  Post,
-  UseGuards,
-} from '@nestjs/common';
+import { Body, Controller, Param, Post, UseGuards } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiBody,
@@ -14,7 +7,6 @@ import {
   ApiParam,
   ApiResponse,
   ApiTags,
-  getSchemaPath,
 } from '@nestjs/swagger';
 
 import { BaseResponseDto } from '../../../common/dtos/base-response.dto';
@@ -30,6 +22,7 @@ import type { JwtAuthPayload } from '../../auth/types/jwt-auth.type';
 import { WorkoutService } from '../services/workout.service';
 import { CreateBookingWorkoutDto } from '../dtos/create-booking-workout.dto';
 import { WorkoutResponseDto } from '../dtos/workout-response.dto';
+import { WorkoutSwagger } from '../constants/workout-swagger.constants';
 
 @ApiTags('Booking workouts')
 @ApiBearerAuth(SWAGGER_ACCESS_TOKEN)
@@ -42,18 +35,12 @@ export class BookingWorkoutController {
   @Roles(UserRole.ADMIN, UserRole.TRAINER)
   @Post()
   @Serialize(WorkoutResponseDto)
-  @ApiOperation({ summary: 'Create a workout for a booking from a template' })
-  @ApiParam({ name: 'bookingId', type: String })
-  @ApiBody({ type: CreateBookingWorkoutDto })
-  @ApiResponse({
-    status: HttpStatus.CREATED,
-    schema: {
-      required: ['data'],
-      properties: {
-        data: { $ref: getSchemaPath(WorkoutResponseDto) },
-      },
-    },
-  })
+  @ApiOperation(WorkoutSwagger.Controller.BookingWorkout.ApiOperation.Create)
+  @ApiParam(WorkoutSwagger.Controller.BookingWorkout.ApiParam.BookingId)
+  @ApiBody(WorkoutSwagger.Controller.BookingWorkout.ApiBody.Create)
+  @ApiResponse(
+    WorkoutSwagger.Controller.BookingWorkout.ApiResponse.CreateCreated,
+  )
   async create(
     @Param('bookingId') bookingId: string,
     @Body() body: CreateBookingWorkoutDto,

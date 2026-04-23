@@ -9,42 +9,36 @@ import {
 } from 'class-validator';
 
 import { ReportBucket } from '../enums/report-bucket.enum';
+import { ReportingDtoSwagger } from '../constants/reporting-swagger-dto.constants';
 
 export class RevenueReportQueryDto {
-  @ApiPropertyOptional({
-    description:
-      'Filter payments by paidAt/refundedAt from this time (inclusive).',
-    example: '2026-01-01T00:00:00.000Z',
-  })
+  @ApiPropertyOptional(
+    ReportingDtoSwagger.RevenueReportQuery.ApiPropertyOptional.From,
+  )
   @IsOptional()
   @Type(() => Date)
   @IsDate()
   from?: Date;
 
-  @ApiPropertyOptional({
-    description:
-      'Filter payments by paidAt/refundedAt up to this time (exclusive).',
-    example: '2026-04-01T00:00:00.000Z',
-  })
+  @ApiPropertyOptional(
+    ReportingDtoSwagger.RevenueReportQuery.ApiPropertyOptional.To,
+  )
   @IsOptional()
   @Type(() => Date)
   @IsDate()
   to?: Date;
 
-  @ApiPropertyOptional({
-    description: 'Optional currency filter (e.g. USD).',
-    example: 'USD',
-  })
+  @ApiPropertyOptional(
+    ReportingDtoSwagger.RevenueReportQuery.ApiPropertyOptional.Currency,
+  )
   @IsOptional()
   @IsString()
   @MaxLength(10)
   currency?: string;
 
-  @ApiPropertyOptional({
-    enum: ReportBucket,
-    description: 'Calendar bucket size (UTC).',
-    default: ReportBucket.MONTH,
-  })
+  @ApiPropertyOptional(
+    ReportingDtoSwagger.RevenueReportQuery.ApiPropertyOptional.Bucket,
+  )
   @IsOptional()
   @IsEnum(ReportBucket)
   bucket?: ReportBucket;

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-return */
 import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 
@@ -22,6 +21,15 @@ import { EmailService } from '../../../email/services/email.service';
 import { BookingRepositoryToken } from '../../repositories/booking.repository.interface';
 import { UserRepositoryToken } from '../../../user/repositories/user.repository.interface';
 import { EntityManager } from '@mikro-orm/core';
+
+type TransactionalEntityManagerMock = {
+  readonly create: jest.Mock;
+  readonly persist: jest.Mock;
+};
+
+type TransactionalHandler<T> = (
+  em: TransactionalEntityManagerMock,
+) => Promise<T>;
 
 const DEFAULT_PAGE = 1;
 const DEFAULT_LIMIT = 10;
@@ -245,7 +253,7 @@ describe('BookingService', () => {
         status: BookingStatus.PENDING,
       };
       em.transactional.mockImplementation(
-        async (handler: (innerEm: any) => Promise<any>) =>
+        async (handler: TransactionalHandler<Booking>) =>
           handler({
             create: jest.fn().mockReturnValue(createdBooking),
             persist: jest.fn().mockReturnValue({ flush: jest.fn() }),

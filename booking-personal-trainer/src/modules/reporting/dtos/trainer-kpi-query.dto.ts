@@ -10,31 +10,28 @@ import {
   Min,
 } from 'class-validator';
 
+import { ReportingDtoSwagger } from '../constants/reporting-swagger-dto.constants';
+
 export class TrainerKpiQueryDto {
-  @ApiPropertyOptional({
-    description:
-      'Filter bookings/workouts by startTime from this time (inclusive).',
-  })
+  @ApiPropertyOptional(
+    ReportingDtoSwagger.TrainerKpiQuery.ApiPropertyOptional.From,
+  )
   @IsOptional()
   @Type(() => Date)
   @IsDate()
   from?: Date;
 
-  @ApiPropertyOptional({
-    description:
-      'Filter bookings/workouts by startTime up to this time (exclusive).',
-  })
+  @ApiPropertyOptional(
+    ReportingDtoSwagger.TrainerKpiQuery.ApiPropertyOptional.To,
+  )
   @IsOptional()
   @Type(() => Date)
   @IsDate()
   to?: Date;
 
-  @ApiPropertyOptional({
-    description: 'Max leaderboard rows (admin).',
-    default: 50,
-    minimum: 1,
-    maximum: 200,
-  })
+  @ApiPropertyOptional(
+    ReportingDtoSwagger.TrainerKpiQuery.ApiPropertyOptional.Limit,
+  )
   @IsOptional()
   @Type(() => Number)
   @IsInt()
@@ -42,11 +39,9 @@ export class TrainerKpiQueryDto {
   @Max(200)
   limit?: number;
 
-  @ApiPropertyOptional({
-    description:
-      'When set, trainer share revenue sums only payments in this currency.',
-    example: 'USD',
-  })
+  @ApiPropertyOptional(
+    ReportingDtoSwagger.TrainerKpiQuery.ApiPropertyOptional.Currency,
+  )
   @IsOptional()
   @IsString()
   @MaxLength(10)

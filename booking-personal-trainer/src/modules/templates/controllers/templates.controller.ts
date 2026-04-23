@@ -3,7 +3,6 @@ import {
   Controller,
   Delete,
   Get,
-  HttpStatus,
   Param,
   Patch,
   Post,
@@ -21,7 +20,6 @@ import {
   ApiParam,
   ApiResponse,
   ApiTags,
-  getSchemaPath,
 } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { UploadedFile } from '@nestjs/common';
@@ -54,13 +52,14 @@ import {
   ExerciseTemplateResponseDto,
 } from '../dtos/template-response.dto';
 import { ImportTemplatesCsvResponseDto } from '../dtos/import-templates-csv-response.dto';
+import { TemplatesSwagger } from '../constants/templates-swagger.constants';
 
 @ApiTags('Templates')
 @ApiBearerAuth(SWAGGER_ACCESS_TOKEN)
 @ApiExtraModels(
-  ExerciseTemplateResponseDto,
-  ExerciseTemplateItemResponseDto,
-  ImportTemplatesCsvResponseDto,
+  TemplatesSwagger.Controller.ApiExtraModels.Template,
+  TemplatesSwagger.Controller.ApiExtraModels.TemplateItem,
+  TemplatesSwagger.Controller.ApiExtraModels.ImportCsvResponse,
 )
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('templates')
@@ -70,20 +69,8 @@ export class TemplatesController {
   @Roles(UserRole.ADMIN, UserRole.TRAINER)
   @Get()
   @Serialize(ExerciseTemplateResponseDto)
-  @ApiOperation({ summary: 'List templates' })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    schema: {
-      required: ['data', 'meta'],
-      properties: {
-        data: {
-          type: 'array',
-          items: { $ref: getSchemaPath(ExerciseTemplateResponseDto) },
-        },
-        meta: { type: 'object' },
-      },
-    },
-  })
+  @ApiOperation(TemplatesSwagger.Controller.ApiOperation.List)
+  @ApiResponse(TemplatesSwagger.Controller.ApiResponse.ListOk)
   async list(
     @Query() query: TemplatesQueryDto,
     @CurrentUser() currentUser: JwtAuthPayload,
@@ -99,26 +86,10 @@ export class TemplatesController {
   @Roles(UserRole.ADMIN, UserRole.TRAINER)
   @Post('import/csv')
   @UseInterceptors(FileInterceptor('file'))
-  @ApiConsumes('multipart/form-data')
-  @ApiOperation({ summary: 'Import templates from CSV' })
-  @ApiBody({
-    schema: {
-      type: 'object',
-      properties: {
-        file: { type: 'string', format: 'binary' },
-      },
-      required: ['file'],
-    },
-  })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    schema: {
-      required: ['data'],
-      properties: {
-        data: { $ref: getSchemaPath(ImportTemplatesCsvResponseDto) },
-      },
-    },
-  })
+  @ApiConsumes(TemplatesSwagger.Controller.ApiConsumes.Multipart)
+  @ApiOperation(TemplatesSwagger.Controller.ApiOperation.ImportCsv)
+  @ApiBody(TemplatesSwagger.Controller.ApiBody.ImportCsv)
+  @ApiResponse(TemplatesSwagger.Controller.ApiResponse.ImportCsvOk)
   async importCsv(
     @UploadedFile() file: { buffer: Buffer } | undefined,
     @CurrentUser() currentUser: JwtAuthPayload,
@@ -137,8 +108,8 @@ export class TemplatesController {
   @Roles(UserRole.ADMIN, UserRole.TRAINER)
   @Get(':templateId')
   @Serialize(ExerciseTemplateResponseDto)
-  @ApiOperation({ summary: 'Get template by id' })
-  @ApiParam({ name: 'templateId', type: String })
+  @ApiOperation(TemplatesSwagger.Controller.ApiOperation.GetOne)
+  @ApiParam(TemplatesSwagger.Controller.ApiParam.TemplateId)
   async getOne(
     @Param('templateId') templateId: string,
   ): Promise<BaseResponseDto<ExerciseTemplateResponseDto>> {
@@ -149,8 +120,8 @@ export class TemplatesController {
   @Roles(UserRole.ADMIN, UserRole.TRAINER)
   @Post()
   @Serialize(ExerciseTemplateResponseDto)
-  @ApiOperation({ summary: 'Create template' })
-  @ApiBody({ type: CreateTemplateDto })
+  @ApiOperation(TemplatesSwagger.Controller.ApiOperation.Create)
+  @ApiBody(TemplatesSwagger.Controller.ApiBody.Create)
   async create(
     @Body() body: CreateTemplateDto,
     @CurrentUser() currentUser: JwtAuthPayload,
@@ -162,8 +133,8 @@ export class TemplatesController {
   @Roles(UserRole.ADMIN, UserRole.TRAINER)
   @Post(':templateId/fork')
   @Serialize(ExerciseTemplateResponseDto)
-  @ApiOperation({ summary: 'Fork template into a trainer template' })
-  @ApiParam({ name: 'templateId', type: String })
+  @ApiOperation(TemplatesSwagger.Controller.ApiOperation.Fork)
+  @ApiParam(TemplatesSwagger.Controller.ApiParam.TemplateId)
   async fork(
     @Param('templateId') templateId: string,
     @CurrentUser() currentUser: JwtAuthPayload,
@@ -175,9 +146,9 @@ export class TemplatesController {
   @Roles(UserRole.ADMIN, UserRole.TRAINER)
   @Patch(':templateId')
   @Serialize(ExerciseTemplateResponseDto)
-  @ApiOperation({ summary: 'Update template' })
-  @ApiParam({ name: 'templateId', type: String })
-  @ApiBody({ type: UpdateTemplateDto })
+  @ApiOperation(TemplatesSwagger.Controller.ApiOperation.Update)
+  @ApiParam(TemplatesSwagger.Controller.ApiParam.TemplateId)
+  @ApiBody(TemplatesSwagger.Controller.ApiBody.Update)
   async update(
     @Param('templateId') templateId: string,
     @Body() body: UpdateTemplateDto,
@@ -193,12 +164,9 @@ export class TemplatesController {
 
   @Roles(UserRole.ADMIN, UserRole.TRAINER)
   @Delete(':templateId')
-  @ApiOperation({ summary: 'Delete template (soft delete)' })
-  @ApiParam({ name: 'templateId', type: String })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    schema: { properties: { message: { type: 'string' } } },
-  })
+  @ApiOperation(TemplatesSwagger.Controller.ApiOperation.Delete)
+  @ApiParam(TemplatesSwagger.Controller.ApiParam.TemplateId)
+  @ApiResponse(TemplatesSwagger.Controller.ApiResponse.DeleteOk)
   async remove(
     @Param('templateId') templateId: string,
     @CurrentUser() currentUser: JwtAuthPayload,
@@ -210,9 +178,9 @@ export class TemplatesController {
   @Roles(UserRole.ADMIN, UserRole.TRAINER)
   @Post(':templateId/items')
   @Serialize(ExerciseTemplateItemResponseDto)
-  @ApiOperation({ summary: 'Create template item' })
-  @ApiParam({ name: 'templateId', type: String })
-  @ApiBody({ type: CreateTemplateItemDto })
+  @ApiOperation(TemplatesSwagger.Controller.ApiOperation.CreateItem)
+  @ApiParam(TemplatesSwagger.Controller.ApiParam.TemplateId)
+  @ApiBody(TemplatesSwagger.Controller.ApiBody.CreateItem)
   async createItem(
     @Param('templateId') templateId: string,
     @Body() body: CreateTemplateItemDto,
@@ -229,10 +197,10 @@ export class TemplatesController {
   @Roles(UserRole.ADMIN, UserRole.TRAINER)
   @Patch(':templateId/items/:itemId')
   @Serialize(ExerciseTemplateItemResponseDto)
-  @ApiOperation({ summary: 'Update template item' })
-  @ApiParam({ name: 'templateId', type: String })
-  @ApiParam({ name: 'itemId', type: String })
-  @ApiBody({ type: UpdateTemplateItemDto })
+  @ApiOperation(TemplatesSwagger.Controller.ApiOperation.UpdateItem)
+  @ApiParam(TemplatesSwagger.Controller.ApiParam.TemplateId)
+  @ApiParam(TemplatesSwagger.Controller.ApiParam.ItemId)
+  @ApiBody(TemplatesSwagger.Controller.ApiBody.UpdateItem)
   async updateItem(
     @Param('templateId') templateId: string,
     @Param('itemId') itemId: string,
@@ -250,13 +218,10 @@ export class TemplatesController {
 
   @Roles(UserRole.ADMIN, UserRole.TRAINER)
   @Delete(':templateId/items/:itemId')
-  @ApiOperation({ summary: 'Delete template item' })
-  @ApiParam({ name: 'templateId', type: String })
-  @ApiParam({ name: 'itemId', type: String })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    schema: { properties: { message: { type: 'string' } } },
-  })
+  @ApiOperation(TemplatesSwagger.Controller.ApiOperation.DeleteItem)
+  @ApiParam(TemplatesSwagger.Controller.ApiParam.TemplateId)
+  @ApiParam(TemplatesSwagger.Controller.ApiParam.ItemId)
+  @ApiResponse(TemplatesSwagger.Controller.ApiResponse.DeleteItemOk)
   async removeItem(
     @Param('templateId') templateId: string,
     @Param('itemId') itemId: string,

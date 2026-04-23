@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { StripeWebhookService } from '../stripe-webhook.service';
@@ -10,6 +8,32 @@ import { NotificationsService } from '../../../notifications/services/notificati
 import { UserRepositoryToken } from '../../../user/repositories/user.repository.interface';
 import { EmailService } from '../../../email/services/email.service';
 import { EntityManager } from '@mikro-orm/core';
+
+type PaymentFixture = {
+  id: string;
+  status: PaymentStatus;
+  amountCents: number;
+  currency: string;
+  payer: { id: string; userName: string };
+  metadata: { trainerUserId: string; workoutId: string };
+};
+
+type StripePaymentIntentSucceededEvent = {
+  id: string;
+  type: 'payment_intent.succeeded';
+  data: { object: { id: string; status: 'succeeded' } };
+};
+
+type TransactionalEntityManagerMock = {
+  readonly create: jest.Mock;
+  readonly persist: jest.Mock;
+  readonly findOne: jest.Mock;
+  readonly flush: jest.Mock;
+};
+
+type TransactionalHandler<T> = (
+  em: TransactionalEntityManagerMock,
+) => Promise<T>;
 
 describe('StripeWebhookService', () => {
   let service: StripeWebhookService;
@@ -78,16 +102,16 @@ describe('StripeWebhookService', () => {
   });
 
   it('should mark payment PAID on payment_intent.succeeded', async () => {
-    const payment = {
+    const payment: PaymentFixture = {
       id: 'payment_1',
       status: PaymentStatus.PROCESSING,
       amountCents: 5000,
       currency: 'USD',
       payer: { id: 'trainee_1', userName: 'trainee' },
       metadata: { trainerUserId: 'trainer_1', workoutId: 'workout_1' },
-    } as any;
+    };
     em.transactional.mockImplementation(
-      (handler: (innerEm: any) => Promise<any>) =>
+      (handler: TransactionalHandler<unknown>) =>
         handler({
           create: jest.fn().mockReturnValue({}),
           persist: jest.fn().mockReturnValue({ flush: jest.fn() }),
@@ -96,11 +120,11 @@ describe('StripeWebhookService', () => {
         }),
     );
 
-    const event = {
+    const event: StripePaymentIntentSucceededEvent = {
       id: 'evt_1',
       type: 'payment_intent.succeeded',
       data: { object: { id: 'pi_123', status: 'succeeded' } },
-    } as any;
+    };
 
     await service.handleEvent(event);
 

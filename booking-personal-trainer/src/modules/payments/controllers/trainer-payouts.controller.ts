@@ -1,4 +1,4 @@
-import { Controller, Get, HttpStatus, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -18,6 +18,7 @@ import type { JwtAuthPayload } from '../../auth/types/jwt-auth.type';
 import { TrainerPayoutsQueryDto } from '../dtos/trainer-payouts-query.dto';
 import { TrainerPayoutsResponseDto } from '../dtos/trainer-payouts-response.dto';
 import { TrainerPayoutsService } from '../services/trainer-payouts.service';
+import { PaymentsSwagger } from '../constants/payments-swagger.constants';
 
 @ApiTags('Payments')
 @ApiBearerAuth(SWAGGER_ACCESS_TOKEN)
@@ -28,16 +29,12 @@ export class TrainerPayoutsController {
 
   @Roles(UserRole.TRAINER)
   @Get()
-  @ApiOperation({
-    summary: 'Trainer payouts summary',
-    description:
-      'Shows trainer share amounts grouped by currency and payout status (pending/transferred/failed) derived from payment metadata.',
-  })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: 'Payouts snapshot',
-    type: TrainerPayoutsResponseDto,
-  })
+  @ApiOperation(
+    PaymentsSwagger.Controller.TrainerPayouts.ApiOperation.GetMyPayouts,
+  )
+  @ApiResponse(
+    PaymentsSwagger.Controller.TrainerPayouts.ApiResponse.GetMyPayoutsOk,
+  )
   async getMyPayouts(
     @CurrentUser() currentUser: JwtAuthPayload,
     @Query() query: TrainerPayoutsQueryDto,

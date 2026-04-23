@@ -2,7 +2,6 @@ import {
   Body,
   Controller,
   Get,
-  HttpStatus,
   Param,
   Patch,
   Post,
@@ -18,7 +17,6 @@ import {
   ApiBearerAuth,
   ApiExtraModels,
   ApiParam,
-  getSchemaPath,
 } from '@nestjs/swagger';
 
 // Commons
@@ -29,13 +27,6 @@ import { CurrentUser } from '../../../common/decorators/user.decorator';
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { Serialize } from '../../../common/decorators/serialize.decorator';
 import { BaseResponseDto } from '../../../common/dtos/base-response.dto';
-import {
-  API_DESCRIPTIONS,
-  API_PARAM_NAMES,
-  ERROR_MESSAGES,
-  SUCCESS_MESSAGES,
-  FIELD_DESCRIPTIONS,
-} from '../../../common/constants/message.constant';
 import { SWAGGER_ACCESS_TOKEN } from '../../../common/constants/api-document.constants';
 
 // Types
@@ -54,6 +45,7 @@ import {
 
 // Services
 import { UserService } from '../services/user.service';
+import { UserSwagger } from '../constants/user-swagger.constants';
 
 // Rate limiting
 import {
@@ -63,7 +55,10 @@ import {
 
 @ApiTags('User')
 @ApiBearerAuth(SWAGGER_ACCESS_TOKEN)
-@ApiExtraModels(ResponseUserDto, ResponseFullUserDto)
+@ApiExtraModels(
+  UserSwagger.Controller.ApiExtraModels.User,
+  UserSwagger.Controller.ApiExtraModels.FullUser,
+)
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('users')
 export class UserController {
@@ -72,40 +67,10 @@ export class UserController {
   @Roles(UserRole.ADMIN, UserRole.TRAINER, UserRole.TRAINEE)
   @Get()
   @Serialize(ResponseUserDto)
-  @ApiOperation({
-    summary: API_DESCRIPTIONS.USER.GET_ALL_SUMMARY,
-    description: API_DESCRIPTIONS.USER.GET_ALL_DESCRIPTION,
-  })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: SUCCESS_MESSAGES.USER.LIST_RETRIEVED,
-    schema: {
-      required: ['data', 'meta'],
-      properties: {
-        data: {
-          type: 'array',
-          items: { $ref: getSchemaPath(ResponseUserDto) },
-        },
-        meta: {
-          type: 'object',
-          properties: {
-            page: { type: 'number' },
-            limit: { type: 'number' },
-            totalItems: { type: 'number' },
-            totalPages: { type: 'number' },
-          },
-        },
-      },
-    },
-  })
-  @ApiResponse({
-    status: HttpStatus.UNAUTHORIZED,
-    description: ERROR_MESSAGES.AUTH.ACCESS_TOKEN_INVALID,
-  })
-  @ApiResponse({
-    status: HttpStatus.FORBIDDEN,
-    description: ERROR_MESSAGES.AUTH.FORBIDDEN,
-  })
+  @ApiOperation(UserSwagger.Controller.ApiOperation.GetAll)
+  @ApiResponse(UserSwagger.Controller.ApiResponse.GetAllOk)
+  @ApiResponse(UserSwagger.Controller.ApiResponse.Unauthorized)
+  @ApiResponse(UserSwagger.Controller.ApiResponse.Forbidden)
   async getAll(
     @Query() query: GetUsersQueryDto,
     @CurrentUser() currentUser: JwtAuthPayload,
@@ -145,29 +110,11 @@ export class UserController {
     },
   })
   @Serialize(ResponseFullUserDto)
-  @ApiOperation({
-    summary: API_DESCRIPTIONS.USER.UPDATE_PROFILE_SUMMARY,
-    description: API_DESCRIPTIONS.USER.UPDATE_PROFILE_DESCRIPTION,
-  })
-  @ApiBody({ type: UpdateUserProfileDto })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: SUCCESS_MESSAGES.USER.PROFILE_UPDATED,
-    schema: {
-      required: ['data'],
-      properties: {
-        data: { $ref: getSchemaPath(ResponseFullUserDto) },
-      },
-    },
-  })
-  @ApiResponse({
-    status: HttpStatus.UNAUTHORIZED,
-    description: ERROR_MESSAGES.AUTH.ACCESS_TOKEN_INVALID,
-  })
-  @ApiResponse({
-    status: HttpStatus.NOT_FOUND,
-    description: ERROR_MESSAGES.USER.NOT_FOUND,
-  })
+  @ApiOperation(UserSwagger.Controller.ApiOperation.UpdateProfile)
+  @ApiBody(UserSwagger.Controller.ApiBody.UpdateProfile)
+  @ApiResponse(UserSwagger.Controller.ApiResponse.UpdateProfileOk)
+  @ApiResponse(UserSwagger.Controller.ApiResponse.Unauthorized)
+  @ApiResponse(UserSwagger.Controller.ApiResponse.UserNotFound)
   updateProfile(
     @Body() data: UpdateUserProfileDto,
     @CurrentUser() user: JwtAuthPayload,
@@ -203,37 +150,12 @@ export class UserController {
     },
   })
   @Serialize(ResponseFullUserDto)
-  @ApiOperation({
-    summary: API_DESCRIPTIONS.USER.REQUEST_TRAINER_ROLE_SUMMARY,
-    description: API_DESCRIPTIONS.USER.REQUEST_TRAINER_ROLE_DESCRIPTION,
-  })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: SUCCESS_MESSAGES.USER.TRAINER_APPLICATION_SUBMITTED,
-    schema: {
-      required: ['data'],
-      properties: {
-        data: { $ref: getSchemaPath(ResponseFullUserDto) },
-      },
-    },
-  })
-  @ApiResponse({
-    status: HttpStatus.UNAUTHORIZED,
-    description: ERROR_MESSAGES.AUTH.ACCESS_TOKEN_INVALID,
-  })
-  @ApiResponse({
-    status: HttpStatus.FORBIDDEN,
-    description: ERROR_MESSAGES.AUTH.FORBIDDEN,
-  })
-  @ApiResponse({
-    status: HttpStatus.CONFLICT,
-    description:
-      'Trainer application already pending, already approved, or account in an invalid state.',
-  })
-  @ApiResponse({
-    status: HttpStatus.NOT_FOUND,
-    description: ERROR_MESSAGES.USER.NOT_FOUND,
-  })
+  @ApiOperation(UserSwagger.Controller.ApiOperation.RequestTrainerRole)
+  @ApiResponse(UserSwagger.Controller.ApiResponse.RequestTrainerRoleOk)
+  @ApiResponse(UserSwagger.Controller.ApiResponse.Unauthorized)
+  @ApiResponse(UserSwagger.Controller.ApiResponse.Forbidden)
+  @ApiResponse(UserSwagger.Controller.ApiResponse.RequestTrainerRoleConflict)
+  @ApiResponse(UserSwagger.Controller.ApiResponse.UserNotFound)
   requestTrainerRole(
     @CurrentUser() user: JwtAuthPayload,
   ): Promise<BaseResponseDto<ResponseFullUserDto>> {
@@ -268,38 +190,13 @@ export class UserController {
     },
   })
   @Serialize(ResponseUserDto)
-  @ApiOperation({
-    summary: API_DESCRIPTIONS.USER.UPDATE_ROLE_SUMMARY,
-    description: API_DESCRIPTIONS.USER.UPDATE_ROLE_DESCRIPTION,
-  })
-  @ApiParam({
-    name: API_PARAM_NAMES.USER_ID,
-    description: FIELD_DESCRIPTIONS.USER.ID,
-    type: String,
-  })
-  @ApiBody({ type: UpdateUserRoleDto })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: SUCCESS_MESSAGES.USER.ROLE_UPDATED,
-    schema: {
-      required: ['data'],
-      properties: {
-        data: { $ref: getSchemaPath(ResponseUserDto) },
-      },
-    },
-  })
-  @ApiResponse({
-    status: HttpStatus.UNAUTHORIZED,
-    description: ERROR_MESSAGES.AUTH.ACCESS_TOKEN_INVALID,
-  })
-  @ApiResponse({
-    status: HttpStatus.FORBIDDEN,
-    description: ERROR_MESSAGES.AUTH.FORBIDDEN,
-  })
-  @ApiResponse({
-    status: HttpStatus.NOT_FOUND,
-    description: ERROR_MESSAGES.USER.NOT_FOUND,
-  })
+  @ApiOperation(UserSwagger.Controller.ApiOperation.UpdateRole)
+  @ApiParam(UserSwagger.Controller.ApiParam.UserId)
+  @ApiBody(UserSwagger.Controller.ApiBody.UpdateRole)
+  @ApiResponse(UserSwagger.Controller.ApiResponse.UpdateRoleOk)
+  @ApiResponse(UserSwagger.Controller.ApiResponse.Unauthorized)
+  @ApiResponse(UserSwagger.Controller.ApiResponse.Forbidden)
+  @ApiResponse(UserSwagger.Controller.ApiResponse.UserNotFound)
   async updateUserRole(
     @Param('userId') id: string,
     @Body() data: UpdateUserRoleDto,

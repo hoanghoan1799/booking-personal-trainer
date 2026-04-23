@@ -4,57 +4,42 @@ import {
   Equipment,
   MuscleGroup,
 } from '../../../common/enums/exercise/exercise.enum';
-import {
-  API_FORMATS,
-  FIELD_DESCRIPTIONS,
-} from '../../../common/constants/message.constant';
+
+// Constants
+import { ExerciseDtoSwagger } from '../constants/exercise-swagger-dto.constants';
 
 export class ResponseExerciseDto {
-  @ApiProperty({
-    description: FIELD_DESCRIPTIONS.EXERCISE.ID,
-    format: API_FORMATS.UUID,
-    example: FIELD_DESCRIPTIONS.USER.ID_EXAMPLE,
-  })
+  @ApiProperty(ExerciseDtoSwagger.ResponseExercise.ApiProperty.Id)
   @Expose()
   id: string;
 
-  @ApiProperty({
-    description: FIELD_DESCRIPTIONS.EXERCISE.NAME,
-  })
+  @ApiProperty(ExerciseDtoSwagger.ResponseExercise.ApiProperty.Name)
   @Expose()
   name: string;
 
-  @ApiPropertyOptional({
-    description: FIELD_DESCRIPTIONS.EXERCISE.DESCRIPTION,
-  })
+  @ApiPropertyOptional(
+    ExerciseDtoSwagger.ResponseExercise.ApiPropertyOptional.Description,
+  )
   @Expose()
   description: string;
 
-  @ApiPropertyOptional({
-    description: FIELD_DESCRIPTIONS.EXERCISE.THUMBNAIL_URL,
-    format: API_FORMATS.URI,
-  })
+  @ApiPropertyOptional(
+    ExerciseDtoSwagger.ResponseExercise.ApiPropertyOptional.ThumbnailUrl,
+  )
   @Expose()
   thumbnailUrl?: string;
 
-  @ApiPropertyOptional({
-    description: FIELD_DESCRIPTIONS.EXERCISE.VIDEO_URL,
-    format: API_FORMATS.URI,
-  })
+  @ApiPropertyOptional(
+    ExerciseDtoSwagger.ResponseExercise.ApiPropertyOptional.VideoUrl,
+  )
   @Expose()
   videoUrl?: string;
 
-  @ApiProperty({
-    description: FIELD_DESCRIPTIONS.EXERCISE.MUSCLE_GROUP,
-    enum: MuscleGroup,
-  })
+  @ApiProperty(ExerciseDtoSwagger.ResponseExercise.ApiProperty.MuscleGroup)
   @Expose()
   muscleGroup: MuscleGroup;
 
-  @ApiProperty({
-    description: FIELD_DESCRIPTIONS.EXERCISE.EQUIPMENT,
-    enum: Equipment,
-  })
+  @ApiProperty(ExerciseDtoSwagger.ResponseExercise.ApiProperty.Equipment)
   @Expose()
   equipment: Equipment;
 }

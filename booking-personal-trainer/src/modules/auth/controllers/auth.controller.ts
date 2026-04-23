@@ -15,16 +15,10 @@ import {
   ApiOperation,
   ApiResponse,
   ApiTags,
-  getSchemaPath,
 } from '@nestjs/swagger';
 
 // Commons
 import { Public } from '../../../common/decorators/public.decorator';
-import {
-  API_DESCRIPTIONS,
-  ERROR_MESSAGES,
-  SUCCESS_MESSAGES,
-} from '../../../common/constants/message.constant';
 import { CurrentUser } from '../../../common/decorators/user.decorator';
 import { Serialize } from '../../../common/decorators/serialize.decorator';
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
@@ -39,22 +33,16 @@ import type { JwtAuthPayload } from '../types/jwt-auth.type';
 // DTOs
 import { RegisterDto } from '../dtos/register.dto';
 import { LoginDto, AuthResponseDataDto } from '../dtos/login.dto';
-import {
-  RefreshTokenRequestDto,
-  TokensDto,
-  LogoutResponseDto,
-} from '../dtos/token.dto';
+import { RefreshTokenRequestDto, TokensDto } from '../dtos/token.dto';
 import { LogoutDto } from '../dtos/logout.dto';
 import { TokenExchangeDto } from '../dtos/token-exchange.dto';
 import { LinkAuth0ToLocalDto } from '../dtos/link-auth0-to-local.dto';
 import { SetPasswordDto } from '../dtos/set-password.dto';
-import {
-  ResponseFullUserDto,
-  ResponseUserDto,
-} from '../../user/dtos/response-user.dto';
+import { ResponseFullUserDto } from '../../user/dtos/response-user.dto';
 
 // Services
 import { AuthService } from '../services/auth.service';
+import { AuthSwagger } from '../constants/auth-swagger.constants';
 
 // Rate limiting
 import {
@@ -62,185 +50,12 @@ import {
   RATE_LIMIT_WINDOW_TTL_MILLISECONDS,
 } from '../../../common/helpers/rate-limit-override.helper';
 
-const API_BODY_REGISTER = { type: RegisterDto } as const;
-const API_BODY_LOGIN = { type: LoginDto } as const;
-const API_BODY_TOKEN_EXCHANGE = { type: TokenExchangeDto } as const;
-const API_BODY_LINK_AUTH0 = { type: LinkAuth0ToLocalDto } as const;
-const API_BODY_SET_PASSWORD = { type: SetPasswordDto } as const;
-const API_BODY_REFRESH_TOKEN = { type: RefreshTokenRequestDto } as const;
-const API_BODY_LOGOUT = { type: LogoutDto } as const;
-
-const API_OPERATION_REGISTER = {
-  summary: API_DESCRIPTIONS.AUTH.REGISTER_SUMMARY,
-  description: API_DESCRIPTIONS.AUTH.REGISTER_DESCRIPTION,
-} as const;
-
-const API_RESPONSE_REGISTER_CREATED = {
-  status: HttpStatus.CREATED,
-  description: SUCCESS_MESSAGES.USER.CREATED,
-  schema: {
-    required: ['data'],
-    properties: {
-      data: { $ref: getSchemaPath(AuthResponseDataDto) },
-    },
-  },
-} as const;
-
-const API_RESPONSE_REGISTER_CONFLICT = {
-  status: HttpStatus.CONFLICT,
-  description: `${ERROR_MESSAGES.USER.EMAIL_TAKEN} or ${ERROR_MESSAGES.USER.USERNAME_TAKEN}`,
-} as const;
-
-const API_RESPONSE_REGISTER_BAD_REQUEST = {
-  status: HttpStatus.BAD_REQUEST,
-  description: ERROR_MESSAGES.AUTH.MISSING_REQUIRED_FIELDS,
-} as const;
-
-const API_OPERATION_LOGIN = {
-  summary: API_DESCRIPTIONS.AUTH.LOGIN_SUMMARY,
-  description: API_DESCRIPTIONS.AUTH.LOGIN_DESCRIPTION,
-} as const;
-
-const API_RESPONSE_LOGIN_OK = {
-  status: HttpStatus.OK,
-  description: SUCCESS_MESSAGES.USER.LOGGED_IN,
-  schema: {
-    required: ['data'],
-    properties: {
-      data: { $ref: getSchemaPath(AuthResponseDataDto) },
-    },
-  },
-} as const;
-
-const API_RESPONSE_LOGIN_NOT_FOUND = {
-  status: HttpStatus.NOT_FOUND,
-  description: ERROR_MESSAGES.USER.NOT_FOUND,
-} as const;
-
-const API_RESPONSE_LOGIN_PASSWORD_NOT_MATCH = {
-  status: HttpStatus.BAD_REQUEST,
-  description: ERROR_MESSAGES.VALIDATION.PASSWORD_NOT_MATCH,
-} as const;
-
-const API_RESPONSE_LOGIN_MISSING_REQUIRED_FIELDS = {
-  status: HttpStatus.BAD_REQUEST,
-  description: ERROR_MESSAGES.AUTH.MISSING_REQUIRED_FIELDS,
-} as const;
-
-const API_OPERATION_TOKEN_EXCHANGE = {
-  summary: API_DESCRIPTIONS.AUTH.TOKEN_EXCHANGE_SUMMARY,
-  description: API_DESCRIPTIONS.AUTH.TOKEN_EXCHANGE_DESCRIPTION,
-} as const;
-
-const API_RESPONSE_TOKEN_EXCHANGE_OK = {
-  status: HttpStatus.OK,
-  description: SUCCESS_MESSAGES.USER.LOGGED_IN,
-  schema: {
-    required: ['data'],
-    properties: {
-      data: { $ref: getSchemaPath(AuthResponseDataDto) },
-    },
-  },
-} as const;
-
-const API_RESPONSE_TOKEN_EXCHANGE_UNAUTHORIZED = {
-  status: HttpStatus.UNAUTHORIZED,
-  description: ERROR_MESSAGES.AUTH.INVALID_TOKEN,
-} as const;
-
-const API_RESPONSE_TOKEN_EXCHANGE_BAD_REQUEST_EMAIL_MISSING = {
-  status: HttpStatus.BAD_REQUEST,
-  description: ERROR_MESSAGES.AUTH.EMAIL_MISSING,
-} as const;
-
-const API_OPERATION_LINK_AUTH0 = {
-  summary: 'Link Auth0 to existing local account',
-  description:
-    'Verifies third-party JWT and links it to an existing local user after password verification, then returns application tokens.',
-} as const;
-
-const API_RESPONSE_LINK_AUTH0_OK = {
-  status: HttpStatus.OK,
-  description: SUCCESS_MESSAGES.USER.LOGGED_IN,
-  schema: {
-    required: ['data'],
-    properties: {
-      data: { $ref: getSchemaPath(AuthResponseDataDto) },
-    },
-  },
-} as const;
-
-const API_OPERATION_SET_PASSWORD = {
-  summary: 'Create password for current user',
-  description:
-    'Allows Auth0-first users to create a password so they can log in with email/password next time.',
-} as const;
-
-const API_RESPONSE_SET_PASSWORD_NO_CONTENT = {
-  status: HttpStatus.NO_CONTENT,
-  description: 'Password created successfully',
-} as const;
-
-const API_OPERATION_REFRESH_TOKEN = {
-  summary: API_DESCRIPTIONS.AUTH.REFRESH_TOKEN_SUMMARY,
-  description: API_DESCRIPTIONS.AUTH.REFRESH_TOKEN_DESCRIPTION,
-} as const;
-
-const API_RESPONSE_REFRESH_TOKEN_OK = {
-  status: HttpStatus.OK,
-  description: SUCCESS_MESSAGES.AUTH.TOKEN_REFRESHED,
-  type: TokensDto,
-} as const;
-
-const API_RESPONSE_REFRESH_TOKEN_BAD_REQUEST_REQUIRED = {
-  status: HttpStatus.BAD_REQUEST,
-  description: ERROR_MESSAGES.AUTH.REFRESH_TOKEN_REQUIRED,
-} as const;
-
-const API_RESPONSE_REFRESH_TOKEN_UNAUTHORIZED_INVALID = {
-  status: HttpStatus.UNAUTHORIZED,
-  description: ERROR_MESSAGES.AUTH.INVALID_REFRESH_TOKEN,
-} as const;
-
-const API_OPERATION_LOGOUT = {
-  summary: API_DESCRIPTIONS.AUTH.LOGOUT_SUMMARY,
-  description: API_DESCRIPTIONS.AUTH.LOGOUT_DESCRIPTION,
-} as const;
-
-const API_RESPONSE_LOGOUT_OK = {
-  status: HttpStatus.OK,
-  description: SUCCESS_MESSAGES.AUTH.LOGGED_OUT,
-  type: LogoutResponseDto,
-} as const;
-
-const API_OPERATION_PROFILE = {
-  summary: API_DESCRIPTIONS.AUTH.PROFILE_SUMMARY,
-  description: API_DESCRIPTIONS.AUTH.PROFILE_DESCRIPTION,
-} as const;
-
-const API_RESPONSE_PROFILE_OK = {
-  status: HttpStatus.OK,
-  description: SUCCESS_MESSAGES.USER.PROFILE_RETRIEVED,
-  schema: {
-    required: ['data'],
-    properties: {
-      data: { $ref: getSchemaPath(ResponseFullUserDto) },
-    },
-  },
-} as const;
-
-const API_RESPONSE_PROFILE_UNAUTHORIZED = {
-  status: HttpStatus.UNAUTHORIZED,
-  description: ERROR_MESSAGES.AUTH.ACCESS_TOKEN_INVALID,
-} as const;
-
-const API_RESPONSE_PROFILE_NOT_FOUND = {
-  status: HttpStatus.NOT_FOUND,
-  description: ERROR_MESSAGES.USER.NOT_FOUND,
-} as const;
-
 @ApiTags('Auth')
-@ApiExtraModels(ResponseUserDto, ResponseFullUserDto, AuthResponseDataDto)
+@ApiExtraModels(
+  AuthSwagger.Controller.ApiExtraModels.User,
+  AuthSwagger.Controller.ApiExtraModels.FullUser,
+  AuthSwagger.Controller.ApiExtraModels.AuthResponseData,
+)
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
@@ -275,11 +90,11 @@ export class AuthController {
       }),
     },
   })
-  @ApiOperation(API_OPERATION_REGISTER)
-  @ApiBody(API_BODY_REGISTER)
-  @ApiResponse(API_RESPONSE_REGISTER_CREATED)
-  @ApiResponse(API_RESPONSE_REGISTER_CONFLICT)
-  @ApiResponse(API_RESPONSE_REGISTER_BAD_REQUEST)
+  @ApiOperation(AuthSwagger.Controller.ApiOperation.Register)
+  @ApiBody(AuthSwagger.Controller.ApiBody.Register)
+  @ApiResponse(AuthSwagger.Controller.ApiResponse.RegisterCreated)
+  @ApiResponse(AuthSwagger.Controller.ApiResponse.RegisterConflict)
+  @ApiResponse(AuthSwagger.Controller.ApiResponse.RegisterBadRequest)
   async create(
     @Body() data: RegisterDto,
   ): Promise<BaseResponseDto<AuthResponseDataDto>> {
@@ -331,12 +146,12 @@ export class AuthController {
       }),
     },
   })
-  @ApiOperation(API_OPERATION_LOGIN)
-  @ApiBody(API_BODY_LOGIN)
-  @ApiResponse(API_RESPONSE_LOGIN_OK)
-  @ApiResponse(API_RESPONSE_LOGIN_NOT_FOUND)
-  @ApiResponse(API_RESPONSE_LOGIN_PASSWORD_NOT_MATCH)
-  @ApiResponse(API_RESPONSE_LOGIN_MISSING_REQUIRED_FIELDS)
+  @ApiOperation(AuthSwagger.Controller.ApiOperation.Login)
+  @ApiBody(AuthSwagger.Controller.ApiBody.Login)
+  @ApiResponse(AuthSwagger.Controller.ApiResponse.LoginOk)
+  @ApiResponse(AuthSwagger.Controller.ApiResponse.LoginNotFound)
+  @ApiResponse(AuthSwagger.Controller.ApiResponse.LoginPasswordNotMatch)
+  @ApiResponse(AuthSwagger.Controller.ApiResponse.LoginMissingRequiredFields)
   async login(
     @Body() data: LoginDto,
   ): Promise<BaseResponseDto<AuthResponseDataDto>> {
@@ -378,11 +193,13 @@ export class AuthController {
       }),
     },
   })
-  @ApiOperation(API_OPERATION_TOKEN_EXCHANGE)
-  @ApiBody(API_BODY_TOKEN_EXCHANGE)
-  @ApiResponse(API_RESPONSE_TOKEN_EXCHANGE_OK)
-  @ApiResponse(API_RESPONSE_TOKEN_EXCHANGE_UNAUTHORIZED)
-  @ApiResponse(API_RESPONSE_TOKEN_EXCHANGE_BAD_REQUEST_EMAIL_MISSING)
+  @ApiOperation(AuthSwagger.Controller.ApiOperation.TokenExchange)
+  @ApiBody(AuthSwagger.Controller.ApiBody.TokenExchange)
+  @ApiResponse(AuthSwagger.Controller.ApiResponse.TokenExchangeOk)
+  @ApiResponse(AuthSwagger.Controller.ApiResponse.TokenExchangeUnauthorized)
+  @ApiResponse(
+    AuthSwagger.Controller.ApiResponse.TokenExchangeBadRequestEmailMissing,
+  )
   async tokenExchange(
     @Body() data: TokenExchangeDto,
   ): Promise<BaseResponseDto<AuthResponseDataDto>> {
@@ -424,9 +241,9 @@ export class AuthController {
       }),
     },
   })
-  @ApiOperation(API_OPERATION_LINK_AUTH0)
-  @ApiBody(API_BODY_LINK_AUTH0)
-  @ApiResponse(API_RESPONSE_LINK_AUTH0_OK)
+  @ApiOperation(AuthSwagger.Controller.ApiOperation.LinkAuth0)
+  @ApiBody(AuthSwagger.Controller.ApiBody.LinkAuth0)
+  @ApiResponse(AuthSwagger.Controller.ApiResponse.LinkAuth0Ok)
   async linkAuth0(
     @Body() data: LinkAuth0ToLocalDto,
   ): Promise<BaseResponseDto<AuthResponseDataDto>> {
@@ -455,9 +272,9 @@ export class AuthController {
   @HttpCode(HttpStatus.NO_CONTENT)
   @Post('password')
   @ApiBearerAuth(SWAGGER_ACCESS_TOKEN)
-  @ApiOperation(API_OPERATION_SET_PASSWORD)
-  @ApiBody(API_BODY_SET_PASSWORD)
-  @ApiResponse(API_RESPONSE_SET_PASSWORD_NO_CONTENT)
+  @ApiOperation(AuthSwagger.Controller.ApiOperation.SetPassword)
+  @ApiBody(AuthSwagger.Controller.ApiBody.SetPassword)
+  @ApiResponse(AuthSwagger.Controller.ApiResponse.SetPasswordNoContent)
   async setPassword(
     @CurrentUser() user: JwtAuthPayload,
     @Body() data: SetPasswordDto,
@@ -496,11 +313,15 @@ export class AuthController {
       }),
     },
   })
-  @ApiOperation(API_OPERATION_REFRESH_TOKEN)
-  @ApiBody(API_BODY_REFRESH_TOKEN)
-  @ApiResponse(API_RESPONSE_REFRESH_TOKEN_OK)
-  @ApiResponse(API_RESPONSE_REFRESH_TOKEN_BAD_REQUEST_REQUIRED)
-  @ApiResponse(API_RESPONSE_REFRESH_TOKEN_UNAUTHORIZED_INVALID)
+  @ApiOperation(AuthSwagger.Controller.ApiOperation.RefreshToken)
+  @ApiBody(AuthSwagger.Controller.ApiBody.RefreshToken)
+  @ApiResponse(AuthSwagger.Controller.ApiResponse.RefreshTokenOk)
+  @ApiResponse(
+    AuthSwagger.Controller.ApiResponse.RefreshTokenBadRequestRequired,
+  )
+  @ApiResponse(
+    AuthSwagger.Controller.ApiResponse.RefreshTokenUnauthorizedInvalid,
+  )
   async refresh(@Body() data: RefreshTokenRequestDto): Promise<TokensDto> {
     return this.authService.refreshTokens({ refreshToken: data.refreshToken });
   }
@@ -528,9 +349,9 @@ export class AuthController {
       }),
     },
   })
-  @ApiOperation(API_OPERATION_LOGOUT)
-  @ApiBody(API_BODY_LOGOUT)
-  @ApiResponse(API_RESPONSE_LOGOUT_OK)
+  @ApiOperation(AuthSwagger.Controller.ApiOperation.Logout)
+  @ApiBody(AuthSwagger.Controller.ApiBody.Logout)
+  @ApiResponse(AuthSwagger.Controller.ApiResponse.LogoutOk)
   async logout(@Body() data: LogoutDto = {}): Promise<{ success: boolean }> {
     await this.authService.logout({
       refreshToken: data.refreshToken,
@@ -543,10 +364,10 @@ export class AuthController {
   @Get('profile')
   @Serialize(ResponseFullUserDto)
   @ApiBearerAuth(SWAGGER_ACCESS_TOKEN)
-  @ApiOperation(API_OPERATION_PROFILE)
-  @ApiResponse(API_RESPONSE_PROFILE_OK)
-  @ApiResponse(API_RESPONSE_PROFILE_UNAUTHORIZED)
-  @ApiResponse(API_RESPONSE_PROFILE_NOT_FOUND)
+  @ApiOperation(AuthSwagger.Controller.ApiOperation.Profile)
+  @ApiResponse(AuthSwagger.Controller.ApiResponse.ProfileOk)
+  @ApiResponse(AuthSwagger.Controller.ApiResponse.ProfileUnauthorized)
+  @ApiResponse(AuthSwagger.Controller.ApiResponse.ProfileNotFound)
   async getProfile(
     @CurrentUser() user: JwtAuthPayload,
   ): Promise<BaseResponseDto<ResponseFullUserDto>> {
