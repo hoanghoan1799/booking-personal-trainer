@@ -1,3 +1,28 @@
+jest.mock('jsonwebtoken', () => {
+  class JsonWebTokenError extends Error {}
+  class TokenExpiredError extends Error {
+    readonly expiredAt: Date;
+    readonly inner?: Error;
+    constructor(message: string, expiredAt: Date) {
+      super(message);
+      this.expiredAt = expiredAt;
+    }
+  }
+  class NotBeforeError extends Error {
+    readonly date: Date;
+    constructor(message: string, date: Date) {
+      super(message);
+      this.date = date;
+    }
+  }
+  return {
+    verify: jest.fn(),
+    JsonWebTokenError,
+    TokenExpiredError,
+    NotBeforeError,
+  };
+});
+
 import * as jwt from 'jsonwebtoken';
 
 import {
@@ -8,6 +33,7 @@ import {
   buildAuth0Issuer,
   buildAuth0JwksUri,
   collectAuth0Audiences,
+  createJwtGetKeyFromJwksClient,
   getAuth0JwtVerifyAlgorithms,
   mapJwtPayloadToAuth0VerifiedClaims,
   normalizeAuth0Domain,
@@ -74,6 +100,7 @@ describe('token-verifier.helper', () => {
       const actual = mapJwtPayloadToAuth0VerifiedClaims({
         sub: 'auth0|1',
         email: 'a@b.com',
+        email_verified: true,
         name: 'N',
         given_name: 'G',
         family_name: 'F',
@@ -81,6 +108,7 @@ describe('token-verifier.helper', () => {
       expect(actual).toEqual({
         sub: 'auth0|1',
         email: 'a@b.com',
+        email_verified: true,
         name: 'N',
         given_name: 'G',
         family_name: 'F',
@@ -88,20 +116,97 @@ describe('token-verifier.helper', () => {
     });
   });
 
+  describe('createJwtGetKeyFromJwksClient', () => {
+    it('calls callback with error when header missing kid', () => {
+      const client = {
+        getSigningKey: jest.fn(),
+      } as unknown as { getSigningKey: jest.Mock };
+      const getKey = createJwtGetKeyFromJwksClient(client as never);
+      const callback = jest.fn();
+
+      getKey({ alg: 'RS256', typ: 'JWT' }, callback);
+
+      expect(callback).toHaveBeenCalledWith(expect.any(Error));
+      expect(client.getSigningKey).not.toHaveBeenCalled();
+    });
+
+    it('calls callback with key public key when kid present', () => {
+      const getPublicKey = jest.fn().mockReturnValue('public-key');
+      const client = {
+        getSigningKey: jest.fn(
+          (
+            _kid: string,
+            cb: (
+              err: Error | null,
+              key?: { getPublicKey: () => string },
+            ) => void,
+          ) => {
+            cb(null, { getPublicKey });
+          },
+        ),
+      } as unknown as { getSigningKey: jest.Mock };
+      const getKey = createJwtGetKeyFromJwksClient(client as never);
+      const callback = jest.fn();
+
+      getKey({ kid: 'kid', alg: 'RS256', typ: 'JWT' }, callback);
+
+      expect(client.getSigningKey).toHaveBeenCalledWith(
+        'kid',
+        expect.any(Function),
+      );
+      expect(callback).toHaveBeenCalledWith(null, 'public-key');
+    });
+
+    it('calls callback with client error when signing key lookup fails', () => {
+      const client = {
+        getSigningKey: jest.fn((_kid: string, cb: (err: Error) => void) => {
+          cb(new Error('jwks error'));
+        }),
+      } as unknown as { getSigningKey: jest.Mock };
+      const getKey = createJwtGetKeyFromJwksClient(client as never);
+      const callback = jest.fn();
+
+      getKey({ kid: 'kid', alg: 'RS256', typ: 'JWT' }, callback);
+
+      expect(callback).toHaveBeenCalledWith(expect.any(Error));
+    });
+  });
+
   describe('verifyJwtWithJwks', () => {
     it('rejects when getKey returns an error', async () => {
-      const header = Buffer.from(
-        JSON.stringify({ alg: 'RS256', typ: 'JWT', kid: 'test-kid' }),
-      ).toString('base64url');
-      const payload = Buffer.from(JSON.stringify({ sub: 'user-1' })).toString(
-        'base64url',
+      (jwt.verify as unknown as jest.Mock).mockImplementationOnce(
+        (
+          _token: string,
+          _getKey: jwt.GetPublicKeyOrSecret,
+          _options: jwt.VerifyOptions,
+          cb: jwt.VerifyCallback,
+        ) => {
+          cb(new jwt.JsonWebTokenError('no signing key'));
+        },
       );
-      const token = `${header}.${payload}.ignored`;
-      const getKey: jwt.GetPublicKeyOrSecret = (_h, cb) =>
-        cb(new Error('no signing key'));
+      const getKey: jwt.GetPublicKeyOrSecret = (_h, cb) => cb(null, 'public');
       await expect(
-        verifyJwtWithJwks(token, getKey, { algorithms: ['RS256'] }),
+        verifyJwtWithJwks('token', getKey, { algorithms: ['RS256'] }),
       ).rejects.toThrow('no signing key');
+    });
+
+    it('resolves decoded payload when verify succeeds', async () => {
+      (jwt.verify as unknown as jest.Mock).mockImplementationOnce(
+        (
+          _token: string,
+          _getKey: jwt.GetPublicKeyOrSecret,
+          _options: jwt.VerifyOptions,
+          cb: jwt.VerifyCallback,
+        ) => {
+          cb(null, { sub: 'user-1' } as jwt.JwtPayload);
+        },
+      );
+      const actual = await verifyJwtWithJwks(
+        'token',
+        (_h, cb) => cb(null, 'public'),
+        { algorithms: ['RS256'] },
+      );
+      expect(actual.sub).toBe('user-1');
     });
   });
 });

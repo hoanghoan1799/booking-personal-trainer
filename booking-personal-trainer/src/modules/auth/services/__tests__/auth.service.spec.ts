@@ -126,6 +126,11 @@ describe('AuthService', () => {
     jwtService.signAsync.mockResolvedValue('mock-jwt-token');
   });
 
+  afterEach(() => {
+    delete process.env.FRONTEND_URL;
+    jest.clearAllMocks();
+  });
+
   describe('register', () => {
     const registerData = {
       email: 'new@test.com',
@@ -199,6 +204,20 @@ describe('AuthService', () => {
       expect(actual).toHaveProperty('accessToken');
       expect(userService.createUserProvider).toHaveBeenCalled();
       expect(refreshTokenService.saveRefreshToken).toHaveBeenCalled();
+    });
+
+    it('should enqueue admin email when admin recipients exist', async () => {
+      process.env.FRONTEND_URL = 'https://app.test/';
+      userService.findByEmailOrUserName.mockResolvedValue(null);
+      userService.create.mockResolvedValue({ ...mockUser, ...registerData });
+      userService.getAdminEmailAddresses.mockResolvedValue(['admin@test.com']);
+      emailService.send.mockResolvedValue({ jobId: 'job-1' });
+
+      await service.register(registerData);
+
+      expect(emailService.send).toHaveBeenCalledWith(
+        expect.objectContaining({ to: ['admin@test.com'] }),
+      );
     });
   });
 
@@ -362,6 +381,21 @@ describe('AuthService', () => {
   });
 
   describe('exchangeToken', () => {
+    it('should throw BadRequestException when email is missing', async () => {
+      auth0TokenVerifier.verifyAndDecode.mockResolvedValue({
+        sub: 'auth0|sub',
+        email: undefined,
+        email_verified: true,
+      });
+
+      await expect(
+        service.exchangeToken({ token: 'auth0-token' }),
+      ).rejects.toThrow(BadRequestException);
+      await expect(
+        service.exchangeToken({ token: 'auth0-token' }),
+      ).rejects.toThrow(ERROR_MESSAGES.AUTH.EMAIL_MISSING);
+    });
+
     it('should throw UnauthorizedException when email is not verified', async () => {
       auth0TokenVerifier.verifyAndDecode.mockResolvedValue({
         sub: 'auth0|sub',
@@ -391,6 +425,93 @@ describe('AuthService', () => {
       await expect(
         service.exchangeToken({ token: 'auth0-token' }),
       ).rejects.toThrow(ERROR_MESSAGES.AUTH.ACCOUNT_LINK_REQUIRED);
+    });
+
+    it('should load user when identity already linked', async () => {
+      auth0TokenVerifier.verifyAndDecode.mockResolvedValue({
+        sub: 'auth0|sub',
+        email: mockUser.email,
+        email_verified: true,
+        name: 'Test User',
+      });
+      userService.findUserProviderByIdentity.mockResolvedValue({
+        id: 'provider-id',
+        user: { id: mockUser.id },
+      });
+      userService.findById.mockResolvedValue(mockUser);
+
+      const actual = await service.exchangeToken({ token: 'auth0-token' });
+
+      expect(actual.user.email).toBe(mockUser.email);
+      expect(userService.create).not.toHaveBeenCalled();
+    });
+
+    it('should create user and provider when new Auth0 user', async () => {
+      auth0TokenVerifier.verifyAndDecode.mockResolvedValue({
+        sub: 'auth0|sub',
+        email: 'new@test.com',
+        email_verified: true,
+        given_name: 'New',
+        family_name: 'User',
+      });
+      userService.findUserProviderByIdentity.mockResolvedValue(null);
+      userService.findByEmail.mockResolvedValue(null);
+      userService.pickUniqueUserNameFromEmail.mockResolvedValue('picked');
+      userService.create.mockResolvedValue({
+        ...mockUser,
+        id: 'new-id',
+        email: 'new@test.com',
+        userName: 'picked',
+        userType: UserType.TRAINEE,
+      });
+
+      const actual = await service.exchangeToken({ token: 'auth0-token' });
+
+      expect(actual.user.id).toBe('new-id');
+      expect(userService.createUserProvider).toHaveBeenCalledWith(
+        expect.objectContaining({
+          providerName: 'auth0',
+          providerUserId: 'auth0|sub',
+        }),
+      );
+    });
+  });
+
+  describe('logout', () => {
+    it('should remove refresh token by userId when provided', async () => {
+      await service.logout({ userId: mockUser.id });
+
+      expect(refreshTokenService.removeRefreshToken).toHaveBeenCalledWith({
+        userId: mockUser.id,
+      });
+    });
+
+    it('should no-op when refreshToken missing', async () => {
+      await service.logout({});
+      expect(refreshTokenService.removeRefreshToken).not.toHaveBeenCalled();
+    });
+
+    it('should swallow verify errors for refreshToken', async () => {
+      jwtService.verifyAsync.mockRejectedValue(new Error('bad token'));
+
+      await service.logout({ refreshToken: 'rt' });
+
+      expect(refreshTokenService.removeRefreshToken).not.toHaveBeenCalled();
+    });
+
+    it('should remove token when refreshToken verifies', async () => {
+      jwtService.verifyAsync.mockResolvedValue({
+        id: mockUser.id,
+        email: mockUser.email,
+        userName: mockUser.userName,
+        role: mockUser.role,
+      });
+
+      await service.logout({ refreshToken: 'rt' });
+
+      expect(refreshTokenService.removeRefreshToken).toHaveBeenCalledWith({
+        userId: mockUser.id,
+      });
     });
   });
 
