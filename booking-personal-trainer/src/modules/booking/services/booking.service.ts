@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  forwardRef,
   Inject,
   Injectable,
   NotFoundException,
@@ -29,7 +30,7 @@ import { NotificationType } from '../../notifications/enums/notification-type.en
 import { NotificationTemplates } from '../../notifications/constants/notification-template.constant';
 import { EmailService } from '../../email/services/email.service';
 import { EmailTemplates } from '../../email/constants/email-template.constant';
-import { collectAdminEmailAddresses } from '../../email/helpers/collect-admin-email-addresses.helper';
+import { UserService } from '../../user/services/user.service';
 
 // DTOs
 import { GetBookingsQueryDto } from '../dtos/get-booking.dto';
@@ -46,9 +47,6 @@ import {
   type BookingRepository,
   type BookingFindManyFilter,
 } from '../repositories/booking.repository.interface';
-import { UserRepositoryToken } from '../../user/repositories/user.repository.interface';
-import type { UserRepository } from '../../user/repositories/user.repository.interface';
-
 @Injectable()
 export class BookingService {
   private readonly logger = new Logger(BookingService.name);
@@ -56,8 +54,8 @@ export class BookingService {
   constructor(
     @Inject(BookingRepositoryToken)
     private readonly bookingRepo: BookingRepository,
-    @Inject(UserRepositoryToken)
-    private readonly userRepo: UserRepository,
+    @Inject(forwardRef(() => UserService))
+    private readonly userService: UserService,
     private readonly em: EntityManager,
     private readonly bookingAvailabilityService: BookingAvailabilityService,
     private readonly notificationsService: NotificationsService,
@@ -136,7 +134,7 @@ export class BookingService {
         ERROR_MESSAGES.BOOKING.MUST_BOOK_BEFORE_30_MINUTES,
       );
     }
-    const trainer = await this.userRepo.findById(trainerId);
+    const trainer = await this.userService.findByIdOrNull(trainerId);
     if (!trainer) {
       throw new NotFoundException(ERROR_MESSAGES.USER.TRAINER_NOT_AVAILABLE);
     }
@@ -196,7 +194,7 @@ export class BookingService {
           endTime: booking.endTime,
         },
       });
-      const adminEmails = await collectAdminEmailAddresses(this.userRepo);
+      const adminEmails = await this.userService.getAdminEmailAddresses();
       const adminBookingEmail = EmailTemplates.adminTraineeBookedTrainer({
         traineeName: currentUser.userName,
         trainerName: trainer.userName,
@@ -268,7 +266,7 @@ export class BookingService {
   ): Promise<Booking[]> {
     const now = dayjs.utc();
     const earliestAllowedTime = addMinutesToDate(now.toDate(), 30);
-    const trainer = await this.userRepo.findById(data.trainerId);
+    const trainer = await this.userService.findByIdOrNull(data.trainerId);
     if (!trainer) {
       throw new NotFoundException(ERROR_MESSAGES.USER.TRAINER_NOT_AVAILABLE);
     }
@@ -459,7 +457,7 @@ export class BookingService {
           },
         ],
       });
-      const adminEmails = await collectAdminEmailAddresses(this.userRepo);
+      const adminEmails = await this.userService.getAdminEmailAddresses();
       const adminEmail = EmailTemplates.adminTraineeBookedTrainerSeries({
         traineeName: currentUser.userName,
         trainerName: trainer.userName,
@@ -561,6 +559,22 @@ export class BookingService {
       page,
       limit,
     });
+  }
+
+  /**
+   * Returns a booking by id, or null (e.g. workout flow after transaction).
+   * @param id Booking id.
+   */
+  async findBookingById(id: string): Promise<Booking | null> {
+    return this.bookingRepo.findById(id);
+  }
+
+  /**
+   * Trainee ids that have ever booked with this trainer (trainer “my trainees” list).
+   * @param trainerId Trainer user id.
+   */
+  async findTraineeIdsByTrainerId(trainerId: string): Promise<string[]> {
+    return this.bookingRepo.findTraineeIdsByTrainerId(trainerId);
   }
 
   getOne(id: string) {

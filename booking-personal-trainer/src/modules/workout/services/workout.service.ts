@@ -36,16 +36,8 @@ import {
   type WorkoutRepository,
   type WorkoutFindManyFilter,
 } from '../repositories/workout.repository.interface';
-import { UserRepositoryToken } from '../../user/repositories/user.repository.interface';
-import type { UserRepository } from '../../user/repositories/user.repository.interface';
-import {
-  BookingRepositoryToken,
-  type BookingRepository,
-} from '../../booking/repositories/booking.repository.interface';
-import {
-  TemplatesRepositoryToken,
-  type TemplatesRepository,
-} from '../../templates/repositories/templates.repository.interface';
+import { UserService } from '../../user/services/user.service';
+import { BookingService } from '../../booking/services/booking.service';
 
 import { TemplateType } from '../../templates/enums/template-type.enum';
 import { WorkoutPaymentPolicyService } from '../../payments/services/workout-payment-policy.service';
@@ -66,12 +58,8 @@ export class WorkoutService {
   constructor(
     @Inject(WorkoutRepositoryToken)
     private readonly workoutRepo: WorkoutRepository,
-    @Inject(UserRepositoryToken)
-    private readonly userRepo: UserRepository,
-    @Inject(BookingRepositoryToken)
-    private readonly bookingRepo: BookingRepository,
-    @Inject(TemplatesRepositoryToken)
-    private readonly templatesRepo: TemplatesRepository,
+    private readonly userService: UserService,
+    private readonly bookingService: BookingService,
     private readonly workoutPaymentPolicyService: WorkoutPaymentPolicyService,
     private readonly billingService: BillingService,
     private readonly notificationsService: NotificationsService,
@@ -83,11 +71,11 @@ export class WorkoutService {
     trainerId: string,
     dto: CreateWorkoutDto,
   ): Promise<WorkoutResponseDto> {
-    const trainer = await this.userRepo.findById(trainerId);
+    const trainer = await this.userService.findByIdOrNull(trainerId);
     if (!trainer) {
       throw new NotFoundException(ERROR_MESSAGES.USER.NOT_FOUND);
     }
-    const trainee = await this.userRepo.findById(dto.traineeId);
+    const trainee = await this.userService.findByIdOrNull(dto.traineeId);
     if (!trainee) {
       throw new NotFoundException(ERROR_MESSAGES.USER.NOT_FOUND);
     }
@@ -245,7 +233,8 @@ export class WorkoutService {
         throw err;
       });
     try {
-      const resolvedBooking = await this.bookingRepo.findById(bookingId);
+      const resolvedBooking =
+        await this.bookingService.findBookingById(bookingId);
       if (resolvedBooking) {
         await this.notificationsService.createAndPublishToUsers({
           notifications: [

@@ -5,7 +5,7 @@ import { PaymentRepositoryToken } from '../../repositories/payment.repository.in
 import { PaymentStatus } from '../../../../common/enums/billing/billing.enum';
 import { PlatformWorkoutSettlementService } from '../platform-workout-settlement.service';
 import { NotificationsService } from '../../../notifications/services/notifications.service';
-import { UserRepositoryToken } from '../../../user/repositories/user.repository.interface';
+import { UserService } from '../../../user/services/user.service';
 import { EmailService } from '../../../email/services/email.service';
 import { EntityManager } from '@mikro-orm/core';
 
@@ -48,7 +48,10 @@ describe('StripeWebhookService', () => {
     createAndPublishToUsers: jest.Mock;
     notifyAdmins: jest.Mock;
   };
-  let userRepo: { findById: jest.Mock; findAndCount: jest.Mock };
+  let userService: {
+    findByIdOrNull: jest.Mock;
+    getAdminEmailAddresses: jest.Mock;
+  };
   let emailService: { send: jest.Mock };
   let em: { transactional: jest.Mock };
 
@@ -66,12 +69,12 @@ describe('StripeWebhookService', () => {
       createAndPublishToUsers: jest.fn().mockResolvedValue([]),
       notifyAdmins: jest.fn().mockResolvedValue(undefined),
     };
-    userRepo = {
-      findById: jest.fn().mockResolvedValue({
+    userService = {
+      findByIdOrNull: jest.fn().mockResolvedValue({
         id: 'trainer_1',
         email: 'trainer@test.com',
       }),
-      findAndCount: jest.fn().mockResolvedValue([[], 0]),
+      getAdminEmailAddresses: jest.fn().mockResolvedValue([]),
     };
     emailService = {
       send: jest.fn().mockResolvedValue({ messageId: 'mock-message-id' }),
@@ -92,7 +95,7 @@ describe('StripeWebhookService', () => {
           provide: NotificationsService,
           useValue: notificationsService,
         },
-        { provide: UserRepositoryToken, useValue: userRepo },
+        { provide: UserService, useValue: userService },
         { provide: EmailService, useValue: emailService },
         { provide: EntityManager, useValue: em },
       ],

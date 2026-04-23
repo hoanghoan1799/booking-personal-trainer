@@ -141,4 +141,44 @@ export class TrainerAvailabilityService {
     }
     await this.availabilityRepo.remove(availability);
   }
+
+  /**
+   * Whether the trainer has availability covering the whole range (booking checks).
+   */
+  async getCoveringAvailabilityForTrainer(
+    trainerId: string,
+    rangeStart: Date,
+    rangeEnd: Date,
+  ): Promise<TrainerAvailability | null> {
+    return this.availabilityRepo.findCoveringForTrainer(
+      trainerId,
+      rangeStart,
+      rangeEnd,
+    );
+  }
+
+  /**
+   * Availabilities that cover the given window (trainer discovery).
+   */
+  async getCoveringAvailabilitiesForRange(
+    rangeStart: Date,
+    rangeEnd: Date,
+  ): Promise<TrainerAvailability[]> {
+    return this.availabilityRepo.findCoveringRanges(rangeStart, rangeEnd);
+  }
+
+  /**
+   * Availability segments overlapping the range for slot generation.
+   */
+  async getOverlappingAvailabilityRangesForTrainer(
+    trainerId: string,
+    rangeStart: Date,
+    rangeEnd: Date,
+  ): Promise<TrainerAvailability[]> {
+    return this.availabilityRepo.findOverlappingRangesForTrainer(
+      trainerId,
+      rangeStart,
+      rangeEnd,
+    );
+  }
 }

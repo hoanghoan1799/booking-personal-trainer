@@ -7,9 +7,8 @@ import { TemplateType } from '../../../templates/enums/template-type.enum';
 
 import { WorkoutService } from '../workout.service';
 import { WorkoutRepositoryToken } from '../../repositories/workout.repository.interface';
-import { UserRepositoryToken } from '../../../user/repositories/user.repository.interface';
-import { BookingRepositoryToken } from '../../../booking/repositories/booking.repository.interface';
-import { TemplatesRepositoryToken } from '../../../templates/repositories/templates.repository.interface';
+import { UserService } from '../../../user/services/user.service';
+import { BookingService } from '../../../booking/services/booking.service';
 import { WorkoutPaymentPolicyService } from '../../../payments/services/workout-payment-policy.service';
 import { BillingService } from '../../../billing/services/billing.service';
 import { NotificationsService } from '../../../notifications/services/notifications.service';
@@ -49,9 +48,8 @@ describe('WorkoutService', () => {
     removeAll: jest.Mock;
     softDelete: jest.Mock;
   };
-  let bookingRepository: { findById: jest.Mock };
-  let templatesRepository: { findTemplateById: jest.Mock };
-  let userRepository: { findById: jest.Mock };
+  let bookingService: { findBookingById: jest.Mock };
+  let userService: { findByIdOrNull: jest.Mock };
   let workoutPaymentPolicyService: { isWorkoutPaid: jest.Mock };
   let billingService: {
     createWorkoutCharge: jest.Mock;
@@ -72,9 +70,8 @@ describe('WorkoutService', () => {
       removeAll: jest.fn(),
       softDelete: jest.fn(),
     };
-    bookingRepository = { findById: jest.fn() };
-    templatesRepository = { findTemplateById: jest.fn() };
-    userRepository = { findById: jest.fn() };
+    bookingService = { findBookingById: jest.fn() };
+    userService = { findByIdOrNull: jest.fn() };
     workoutPaymentPolicyService = { isWorkoutPaid: jest.fn() };
     billingService = {
       createWorkoutCharge: jest.fn().mockResolvedValue({ id: 'charge-id' }),
@@ -97,9 +94,8 @@ describe('WorkoutService', () => {
       providers: [
         WorkoutService,
         { provide: WorkoutRepositoryToken, useValue: workoutRepository },
-        { provide: BookingRepositoryToken, useValue: bookingRepository },
-        { provide: TemplatesRepositoryToken, useValue: templatesRepository },
-        { provide: UserRepositoryToken, useValue: userRepository },
+        { provide: BookingService, useValue: bookingService },
+        { provide: UserService, useValue: userService },
         {
           provide: WorkoutPaymentPolicyService,
           useValue: workoutPaymentPolicyService,
@@ -164,6 +160,7 @@ describe('WorkoutService', () => {
             getReference: jest.fn(),
           }),
       );
+      bookingService.findBookingById.mockResolvedValue(booking);
 
       const actual = await service.createForBookingFromTemplate(
         'booking-id',

@@ -16,10 +16,7 @@ import {
   NotificationRepositoryToken,
   type NotificationRepository,
 } from '../repositories/notification.repository.interface';
-import {
-  UserRepositoryToken,
-  type UserRepository,
-} from '../../user/repositories/user.repository.interface';
+import { UserService } from '../../user/services/user.service';
 
 // Entities
 import { Notification } from '../entities/notification.entity';
@@ -49,8 +46,7 @@ export class NotificationsService {
   constructor(
     @Inject(NotificationRepositoryToken)
     private readonly notificationRepo: NotificationRepository,
-    @Inject(UserRepositoryToken)
-    private readonly userRepo: UserRepository,
+    private readonly userService: UserService,
     @Inject(REDIS_PUBLISHER_TOKEN)
     private readonly publisherClient: RedisClientType,
   ) {}
@@ -82,14 +78,11 @@ export class NotificationsService {
     readonly message: string;
     readonly data?: Record<string, unknown> | null;
   }): Promise<void> {
-    const [admins] = await this.userRepo.findAndCount(
-      { role: UserRole.ADMIN },
-      {
-        limit: NotificationsConstants.AdminsQuery.Limit,
-        offset: NotificationsConstants.AdminsQuery.Offset,
-        orderBy: { createdAt: SortOrder.DESC },
-      },
-    );
+    const admins = await this.userService.findUsersByRole({
+      role: UserRole.ADMIN,
+      limit: NotificationsConstants.AdminsQuery.Limit,
+      offset: NotificationsConstants.AdminsQuery.Offset,
+    });
     if (!admins || admins.length === 0) {
       return;
     }

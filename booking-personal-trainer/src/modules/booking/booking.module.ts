@@ -42,6 +42,6 @@ import { EmailModule } from '../email/email.module';
       useClass: MikroOrmBookingRepository,
     },
   ],
-  exports: [BookingRepositoryToken],
+  exports: [BookingRepositoryToken, BookingService],
 })
 export class BookingModule {}

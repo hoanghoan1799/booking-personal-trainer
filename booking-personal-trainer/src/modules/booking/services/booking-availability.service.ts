@@ -15,13 +15,9 @@ import {
 import type { BookingRepository } from '../repositories/booking.repository.interface';
 import { BookingRepositoryToken } from '../repositories/booking.repository.interface';
 
-import type { TrainerAvailabilityRepository } from '../../trainer-scheduling/repositories/trainer-availability.repository.interface';
-import { TrainerAvailabilityRepositoryToken } from '../../trainer-scheduling/repositories/trainer-availability.repository.interface';
-
-import type { TrainerTimeOffRepository } from '../../trainer-scheduling/repositories/trainer-time-off.repository.interface';
-import { TrainerTimeOffRepositoryToken } from '../../trainer-scheduling/repositories/trainer-time-off.repository.interface';
-
 import type { User } from '../../user/entities/user.entity';
+import { TrainerAvailabilityService } from '../../trainer-scheduling/services/trainer-availability.service';
+import { TrainerTimeOffService } from '../../trainer-scheduling/services/trainer-time-off.service';
 import {
   assertValidSlotQueryInput,
   buildDateLocalsForRollingPeriod,
@@ -57,10 +53,8 @@ type GetAvailableTrainersForRangeInput = {
 @Injectable()
 export class BookingAvailabilityService {
   constructor(
-    @Inject(TrainerAvailabilityRepositoryToken)
-    private readonly availabilityRepo: TrainerAvailabilityRepository,
-    @Inject(TrainerTimeOffRepositoryToken)
-    private readonly timeOffRepo: TrainerTimeOffRepository,
+    private readonly trainerAvailabilityService: TrainerAvailabilityService,
+    private readonly trainerTimeOffService: TrainerTimeOffService,
     @Inject(BookingRepositoryToken)
     private readonly bookingRepo: BookingRepository,
   ) {}
@@ -74,7 +68,7 @@ export class BookingAvailabilityService {
       throw new BadRequestException(ERROR_MESSAGES.BOOKING.INVALID_TIME_RANGE);
     }
     const coveringAvailability =
-      await this.availabilityRepo.findCoveringForTrainer(
+      await this.trainerAvailabilityService.getCoveringAvailabilityForTrainer(
         input.trainerId,
         input.start,
         input.end,
@@ -84,11 +78,12 @@ export class BookingAvailabilityService {
         ERROR_MESSAGES.BOOKING.TIME_SLOT_NOT_AVAILABLE,
       );
     }
-    const conflictingTimeOff = await this.timeOffRepo.findOverlappingForTrainer(
-      input.trainerId,
-      input.start,
-      input.end,
-    );
+    const conflictingTimeOff =
+      await this.trainerTimeOffService.getOverlappingTimeOffForTrainer(
+        input.trainerId,
+        input.start,
+        input.end,
+      );
     if (conflictingTimeOff !== null) {
       throw new BadRequestException(
         ERROR_MESSAGES.BOOKING.TIME_SLOT_NOT_AVAILABLE,
@@ -114,7 +109,10 @@ export class BookingAvailabilityService {
       throw new BadRequestException(ERROR_MESSAGES.BOOKING.INVALID_TIME_RANGE);
     }
     const coveringAvailabilities =
-      await this.availabilityRepo.findCoveringRanges(input.start, input.end);
+      await this.trainerAvailabilityService.getCoveringAvailabilitiesForRange(
+        input.start,
+        input.end,
+      );
     const trainers = coveringAvailabilities
       .map((a) => a.trainer)
       .filter((t): t is User => t != null);
@@ -133,7 +131,7 @@ export class BookingAvailabilityService {
     const checks = await Promise.all(
       uniqueTrainers.map(async (trainer) => {
         const hasTimeOff =
-          (await this.timeOffRepo.findOverlappingForTrainer(
+          (await this.trainerTimeOffService.getOverlappingTimeOffForTrainer(
             trainer.id,
             input.start,
             input.end,
@@ -233,7 +231,7 @@ export class BookingAvailabilityService {
       MIN_BOOKING_NOTICE_MINUTES,
     );
     const availabilityRanges =
-      await this.availabilityRepo.findOverlappingRangesForTrainer(
+      await this.trainerAvailabilityService.getOverlappingAvailabilityRangesForTrainer(
         input.trainerId,
         input.rangeStart,
         input.rangeEnd,
@@ -249,7 +247,7 @@ export class BookingAvailabilityService {
         [BookingStatus.REJECTED, BookingStatus.CANCELLED],
       );
     const timeOffInRange =
-      await this.timeOffRepo.findOverlappingRangesForTrainer(
+      await this.trainerTimeOffService.getOverlappingTimeOffRangesForTrainer(
         input.trainerId,
         input.rangeStart,
         input.rangeEnd,

@@ -26,7 +26,8 @@ import { UserService } from '../user.service';
 
 // Repositories
 import { UserRepositoryToken } from '../../repositories/user.repository.interface';
-import { BookingRepositoryToken } from '../../../booking/repositories/booking.repository.interface';
+import { UserProviderRepositoryToken } from '../../repositories/user-provider.repository.interface';
+import { BookingService } from '../../../booking/services/booking.service';
 import { NotificationsService } from '../../../notifications/services/notifications.service';
 import { EmailService } from '../../../email/services/email.service';
 
@@ -41,11 +42,17 @@ describe('UserService', () => {
   let userRepo: {
     create: jest.Mock;
     findById: jest.Mock;
+    findByEmail: jest.Mock;
+    findByUserName: jest.Mock;
     findByEmailOrUserName: jest.Mock;
     findAndCount: jest.Mock;
     save: jest.Mock;
   };
-  let bookingRepo: { findTraineeIdsByTrainerId: jest.Mock };
+  let userProviderRepo: {
+    findByProviderIdentity: jest.Mock;
+    create: jest.Mock;
+  };
+  let bookingService: { findTraineeIdsByTrainerId: jest.Mock };
   let notificationsService: {
     createAndPublishToUsers: jest.Mock;
     notifyAdmins: jest.Mock;
@@ -65,11 +72,17 @@ describe('UserService', () => {
     userRepo = {
       create: jest.fn(),
       findById: jest.fn(),
+      findByEmail: jest.fn(),
+      findByUserName: jest.fn(),
       findByEmailOrUserName: jest.fn(),
       findAndCount: jest.fn(),
       save: jest.fn().mockResolvedValue(undefined),
     };
-    bookingRepo = {
+    userProviderRepo = {
+      findByProviderIdentity: jest.fn().mockResolvedValue(null),
+      create: jest.fn().mockResolvedValue({}),
+    };
+    bookingService = {
       findTraineeIdsByTrainerId: jest.fn().mockResolvedValue([]),
     };
     notificationsService = {
@@ -88,8 +101,12 @@ describe('UserService', () => {
           useValue: userRepo,
         },
         {
-          provide: BookingRepositoryToken,
-          useValue: bookingRepo,
+          provide: UserProviderRepositoryToken,
+          useValue: userProviderRepo,
+        },
+        {
+          provide: BookingService,
+          useValue: bookingService,
         },
         {
           provide: NotificationsService,

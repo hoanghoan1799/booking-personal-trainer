@@ -148,4 +148,34 @@ export class TrainerTimeOffService {
     }
     await this.timeOffRepo.remove(timeOff);
   }
+
+  /**
+   * Any time-off overlapping the range for a trainer (booking conflict check).
+   */
+  async getOverlappingTimeOffForTrainer(
+    trainerId: string,
+    rangeStart: Date,
+    rangeEnd: Date,
+  ): Promise<TrainerTimeOff | null> {
+    return this.timeOffRepo.findOverlappingForTrainer(
+      trainerId,
+      rangeStart,
+      rangeEnd,
+    );
+  }
+
+  /**
+   * All time-off segments overlapping the range (slot generation).
+   */
+  async getOverlappingTimeOffRangesForTrainer(
+    trainerId: string,
+    rangeStart: Date,
+    rangeEnd: Date,
+  ): Promise<TrainerTimeOff[]> {
+    return this.timeOffRepo.findOverlappingRangesForTrainer(
+      trainerId,
+      rangeStart,
+      rangeEnd,
+    );
+  }
 }

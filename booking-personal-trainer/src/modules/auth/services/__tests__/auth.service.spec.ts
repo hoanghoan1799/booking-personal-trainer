@@ -27,10 +27,8 @@ import { UserService } from '../../../user/services/user.service';
 import { HashingService } from '../hashing.service';
 import { RefreshTokenService } from '../refresh-token.service';
 import { TokenVerifierService } from '../token-verifier.service';
-import { UserProviderRepositoryToken } from '../../../user/repositories/user-provider.repository.interface';
 import { LOCAL_PROVIDER_NAME } from '../../constants/auth0-provider.constant';
 import { NotificationsService } from '../../../notifications/services/notifications.service';
-import { UserRepositoryToken } from '../../../user/repositories/user.repository.interface';
 import { EmailService } from '../../../email/services/email.service';
 
 describe('AuthService', () => {
@@ -41,6 +39,12 @@ describe('AuthService', () => {
     findById: jest.Mock;
     findByEmail: jest.Mock;
     findByUserName: jest.Mock;
+    createUserProvider: jest.Mock;
+    findUserProviderByIdentity: jest.Mock;
+    getAdminEmailAddresses: jest.Mock;
+    ensureLocalUserProviderForUser: jest.Mock;
+    pickUniqueUserNameFromEmail: jest.Mock;
+    saveUser: jest.Mock;
   };
   let jwtService: {
     signAsync: jest.Mock;
@@ -53,12 +57,7 @@ describe('AuthService', () => {
     removeRefreshToken: jest.Mock;
   };
   let auth0TokenVerifier: { verifyAndDecode: jest.Mock };
-  let userProviderRepository: {
-    findByProviderIdentity: jest.Mock;
-    create: jest.Mock;
-  };
   let notificationsService: { notifyAdmins: jest.Mock };
-  let userRepo: { findAndCount: jest.Mock; save: jest.Mock };
   let emailService: { send: jest.Mock };
 
   const mockUser = {
@@ -79,6 +78,12 @@ describe('AuthService', () => {
       findById: jest.fn(),
       findByEmail: jest.fn(),
       findByUserName: jest.fn(),
+      createUserProvider: jest.fn().mockResolvedValue(undefined),
+      findUserProviderByIdentity: jest.fn().mockResolvedValue(null),
+      getAdminEmailAddresses: jest.fn().mockResolvedValue([]),
+      ensureLocalUserProviderForUser: jest.fn().mockResolvedValue(undefined),
+      pickUniqueUserNameFromEmail: jest.fn().mockResolvedValue('picked'),
+      saveUser: jest.fn().mockResolvedValue(undefined),
     };
     jwtService = {
       signAsync: jest.fn().mockResolvedValue('mock-token'),
@@ -96,17 +101,8 @@ describe('AuthService', () => {
     auth0TokenVerifier = {
       verifyAndDecode: jest.fn(),
     };
-    userProviderRepository = {
-      findByProviderIdentity: jest.fn(),
-      create: jest.fn().mockResolvedValue(undefined),
-    };
-    userProviderRepository.findByProviderIdentity.mockResolvedValue(null);
     notificationsService = {
       notifyAdmins: jest.fn().mockResolvedValue(undefined),
-    };
-    userRepo = {
-      findAndCount: jest.fn().mockResolvedValue([[], 0]),
-      save: jest.fn().mockResolvedValue(undefined),
     };
     emailService = {
       send: jest.fn().mockResolvedValue({ messageId: 'mock-message-id' }),
@@ -121,11 +117,6 @@ describe('AuthService', () => {
         { provide: RefreshTokenService, useValue: refreshTokenService },
         { provide: TokenVerifierService, useValue: auth0TokenVerifier },
         { provide: NotificationsService, useValue: notificationsService },
-        {
-          provide: UserProviderRepositoryToken,
-          useValue: userProviderRepository,
-        },
-        { provide: UserRepositoryToken, useValue: userRepo },
         { provide: EmailService, useValue: emailService },
       ],
     }).compile();
@@ -188,7 +179,7 @@ describe('AuthService', () => {
       expect(actual.user.email).toBe(registerData.email);
       expect(hashingService.hash).toHaveBeenCalledWith(registerData.password);
       expect(userService.create).toHaveBeenCalled();
-      expect(userProviderRepository.create).toHaveBeenCalledWith({
+      expect(userService.createUserProvider).toHaveBeenCalledWith({
         userId: mockUser.id,
         providerName: LOCAL_PROVIDER_NAME,
         providerUserId: registerData.email.toLowerCase(),
@@ -206,7 +197,7 @@ describe('AuthService', () => {
       const actual = await service.register(registerData);
 
       expect(actual).toHaveProperty('accessToken');
-      expect(userProviderRepository.create).toHaveBeenCalled();
+      expect(userService.createUserProvider).toHaveBeenCalled();
       expect(refreshTokenService.saveRefreshToken).toHaveBeenCalled();
     });
   });
@@ -258,17 +249,9 @@ describe('AuthService', () => {
       expect(actual).toHaveProperty('accessToken');
       expect(actual).toHaveProperty('refreshToken');
       expect(actual.user.email).toBe(loginData.email);
-      expect(
-        userProviderRepository.findByProviderIdentity,
-      ).toHaveBeenCalledWith({
-        providerName: LOCAL_PROVIDER_NAME,
-        providerUserId: loginData.email.toLowerCase(),
-      });
-      expect(userProviderRepository.create).toHaveBeenCalledWith({
-        userId: mockUser.id,
-        providerName: LOCAL_PROVIDER_NAME,
-        providerUserId: loginData.email.toLowerCase(),
-      });
+      expect(userService.ensureLocalUserProviderForUser).toHaveBeenCalledWith(
+        mockUser,
+      );
       expect(refreshTokenService.saveRefreshToken).toHaveBeenCalled();
     });
   });
@@ -399,7 +382,7 @@ describe('AuthService', () => {
         email: mockUser.email,
         email_verified: true,
       });
-      userProviderRepository.findByProviderIdentity.mockResolvedValue(null);
+      userService.findUserProviderByIdentity.mockResolvedValue(null);
       userService.findByEmail.mockResolvedValue(mockUser);
 
       await expect(
@@ -420,7 +403,7 @@ describe('AuthService', () => {
       });
       userService.findByEmail.mockResolvedValue(mockUser);
       hashingService.compare.mockResolvedValue(true);
-      userProviderRepository.findByProviderIdentity.mockResolvedValue(null);
+      userService.findUserProviderByIdentity.mockResolvedValue(null);
 
       const actual = await service.linkAuth0ToLocal({
         token: 'auth0-token',
@@ -428,7 +411,7 @@ describe('AuthService', () => {
       });
 
       expect(actual).toHaveProperty('accessToken');
-      expect(userProviderRepository.create).toHaveBeenCalledWith({
+      expect(userService.createUserProvider).toHaveBeenCalledWith({
         userId: mockUser.id,
         providerName: 'auth0',
         providerUserId: 'auth0|sub',
@@ -467,12 +450,8 @@ describe('AuthService', () => {
       });
 
       expect(hashingService.hash).toHaveBeenCalledWith('password123');
-      expect(userRepo.save).toHaveBeenCalled();
-      expect(userProviderRepository.create).toHaveBeenCalledWith({
-        userId: mockUser.id,
-        providerName: LOCAL_PROVIDER_NAME,
-        providerUserId: mockUser.email.toLowerCase(),
-      });
+      expect(userService.saveUser).toHaveBeenCalled();
+      expect(userService.ensureLocalUserProviderForUser).toHaveBeenCalled();
     });
   });
 });

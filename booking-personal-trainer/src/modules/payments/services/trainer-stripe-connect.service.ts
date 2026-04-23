@@ -1,6 +1,5 @@
 import {
   BadRequestException,
-  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -14,11 +13,7 @@ import { PaymentStatus } from '../../../common/enums/billing/billing.enum';
 import { User } from '../../user/entities/user.entity';
 import { Payment } from '../entities/payment.entity';
 
-// Repositories
-import {
-  UserRepositoryToken,
-  type UserRepository,
-} from '../../user/repositories/user.repository.interface';
+import { UserService } from '../../user/services/user.service';
 
 // Shared
 import { StripeService } from '../../../shared/stripe/stripe.service';
@@ -35,14 +30,15 @@ export class TrainerStripeConnectService {
     private readonly stripeService: StripeService,
     private readonly platformWorkoutSettlementService: PlatformWorkoutSettlementService,
     private readonly em: EntityManager,
-    @Inject(UserRepositoryToken)
-    private readonly userRepo: UserRepository,
+    private readonly userService: UserService,
   ) {}
 
   async createOnboardingLink(input: {
     readonly currentUserId: string;
   }): Promise<StripeConnectOnboardingResult> {
-    const user: User | null = await this.userRepo.findById(input.currentUserId);
+    const user: User | null = await this.userService.findByIdOrNull(
+      input.currentUserId,
+    );
     if (!user) {
       throw new NotFoundException('User not found');
     }
@@ -66,7 +62,7 @@ export class TrainerStripeConnectService {
       ).id;
     if (!user.stripeAccountId) {
       user.stripeAccountId = stripeAccountId;
-      await this.userRepo.save(user);
+      await this.userService.saveUser(user);
       await this.backfillAndSettlePendingTrainerPayouts({
         trainerUserId: user.id,
         stripeAccountId,

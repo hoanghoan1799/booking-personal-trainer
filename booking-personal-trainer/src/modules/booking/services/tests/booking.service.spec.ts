@@ -19,7 +19,7 @@ import { EmailService } from '../../../email/services/email.service';
 
 // Repositories
 import { BookingRepositoryToken } from '../../repositories/booking.repository.interface';
-import { UserRepositoryToken } from '../../../user/repositories/user.repository.interface';
+import { UserService } from '../../../user/services/user.service';
 import { EntityManager } from '@mikro-orm/core';
 
 type TransactionalEntityManagerMock = {
@@ -51,7 +51,10 @@ describe('BookingService', () => {
     findAndCount: jest.Mock;
     save: jest.Mock;
   };
-  let userRepo: { findById: jest.Mock; findAndCount: jest.Mock };
+  let userService: {
+    findByIdOrNull: jest.Mock;
+    getAdminEmailAddresses: jest.Mock;
+  };
   let bookingAvailabilityService: {
     assertTrainerCanBeBookedForRange: jest.Mock;
   };
@@ -97,9 +100,9 @@ describe('BookingService', () => {
       findAndCount: jest.fn(),
       save: jest.fn().mockResolvedValue(undefined),
     };
-    userRepo = {
-      findById: jest.fn(),
-      findAndCount: jest.fn().mockResolvedValue([[], 0]),
+    userService = {
+      findByIdOrNull: jest.fn(),
+      getAdminEmailAddresses: jest.fn().mockResolvedValue([]),
     };
     bookingAvailabilityService = {
       assertTrainerCanBeBookedForRange: jest.fn().mockResolvedValue(undefined),
@@ -123,8 +126,8 @@ describe('BookingService', () => {
           useValue: bookingRepo,
         },
         {
-          provide: UserRepositoryToken,
-          useValue: userRepo,
+          provide: UserService,
+          useValue: userService,
         },
         {
           provide: BookingAvailabilityService,
@@ -186,7 +189,7 @@ describe('BookingService', () => {
 
     it('should throw NotFoundException when trainer not found', async () => {
       const { startTime, endTime } = createValidFutureDates();
-      userRepo.findById.mockResolvedValue(null);
+      userService.findByIdOrNull.mockResolvedValue(null);
 
       await expect(
         service.create(
@@ -204,7 +207,7 @@ describe('BookingService', () => {
 
     it('should throw BadRequestException when trainee books self', async () => {
       const { startTime, endTime } = createValidFutureDates();
-      userRepo.findById.mockResolvedValue(mockTrainee);
+      userService.findByIdOrNull.mockResolvedValue(mockTrainee);
 
       await expect(
         service.create(
@@ -222,7 +225,7 @@ describe('BookingService', () => {
 
     it('should throw BadRequestException when time slot overlaps', async () => {
       const { startTime, endTime } = createValidFutureDates();
-      userRepo.findById.mockResolvedValue(mockTrainer);
+      userService.findByIdOrNull.mockResolvedValue(mockTrainer);
       bookingAvailabilityService.assertTrainerCanBeBookedForRange.mockRejectedValue(
         new BadRequestException(ERROR_MESSAGES.BOOKING.TIME_SLOT_NOT_AVAILABLE),
       );
@@ -243,7 +246,7 @@ describe('BookingService', () => {
 
     it('should create booking when valid', async () => {
       const { startTime, endTime } = createValidFutureDates();
-      userRepo.findById.mockResolvedValue(mockTrainer);
+      userService.findByIdOrNull.mockResolvedValue(mockTrainer);
       const createdBooking = {
         id: 'booking-uuid',
         trainee: mockTrainee,

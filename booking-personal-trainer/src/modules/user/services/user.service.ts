@@ -1,6 +1,7 @@
 import {
   ConflictException,
   ForbiddenException,
+  forwardRef,
   Inject,
   Injectable,
   Logger,
@@ -34,6 +35,7 @@ import { EmailTemplates } from '../../email/constants/email-template.constant';
 
 // Entities
 import { User } from '../entities/user.entity';
+import { UserProvider } from '../entities/user-provider.entity';
 
 // DTOs
 import {
@@ -54,8 +56,14 @@ import {
   type UserFindManyFilter,
   type CreateUserData,
 } from '../repositories/user.repository.interface';
-import { BookingRepositoryToken } from '../../booking/repositories/booking.repository.interface';
-import type { BookingRepository } from '../../booking/repositories/booking.repository.interface';
+import {
+  UserProviderRepositoryToken,
+  type CreateUserProviderData,
+  type UserProviderRepository,
+} from '../repositories/user-provider.repository.interface';
+import { BookingService } from '../../booking/services/booking.service';
+import { collectAdminEmailAddresses } from '../../email/helpers/collect-admin-email-addresses.helper';
+import { USER_PROVIDER_NAME_LOCAL } from '../constants/user-provider-name.constant';
 
 @Injectable()
 export class UserService {
@@ -64,8 +72,11 @@ export class UserService {
   constructor(
     @Inject(UserRepositoryToken)
     private readonly userRepo: UserRepository,
-    @Inject(BookingRepositoryToken)
-    private readonly bookingRepo: BookingRepository,
+    @Inject(UserProviderRepositoryToken)
+    private readonly userProviderRepo: UserProviderRepository,
+    // Resolve circular dependency, wait for the module to be initialized before using it
+    @Inject(forwardRef(() => BookingService))
+    private readonly bookingService: BookingService,
     private readonly notificationsService: NotificationsService,
     private readonly emailService: EmailService,
   ) {}
@@ -124,6 +135,34 @@ export class UserService {
   }
 
   /**
+   * Loads a user by id when absence is valid (JWT validation, webhooks, Stripe).
+   * @param id User id.
+   */
+  async findByIdOrNull(id: string): Promise<User | null> {
+    return this.userRepo.findById(id);
+  }
+
+  /**
+   * Finds users by role with pagination (e.g. in-app admin notifications).
+   * @param input Role and page window.
+   */
+  async findUsersByRole(input: {
+    readonly role: UserRole;
+    readonly limit: number;
+    readonly offset: number;
+  }): Promise<User[]> {
+    const [users]: [User[], number] = await this.userRepo.findAndCount(
+      { role: input.role },
+      {
+        limit: input.limit,
+        offset: input.offset,
+        orderBy: { createdAt: SortOrder.DESC },
+      },
+    );
+    return users ?? [];
+  }
+
+  /**
    * Gets all users filtered by user type, role, approval status and search.
    * Role-based restrictions:
    * - ADMIN: can see all users
@@ -162,9 +201,8 @@ export class UserService {
           filter.excludeUserId = currentUser.id;
         } else {
           filter.role = UserRole.TRAINEE;
-          const traineeIds = await this.bookingRepo.findTraineeIdsByTrainerId(
-            currentUser.id,
-          );
+          const traineeIds =
+            await this.bookingService.findTraineeIdsByTrainerId(currentUser.id);
           filter.onlyTraineeIds = traineeIds;
         }
         break;
@@ -419,5 +457,82 @@ export class UserService {
         enableImplicitConversion: true,
       }),
     );
+  }
+
+  /**
+   * Persists a user entity (e.g. after password is set in auth).
+   * @param user The user to save.
+   */
+  async saveUser(user: User): Promise<void> {
+    await this.userRepo.save(user);
+  }
+
+  /**
+   * Returns email addresses for users with the ADMIN role (out-of-app notifications).
+   */
+  async getAdminEmailAddresses(): Promise<readonly string[]> {
+    return collectAdminEmailAddresses(this.userRepo);
+  }
+
+  /**
+   * Looks up a linked identity in user_providers.
+   * @param args Provider name and id from the IdP.
+   */
+  async findUserProviderByIdentity(args: {
+    providerName: string;
+    providerUserId: string;
+  }): Promise<UserProvider | null> {
+    return this.userProviderRepo.findByProviderIdentity(args);
+  }
+
+  /**
+   * Inserts a user_providers row for a linked identity.
+   * @param data The provider link to store.
+   */
+  async createUserProvider(
+    data: CreateUserProviderData,
+  ): Promise<UserProvider> {
+    return this.userProviderRepo.create(data);
+  }
+
+  /**
+   * Records local (email + password) in user_providers when missing.
+   * Backfills users created before multi-provider support; coexists with auth0 rows.
+   * @param user The user to attach a local provider row to if absent.
+   */
+  async ensureLocalUserProviderForUser(user: User): Promise<void> {
+    const providerUserId: string = user.email.trim().toLowerCase();
+    const existing: UserProvider | null =
+      await this.userProviderRepo.findByProviderIdentity({
+        providerName: USER_PROVIDER_NAME_LOCAL,
+        providerUserId,
+      });
+    if (existing) {
+      return;
+    }
+    await this.userProviderRepo.create({
+      userId: user.id,
+      providerName: USER_PROVIDER_NAME_LOCAL,
+      providerUserId,
+    });
+  }
+
+  /**
+   * Derives a unique username from an email (Auth0 and similar sign-up).
+   * @param email The email to derive a base name from.
+   */
+  async pickUniqueUserNameFromEmail(email: string): Promise<string> {
+    const local: string =
+      (email.split('@')[0] ?? 'user').replace(/[^a-zA-Z0-9_]/g, '_') || 'user';
+    const base: string = local.slice(0, 24);
+    let candidate: string = base;
+    for (let i = 0; i < 1000; i += 1) {
+      const existing: User | null = await this.findByUserName(candidate);
+      if (!existing) {
+        return candidate;
+      }
+      candidate = `${base}_${i + 1}`;
+    }
+    throw new ConflictException(ERROR_MESSAGES.USER.USERNAME_TAKEN);
   }
 }

@@ -13,11 +13,9 @@ import { PlatformWorkoutSettlementService } from './platform-workout-settlement.
 import { NotificationsService } from '../../notifications/services/notifications.service';
 import { NotificationType } from '../../notifications/enums/notification-type.enum';
 import { NotificationTemplates } from '../../notifications/constants/notification-template.constant';
-import { UserRepositoryToken } from '../../user/repositories/user.repository.interface';
-import type { UserRepository } from '../../user/repositories/user.repository.interface';
+import { UserService } from '../../user/services/user.service';
 import { EmailService } from '../../email/services/email.service';
 import { EmailTemplates } from '../../email/constants/email-template.constant';
-import { collectAdminEmailAddresses } from '../../email/helpers/collect-admin-email-addresses.helper';
 import { ProcessedWebhookEvent } from '../entities/processed-webhook-event.entity';
 import { Payment } from '../entities/payment.entity';
 
@@ -37,8 +35,7 @@ export class StripeWebhookService {
     private readonly paymentRepo: PaymentRepository,
     private readonly platformWorkoutSettlementService: PlatformWorkoutSettlementService,
     private readonly notificationsService: NotificationsService,
-    @Inject(UserRepositoryToken)
-    private readonly userRepo: UserRepository,
+    private readonly userService: UserService,
     private readonly emailService: EmailService,
     private readonly em: EntityManager,
   ) {}
@@ -150,7 +147,7 @@ export class StripeWebhookService {
           },
         ],
       });
-      const trainerUser = await this.userRepo.findById(trainerUserId);
+      const trainerUser = await this.userService.findByIdOrNull(trainerUserId);
       const frontendUrl: string = (process.env.FRONTEND_URL ?? '').replace(
         /\/$/,
         '',
@@ -194,13 +191,13 @@ export class StripeWebhookService {
         paymentId: payment.id,
       },
     });
-    const adminEmails = await collectAdminEmailAddresses(this.userRepo);
+    const adminEmails = await this.userService.getAdminEmailAddresses();
     const frontendUrl: string = (process.env.FRONTEND_URL ?? '').replace(
       /\/$/,
       '',
     );
     const trainerUser = trainerUserId
-      ? await this.userRepo.findById(trainerUserId)
+      ? await this.userService.findByIdOrNull(trainerUserId)
       : null;
     const trainerName: string = trainerUser?.userName ?? 'Unknown';
     const amount: string = `${(payment.amountCents / 100).toFixed(2)} ${String(
