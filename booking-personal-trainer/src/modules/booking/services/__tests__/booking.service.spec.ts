@@ -325,6 +325,38 @@ describe('BookingService', () => {
       expect(em.transactional).toHaveBeenCalled();
     });
 
+    it('should swallow side effect errors and log warning', async () => {
+      userService.findByIdOrNull.mockResolvedValue(mockTrainer);
+      const createdBooking = {
+        id: 'booking-uuid',
+        trainee: mockTrainee,
+        trainer: mockTrainer,
+        startTime: new Date('2030-01-01T10:00:00.000Z'),
+        endTime: new Date('2030-01-01T11:00:00.000Z'),
+        status: BookingStatus.PENDING,
+      } as Booking;
+      em.transactional.mockImplementation(
+        async (handler: TransactionalHandler<Booking>) =>
+          handler({
+            create: jest.fn().mockReturnValue(createdBooking),
+            persist: jest.fn().mockReturnValue({ flush: jest.fn() }),
+            flush: jest.fn().mockResolvedValue(undefined),
+          }),
+      );
+      notificationsService.notifyAdmins.mockRejectedValue('boom');
+
+      const actual = await service.create(
+        {
+          trainerId: mockTrainer.id,
+          startTime: createdBooking.startTime.toISOString(),
+          endTime: createdBooking.endTime.toISOString(),
+        },
+        mockTrainee,
+      );
+
+      expect(actual.id).toBe('booking-uuid');
+    });
+
     it('should throw time slot not available when transactional throws exclusion violation', async () => {
       const { startTime, endTime } = createValidFutureDates();
       userService.findByIdOrNull.mockResolvedValue(mockTrainer);
@@ -478,6 +510,124 @@ describe('BookingService', () => {
       ).toHaveBeenCalledTimes(2);
       expect(emailService.send).toHaveBeenCalled();
     });
+
+    it('should create a week series (7 sessions) when period is week', async () => {
+      userService.findByIdOrNull.mockResolvedValue(mockTrainer);
+      bookingAvailabilityService.assertTrainerCanBeBookedForRange.mockResolvedValue(
+        undefined,
+      );
+      const bulkInput = buildBulkInput({
+        startDate: '2030-01-01',
+        startClockTime: '10:00',
+        endClockTime: '11:00',
+        period: 'week',
+      });
+      em.transactional.mockImplementation(
+        async (handler: TransactionalHandler<Booking[]>) =>
+          handler({
+            create: jest
+              .fn()
+              .mockImplementation(
+                (_entity: unknown, data: Record<string, unknown>): unknown =>
+                  ({ id: 'id', ...data }) as unknown,
+              ),
+            persist: jest.fn(),
+            flush: jest.fn().mockResolvedValue(undefined),
+          }),
+      );
+
+      const actual = await service.createBulk(bulkInput, mockTrainee);
+
+      expect(actual).toHaveLength(7);
+    });
+
+    it('should create a month series when period is month', async () => {
+      userService.findByIdOrNull.mockResolvedValue(mockTrainer);
+      bookingAvailabilityService.assertTrainerCanBeBookedForRange.mockResolvedValue(
+        undefined,
+      );
+      const bulkInput = buildBulkInput({
+        startDate: '2030-01-01',
+        startClockTime: '10:00',
+        endClockTime: '11:00',
+        period: 'month',
+      });
+      em.transactional.mockImplementation(
+        async (handler: TransactionalHandler<Booking[]>) =>
+          handler({
+            create: jest
+              .fn()
+              .mockImplementation(
+                (_entity: unknown, data: Record<string, unknown>): unknown =>
+                  ({ id: 'id', ...data }) as unknown,
+              ),
+            persist: jest.fn(),
+            flush: jest.fn().mockResolvedValue(undefined),
+          }),
+      );
+
+      const actual = await service.createBulk(bulkInput, mockTrainee);
+
+      expect(actual.length).toBeGreaterThan(20);
+    });
+
+    it('should create a year series when period is year', async () => {
+      userService.findByIdOrNull.mockResolvedValue(mockTrainer);
+      bookingAvailabilityService.assertTrainerCanBeBookedForRange.mockResolvedValue(
+        undefined,
+      );
+      const bulkInput = buildBulkInput({
+        startDate: '2030-01-01',
+        startClockTime: '10:00',
+        endClockTime: '11:00',
+        period: 'year',
+      });
+      em.transactional.mockImplementation(
+        async (handler: TransactionalHandler<Booking[]>) =>
+          handler({
+            create: jest
+              .fn()
+              .mockImplementation(
+                (_entity: unknown, data: Record<string, unknown>): unknown =>
+                  ({ id: 'id', ...data }) as unknown,
+              ),
+            persist: jest.fn(),
+            flush: jest.fn().mockResolvedValue(undefined),
+          }),
+      );
+
+      const actual = await service.createBulk(bulkInput, mockTrainee);
+
+      expect(actual.length).toBeGreaterThan(300);
+    });
+
+    it('should throw when any occurrence end is not after start', async () => {
+      userService.findByIdOrNull.mockResolvedValue(mockTrainer);
+      const bulkInput = buildBulkInput({
+        startDate: '2030-01-01',
+        startClockTime: '11:00',
+        endClockTime: '10:00',
+        period: 'week',
+      });
+
+      await expect(service.createBulk(bulkInput, mockTrainee)).rejects.toThrow(
+        ERROR_MESSAGES.BOOKING.INVALID_TIME_RANGE,
+      );
+    });
+
+    it('should throw invalid start date when startDate is not YYYY-MM-DD', async () => {
+      userService.findByIdOrNull.mockResolvedValue(mockTrainer);
+      const bulkInput = buildBulkInput({
+        startDate: '',
+        startClockTime: '10:00',
+        endClockTime: '11:00',
+        period: 'day',
+      });
+
+      await expect(service.createBulk(bulkInput, mockTrainee)).rejects.toThrow(
+        'Invalid start date',
+      );
+    });
   });
 
   describe('getAll', () => {
@@ -568,6 +718,47 @@ describe('BookingService', () => {
           totalItems: TOTAL_ITEMS_ONE,
           totalPages: TOTAL_PAGES_ONE,
         }),
+      );
+    });
+
+    it('should apply status filter when provided', async () => {
+      const query = {
+        page: DEFAULT_PAGE,
+        limit: DEFAULT_LIMIT,
+        status: BookingStatus.CONFIRMED,
+      };
+      bookingRepo.findAndCount.mockResolvedValue([[], NO_OVERLAP_COUNT]);
+
+      await service.getAll(query, mockTrainer);
+
+      const findAndCountMock = bookingRepo.findAndCount as unknown as jest.Mock<
+        Promise<unknown>,
+        [unknown, unknown]
+      >;
+      const firstCallArgs: unknown[] = findAndCountMock.mock.calls[0] ?? [];
+      const filterArg: unknown = firstCallArgs[0];
+      if (!filterArg || typeof filterArg !== 'object') {
+        throw new Error(
+          'Expected findAndCount() to be called with a filter object',
+        );
+      }
+      const filterRecord = filterArg as Record<string, unknown>;
+      expect(filterRecord.trainer).toBe(mockTrainer.id);
+      expect(filterRecord.status).toBe(BookingStatus.CONFIRMED);
+    });
+
+    it('should default to trainee filter for unknown roles', async () => {
+      const weirdUser = { ...mockTrainee, role: 'UNKNOWN' } as unknown as User;
+      bookingRepo.findAndCount.mockResolvedValue([[], NO_OVERLAP_COUNT]);
+
+      await service.getAll(
+        { page: DEFAULT_PAGE, limit: DEFAULT_LIMIT },
+        weirdUser,
+      );
+
+      expect(bookingRepo.findAndCount).toHaveBeenCalledWith(
+        { trainee: mockTrainee.id },
+        expect.anything(),
       );
     });
   });
@@ -676,6 +867,24 @@ describe('BookingService', () => {
       ).rejects.toThrow('Rejection reason is required');
     });
 
+    it('should forbid trainee from rejecting booking', async () => {
+      const booking = {
+        id: 'booking-id',
+        trainer: mockTrainer,
+        trainee: mockTrainee,
+        status: BookingStatus.PENDING,
+      } as Booking;
+      bookingRepo.findById.mockResolvedValue(booking);
+
+      await expect(
+        service.updateStatus(
+          booking.id,
+          { status: BookingStatus.REJECTED, rejectionReason: 'Nope' },
+          mockTrainee,
+        ),
+      ).rejects.toThrow(ERROR_MESSAGES.BOOKING.CANNOT_UPDATE_STATUS);
+    });
+
     it('should require cancellationReason when cancelling', async () => {
       const booking = {
         id: 'booking-id',
@@ -692,6 +901,29 @@ describe('BookingService', () => {
           mockTrainer,
         ),
       ).rejects.toThrow('Cancellation reason is required');
+    });
+
+    it('should forbid unrelated user from cancelling booking', async () => {
+      const booking = {
+        id: 'booking-id',
+        trainer: mockTrainer,
+        trainee: mockTrainee,
+        status: BookingStatus.PENDING,
+      } as Booking;
+      bookingRepo.findById.mockResolvedValue(booking);
+      const otherUser = {
+        ...mockTrainee,
+        id: 'other',
+        role: UserRole.TRAINEE,
+      } as User;
+
+      await expect(
+        service.updateStatus(
+          booking.id,
+          { status: BookingStatus.CANCELLED, cancellationReason: 'Busy' },
+          otherUser,
+        ),
+      ).rejects.toThrow(ERROR_MESSAGES.BOOKING.CANNOT_UPDATE_STATUS);
     });
 
     it('should send side effects when confirming booking', async () => {

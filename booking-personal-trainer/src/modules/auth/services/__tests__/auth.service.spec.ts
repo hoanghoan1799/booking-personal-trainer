@@ -192,6 +192,36 @@ describe('AuthService', () => {
       expect(refreshTokenService.saveRefreshToken).toHaveBeenCalled();
     });
 
+    it('should set approvalStatus=PENDING for non-trainee userType', async () => {
+      userService.findByEmailOrUserName.mockResolvedValue(null);
+      userService.create.mockResolvedValue({
+        ...mockUser,
+        id: 'trainer-id',
+        email: registerData.email,
+        userName: registerData.userName,
+        userType: UserType.TRAINER,
+        approvalStatus: TrainerApprovalStatus.PENDING,
+      });
+
+      const actual = await service.register({
+        ...registerData,
+        userType: UserType.TRAINER,
+      });
+
+      expect(actual.user.userType).toBe(UserType.TRAINER);
+      const createMock = userService.create as unknown as jest.Mock<
+        Promise<unknown>,
+        [unknown]
+      >;
+      const firstArg: unknown = createMock.mock.calls[0]?.[0];
+      if (!firstArg || typeof firstArg !== 'object') {
+        throw new Error('Expected create() to be called with an object');
+      }
+      const approvalStatus = (firstArg as Record<string, unknown>)
+        .approvalStatus;
+      expect(approvalStatus).toBe(TrainerApprovalStatus.PENDING);
+    });
+
     it('should create user and return tokens when admin notify or email fails', async () => {
       userService.findByEmailOrUserName.mockResolvedValue(null);
       userService.create.mockResolvedValue({ ...mockUser, ...registerData });
@@ -218,6 +248,28 @@ describe('AuthService', () => {
       expect(emailService.send).toHaveBeenCalledWith(
         expect.objectContaining({ to: ['admin@test.com'] }),
       );
+    });
+
+    it('should not throw when notifyAdmins fails with non-Error', async () => {
+      userService.findByEmailOrUserName.mockResolvedValue(null);
+      userService.create.mockResolvedValue({ ...mockUser, ...registerData });
+      notificationsService.notifyAdmins.mockRejectedValue('boom');
+
+      const actual = await service.register(registerData);
+
+      expect(actual).toHaveProperty('accessToken');
+    });
+
+    it('should log jobId as null when email sender returns null jobId', async () => {
+      process.env.FRONTEND_URL = 'https://app.test/';
+      userService.findByEmailOrUserName.mockResolvedValue(null);
+      userService.create.mockResolvedValue({ ...mockUser, ...registerData });
+      userService.getAdminEmailAddresses.mockResolvedValue(['admin@test.com']);
+      emailService.send.mockResolvedValue({ jobId: null });
+
+      await service.register(registerData);
+
+      expect(emailService.send).toHaveBeenCalled();
     });
   });
 
@@ -540,6 +592,95 @@ describe('AuthService', () => {
       expect(refreshTokenService.saveRefreshToken).toHaveBeenCalled();
     });
 
+    it('should throw when email is missing in claims', async () => {
+      auth0TokenVerifier.verifyAndDecode.mockResolvedValue({
+        sub: 'auth0|sub',
+        email: undefined,
+        email_verified: true,
+      });
+
+      await expect(
+        service.linkAuth0ToLocal({ token: 't', password: 'p' }),
+      ).rejects.toThrow(ERROR_MESSAGES.AUTH.EMAIL_MISSING);
+    });
+
+    it('should throw when email is not verified', async () => {
+      auth0TokenVerifier.verifyAndDecode.mockResolvedValue({
+        sub: 'auth0|sub',
+        email: mockUser.email,
+        email_verified: false,
+      });
+
+      await expect(
+        service.linkAuth0ToLocal({ token: 't', password: 'p' }),
+      ).rejects.toThrow(ERROR_MESSAGES.AUTH.EMAIL_NOT_VERIFIED);
+    });
+
+    it('should throw when existing user not found', async () => {
+      auth0TokenVerifier.verifyAndDecode.mockResolvedValue({
+        sub: 'auth0|sub',
+        email: mockUser.email,
+        email_verified: true,
+      });
+      userService.findByEmail.mockResolvedValue(null);
+
+      await expect(
+        service.linkAuth0ToLocal({ token: 't', password: 'p' }),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('should throw when existing user has no password', async () => {
+      auth0TokenVerifier.verifyAndDecode.mockResolvedValue({
+        sub: 'auth0|sub',
+        email: mockUser.email,
+        email_verified: true,
+      });
+      userService.findByEmail.mockResolvedValue({
+        ...mockUser,
+        password: null,
+      });
+
+      await expect(
+        service.linkAuth0ToLocal({ token: 't', password: 'p' }),
+      ).rejects.toThrow(ERROR_MESSAGES.AUTH.PASSWORD_SETUP_REQUIRED);
+    });
+
+    it('should throw conflict when Auth0 identity is linked to another user', async () => {
+      auth0TokenVerifier.verifyAndDecode.mockResolvedValue({
+        sub: 'auth0|sub',
+        email: mockUser.email,
+        email_verified: true,
+      });
+      userService.findByEmail.mockResolvedValue(mockUser);
+      hashingService.compare.mockResolvedValue(true);
+      userService.findUserProviderByIdentity.mockResolvedValue({
+        id: 'provider-id',
+        user: { id: 'someone-else' },
+      });
+
+      await expect(
+        service.linkAuth0ToLocal({ token: 't', password: 'p' }),
+      ).rejects.toThrow(ConflictException);
+    });
+
+    it('should not create provider when identity already linked to same user', async () => {
+      auth0TokenVerifier.verifyAndDecode.mockResolvedValue({
+        sub: 'auth0|sub',
+        email: mockUser.email,
+        email_verified: true,
+      });
+      userService.findByEmail.mockResolvedValue(mockUser);
+      hashingService.compare.mockResolvedValue(true);
+      userService.findUserProviderByIdentity.mockResolvedValue({
+        id: 'provider-id',
+        user: { id: mockUser.id },
+      });
+
+      await service.linkAuth0ToLocal({ token: 't', password: 'p' });
+
+      expect(userService.createUserProvider).not.toHaveBeenCalled();
+    });
+
     it('should throw BadRequestException when password does not match', async () => {
       auth0TokenVerifier.verifyAndDecode.mockResolvedValue({
         sub: 'auth0|sub',
@@ -573,6 +714,14 @@ describe('AuthService', () => {
       expect(hashingService.hash).toHaveBeenCalledWith('password123');
       expect(userService.saveUser).toHaveBeenCalled();
       expect(userService.ensureLocalUserProviderForUser).toHaveBeenCalled();
+    });
+
+    it('should throw ConflictException when password already exists', async () => {
+      userService.findById.mockResolvedValue(mockUser);
+
+      await expect(
+        service.setPassword({ userId: mockUser.id, newPassword: 'x' }),
+      ).rejects.toThrow(ConflictException);
     });
   });
 });

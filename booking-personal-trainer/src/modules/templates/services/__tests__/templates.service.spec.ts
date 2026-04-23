@@ -107,6 +107,25 @@ describe('TemplatesService', () => {
         expect.any(Object),
       );
     });
+
+    it('should use default pagination when page/limit are missing', async () => {
+      templatesRepository.findTemplatesAndCount.mockResolvedValue([[], 0]);
+
+      await service.getAll({}, { id: 'trainer-id', role: UserRole.TRAINER });
+
+      const findTemplatesAndCountMock =
+        templatesRepository.findTemplatesAndCount as unknown as jest.Mock<
+          Promise<unknown>,
+          [unknown, unknown]
+        >;
+      const firstCallArgs: unknown[] =
+        findTemplatesAndCountMock.mock.calls[0] ?? [];
+      const options = firstCallArgs[1] as
+        | undefined
+        | { readonly limit?: number; readonly offset?: number };
+      expect(options?.limit).toBeDefined();
+      expect(options?.offset).toBe(0);
+    });
   });
 
   describe('getOne', () => {
@@ -137,6 +156,28 @@ describe('TemplatesService', () => {
 
       expect(actual.id).toBe('t1');
       expect(actual.isDeleted).toBe(false);
+    });
+
+    it('should map default timestamps when missing', async () => {
+      templatesRepository.findTemplateById.mockResolvedValue({
+        id: 't1',
+        name: 'Leg day',
+        description: '',
+        createdBy: { id: 'trainer-id' },
+        templateType: TemplateType.TRAINER,
+        parentTemplate: null,
+        isDeleted: undefined,
+        deletedAt: null,
+        createdAt: undefined,
+        updatedAt: undefined,
+        items: createItemsCollection([]),
+      });
+
+      const actual = await service.getOne('t1');
+
+      expect(actual.isDeleted).toBe(false);
+      expect(actual.createdAtIso).toBeInstanceOf(Date);
+      expect(actual.updatedAtIso).toBeInstanceOf(Date);
     });
 
     it('should sort items by order', async () => {
@@ -277,6 +318,25 @@ describe('TemplatesService', () => {
       expect(actual.name).toBe('Updated');
     });
 
+    it('should throw when updated template cannot be reloaded', async () => {
+      templatesRepository.findTemplateById
+        .mockResolvedValueOnce({
+          id: 't1',
+          createdBy: { id: 'trainer-id' },
+          items: createItemsCollection([]),
+          isDeleted: false,
+        })
+        .mockResolvedValueOnce(null);
+
+      await expect(
+        service.update(
+          't1',
+          { name: 'Updated' },
+          { id: 'trainer-id', role: UserRole.TRAINER },
+        ),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
     it('should throw when template missing', async () => {
       templatesRepository.findTemplateById.mockResolvedValue(null);
 
@@ -326,6 +386,19 @@ describe('TemplatesService', () => {
         isDeleted: false,
       });
       templatesRepository.softDeleteTemplate.mockResolvedValue(false);
+
+      await expect(
+        service.delete('t1', { id: 'trainer-id', role: UserRole.TRAINER }),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it('should throw when template is already deleted', async () => {
+      templatesRepository.findTemplateById.mockResolvedValue({
+        id: 't1',
+        createdBy: { id: 'trainer-id' },
+        items: createItemsCollection([]),
+        isDeleted: true,
+      });
 
       await expect(
         service.delete('t1', { id: 'trainer-id', role: UserRole.TRAINER }),
@@ -391,6 +464,24 @@ describe('TemplatesService', () => {
         ),
       ).rejects.toBeInstanceOf(BadRequestException);
     });
+
+    it('should throw when created item cannot be reloaded', async () => {
+      templatesRepository.findTemplateById.mockResolvedValue({
+        id: 't1',
+        createdBy: { id: 'trainer-id' },
+        isDeleted: false,
+      });
+      templatesRepository.createTemplateItem.mockResolvedValue({ id: 'i1' });
+      templatesRepository.findTemplateItemById.mockResolvedValue(null);
+
+      await expect(
+        service.createItem(
+          't1',
+          { exerciseId: 'e1', order: 1 },
+          { id: 'trainer-id', role: UserRole.TRAINER },
+        ),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
   });
 
   describe('updateItem', () => {
@@ -430,6 +521,27 @@ describe('TemplatesService', () => {
 
       expect(templatesRepository.updateTemplateItem).toHaveBeenCalled();
       expect(actual.exerciseId).toBe('e2');
+    });
+
+    it('should throw when template is deleted', async () => {
+      templatesRepository.findTemplateItemById.mockResolvedValue({
+        id: 'i1',
+        template: { id: 't1' },
+      });
+      templatesRepository.findTemplateById.mockResolvedValue({
+        id: 't1',
+        createdBy: { id: 'trainer-id' },
+        isDeleted: true,
+      });
+
+      await expect(
+        service.updateItem(
+          't1',
+          'i1',
+          { exerciseId: 'e2', order: 2 },
+          { id: 'trainer-id', role: UserRole.TRAINER },
+        ),
+      ).rejects.toBeInstanceOf(NotFoundException);
     });
 
     it('should throw when item not in template', async () => {
@@ -602,6 +714,44 @@ describe('TemplatesService', () => {
           { id: 'trainer-id', role: UserRole.TRAINER },
         ),
       ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('should auto-assign increasing order when order column is empty', async () => {
+      templatesRepository.createTemplate.mockResolvedValue({ id: 't1' });
+      templatesRepository.createTemplateItem.mockResolvedValue({ id: 'i1' });
+
+      const actual = await service.importFromCsv(
+        [
+          'name,description,templateType,exerciseId,sets,reps,restSeconds,order,notes',
+          'Leg day,,TRAINER,exercise-1,3,10,60,,""',
+          'Leg day,,TRAINER,exercise-2,3,10,60,,""',
+        ].join('\n'),
+        { id: 'trainer-id', role: UserRole.TRAINER },
+      );
+
+      expect(actual.createdTemplates).toBe(1);
+      expect(actual.createdItems).toBe(2);
+      const createTemplateItemMock =
+        templatesRepository.createTemplateItem as unknown as jest.Mock<
+          Promise<unknown>,
+          [unknown]
+        >;
+      const firstArg: unknown = createTemplateItemMock.mock.calls[0]?.[0];
+      const secondArg: unknown = createTemplateItemMock.mock.calls[1]?.[0];
+      if (
+        !firstArg ||
+        typeof firstArg !== 'object' ||
+        !secondArg ||
+        typeof secondArg !== 'object'
+      ) {
+        throw new Error(
+          'Expected createTemplateItem() to be called with objects',
+        );
+      }
+      const firstOrder = (firstArg as Record<string, unknown>).order;
+      const secondOrder = (secondArg as Record<string, unknown>).order;
+      expect(firstOrder).toBe(1);
+      expect(secondOrder).toBe(2);
     });
   });
 

@@ -140,4 +140,117 @@ describe('RevenueReportService', () => {
     expect(actual).toHaveLength(1);
     expect(actual[0]?.bucketStart).toBe('2026-03-01T00:00:00.000Z');
   });
+
+  it('skips payments that are not PAID or REFUNDED', async () => {
+    const payments: FakePayment[] = [
+      {
+        status: PaymentStatus.PROCESSING,
+        amountCents: 1,
+        currency: 'USD',
+        paidAt: new Date(),
+        refundedAt: null,
+        metadata: { trainerUserId: 't1' },
+        createdAt: new Date(),
+      } as unknown as FakePayment,
+    ];
+    em.find.mockResolvedValue(payments as unknown as Payment[]);
+
+    const actual = await service.getRevenueBuckets({
+      query: { bucket: ReportBucket.MONTH },
+      trainerUserIdFilter: null,
+    });
+
+    expect(actual).toEqual([]);
+  });
+
+  it('skips payments when event date cannot be parsed', async () => {
+    const payments: FakePayment[] = [
+      {
+        status: PaymentStatus.PAID,
+        amountCents: 1000,
+        currency: 'USD',
+        paidAt: 'not-a-date',
+        refundedAt: null,
+        metadata: {
+          trainerUserId: 't1',
+          platformFeeCents: 100,
+          trainerShareCents: 900,
+        },
+        createdAt: new Date(),
+      } as unknown as FakePayment,
+    ];
+    em.find.mockResolvedValue(payments as unknown as Payment[]);
+
+    const actual = await service.getRevenueBuckets({
+      query: { bucket: ReportBucket.MONTH },
+      trainerUserIdFilter: null,
+    });
+
+    expect(actual).toEqual([]);
+  });
+
+  it('marks bucket as estimated when split is estimated', async () => {
+    process.env.PLATFORM_WORKOUT_FEE_BPS = '1000';
+    const payments: FakePayment[] = [
+      {
+        status: PaymentStatus.PAID,
+        amountCents: 1000,
+        currency: 'USD',
+        paidAt: new Date('2026-04-10T00:00:00.000Z'),
+        refundedAt: null,
+        metadata: { trainerUserId: 't1' },
+        createdAt: new Date(),
+      } as unknown as FakePayment,
+    ];
+    em.find.mockResolvedValue(payments as unknown as Payment[]);
+
+    const actual = await service.getRevenueBuckets({
+      query: { bucket: ReportBucket.MONTH },
+      trainerUserIdFilter: null,
+    });
+
+    expect(actual).toHaveLength(1);
+    expect(actual[0]?.isEstimated).toBe(true);
+  });
+
+  it('sorts by currency then bucketStart', async () => {
+    const payments: FakePayment[] = [
+      {
+        status: PaymentStatus.PAID,
+        amountCents: 1000,
+        currency: 'EUR',
+        paidAt: new Date('2026-05-10T00:00:00.000Z'),
+        refundedAt: null,
+        metadata: {
+          trainerUserId: 't1',
+          platformFeeCents: 100,
+          trainerShareCents: 900,
+        },
+        createdAt: new Date(),
+      } as unknown as FakePayment,
+      {
+        status: PaymentStatus.PAID,
+        amountCents: 1000,
+        currency: 'USD',
+        paidAt: new Date('2026-04-10T00:00:00.000Z'),
+        refundedAt: null,
+        metadata: {
+          trainerUserId: 't1',
+          platformFeeCents: 100,
+          trainerShareCents: 900,
+        },
+        createdAt: new Date(),
+      } as unknown as FakePayment,
+    ];
+    em.find.mockResolvedValue(payments as unknown as Payment[]);
+
+    const actual = await service.getRevenueBuckets({
+      query: { bucket: ReportBucket.MONTH },
+      trainerUserIdFilter: null,
+    });
+
+    expect(actual).toHaveLength(2);
+    expect(actual[0]?.currency).toBe('EUR');
+    expect(actual[1]?.currency).toBe('USD');
+  });
 });

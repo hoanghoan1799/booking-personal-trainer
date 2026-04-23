@@ -1,4 +1,5 @@
 import { RedisService } from '../redis.service';
+import { Logger } from '@nestjs/common';
 
 type RedisClientMock = {
   isOpen: boolean;
@@ -26,6 +27,42 @@ describe('RedisService', () => {
 
   afterEach(() => {
     jest.restoreAllMocks();
+  });
+
+  describe('onModuleInit', () => {
+    it('should log when health is ok', async () => {
+      const logMock = jest
+        .spyOn(Logger.prototype, 'log')
+        .mockImplementation(() => undefined);
+      const errorMock = jest
+        .spyOn(Logger.prototype, 'error')
+        .mockImplementation(() => undefined);
+      const client = createClient({ isOpen: true, isReady: true });
+      const service = new RedisService(client as never);
+      client.get.mockResolvedValue('ok:2');
+      jest.spyOn(Date, 'now').mockReturnValue(2000);
+
+      await service.onModuleInit();
+
+      expect(logMock).toHaveBeenCalled();
+      expect(errorMock).not.toHaveBeenCalled();
+    });
+
+    it('should error log when health fails', async () => {
+      const logMock = jest
+        .spyOn(Logger.prototype, 'log')
+        .mockImplementation(() => undefined);
+      const errorMock = jest
+        .spyOn(Logger.prototype, 'error')
+        .mockImplementation(() => undefined);
+      const client = createClient({ isOpen: false, isReady: false });
+      const service = new RedisService(client as never);
+
+      await service.onModuleInit();
+
+      expect(errorMock).toHaveBeenCalled();
+      expect(logMock).not.toHaveBeenCalled();
+    });
   });
 
   describe('setKey', () => {
@@ -132,6 +169,18 @@ describe('RedisService', () => {
       expect(actual.isSetGetOk).toBe(false);
       expect(actual.errorMessage).toBe('ping failed');
     });
+
+    it('should return unknown message when non-Error is thrown', async () => {
+      const client = createClient({
+        ping: jest.fn().mockRejectedValue('boom'),
+      });
+      const service = new RedisService(client as never);
+
+      const actual = await service.checkHealth();
+
+      expect(actual.isSetGetOk).toBe(false);
+      expect(actual.errorMessage).toBe('Unknown Redis health-check error');
+    });
   });
 
   describe('onApplicationShutdown', () => {
@@ -157,6 +206,18 @@ describe('RedisService', () => {
       const client = createClient({
         isOpen: true,
         quit: jest.fn().mockRejectedValue('boom'),
+      });
+      const service = new RedisService(client as never);
+
+      await service.onApplicationShutdown();
+
+      expect(client.quit).toHaveBeenCalled();
+    });
+
+    it('should swallow quit Error instance errors', async () => {
+      const client = createClient({
+        isOpen: true,
+        quit: jest.fn().mockRejectedValue(new Error('quit failed')),
       });
       const service = new RedisService(client as never);
 

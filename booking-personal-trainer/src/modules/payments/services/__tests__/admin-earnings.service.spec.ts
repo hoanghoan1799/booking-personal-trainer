@@ -54,6 +54,18 @@ describe('AdminEarningsService', () => {
     service = module.get(AdminEarningsService);
   });
 
+  it('returns empty arrays when there are no payments', async () => {
+    em.find.mockImplementation((entity: unknown) => {
+      if (entity === Payment) return [] as unknown as Payment[];
+      if (entity === User) return [] as unknown as User[];
+      return [];
+    });
+
+    const result = await service.getEarnings({});
+
+    expect(result).toEqual({ totals: [], trainees: [], trainers: [] });
+  });
+
   it('aggregates totals and payer rows for PAID/REFUNDED, grouped by currency', async () => {
     const traineeA = createUser({
       id: 'trainee-a',
@@ -174,6 +186,142 @@ describe('AdminEarningsService', () => {
     const usd = result.totals.find((t) => t.currency === 'USD');
     expect(usd?.isEstimated).toBe(true);
     expect(usd?.grossPaidCents).toBe(1234);
+  });
+
+  it('skips payments that are neither PAID nor REFUNDED', async () => {
+    const trainee = createUser({ id: 'trainee' });
+    const payments: FakePaymentWithPayer[] = [
+      createPayment({
+        payer: trainee,
+        status: PaymentStatus.PROCESSING,
+        amountCents: 1234,
+        currency: 'USD',
+        metadata: { trainerUserId: 'trainer' },
+      }),
+    ];
+    em.find.mockImplementation((entity: unknown) => {
+      if (entity === Payment) return payments as unknown as Payment[];
+      if (entity === User) return [] as unknown as User[];
+      return [];
+    });
+
+    const result = await service.getEarnings({});
+
+    expect(result.totals).toHaveLength(1);
+    expect(result.totals[0]?.grossNetCents).toBe(0);
+    expect(result.trainees).toHaveLength(0);
+    expect(result.trainers).toHaveLength(0);
+  });
+
+  it('counts payout statuses when trainerPayout status exists', async () => {
+    const trainee = createUser({ id: 'trainee' });
+    const trainer = createUser({ id: 'trainer', firstName: '', lastName: '' });
+    const payments: FakePaymentWithPayer[] = [
+      createPayment({
+        payer: trainee,
+        status: PaymentStatus.PAID,
+        amountCents: 1000,
+        currency: 'usd',
+        metadata: {
+          trainerUserId: trainer.id,
+          platformFeeCents: 100,
+          trainerShareCents: 900,
+          trainerPayout: { status: 'paid' },
+        },
+      }),
+      createPayment({
+        payer: trainee,
+        status: PaymentStatus.PAID,
+        amountCents: 2000,
+        currency: 'USD',
+        metadata: {
+          trainerUserId: trainer.id,
+          platformFeeCents: 200,
+          trainerShareCents: 1800,
+          trainerPayout: { status: 'paid' },
+        },
+      }),
+    ];
+    em.find.mockImplementation((entity: unknown) => {
+      if (entity === Payment) return payments as unknown as Payment[];
+      if (entity === User) return [trainer] as unknown as User[];
+      return [];
+    });
+
+    const result = await service.getEarnings({ currency: '  usd  ' });
+
+    expect(result.totals).toHaveLength(1);
+    expect(result.totals[0]?.currency).toBe('USD');
+    expect(result.trainers).toHaveLength(1);
+    expect(result.trainers[0]?.payout.statusCounts.paid).toBe(2);
+  });
+
+  it('handles missing trainer user while still aggregating trainer rows', async () => {
+    const trainee = createUser({ id: 'trainee' });
+    const payments: FakePaymentWithPayer[] = [
+      createPayment({
+        payer: trainee,
+        status: PaymentStatus.PAID,
+        amountCents: 1000,
+        currency: 'USD',
+        metadata: {
+          trainerUserId: 'trainer-missing',
+          platformFeeCents: 100,
+          trainerShareCents: 900,
+        },
+      }),
+    ];
+    em.find.mockImplementation((entity: unknown) => {
+      if (entity === Payment) return payments as unknown as Payment[];
+      if (entity === User) return [] as unknown as User[];
+      return [];
+    });
+
+    const result = await service.getEarnings({});
+
+    expect(result.trainers).toHaveLength(1);
+    expect(result.trainers[0]).toMatchObject({
+      trainerId: 'trainer-missing',
+      trainerName: '',
+      trainerEmail: '',
+      trainerShareNetCents: 900,
+    });
+  });
+
+  it('aggregates multiple payments for the same trainee/currency into one row', async () => {
+    const trainee = createUser({ id: 'trainee', firstName: '', lastName: '' });
+    const payments: FakePaymentWithPayer[] = [
+      createPayment({
+        payer: trainee,
+        status: PaymentStatus.PAID,
+        amountCents: 500,
+        currency: 'USD',
+        metadata: { platformFeeCents: 50, trainerShareCents: 450 },
+      }),
+      createPayment({
+        payer: trainee,
+        status: PaymentStatus.PAID,
+        amountCents: 700,
+        currency: 'USD',
+        metadata: { platformFeeCents: 70, trainerShareCents: 630 },
+      }),
+    ];
+    em.find.mockImplementation((entity: unknown) => {
+      if (entity === Payment) return payments as unknown as Payment[];
+      if (entity === User) return [] as unknown as User[];
+      return [];
+    });
+
+    const result = await service.getEarnings({});
+
+    expect(result.trainees).toHaveLength(1);
+    expect(result.trainees[0]).toMatchObject({
+      traineeId: 'trainee',
+      traineeName: 'trainee',
+      grossPaidCents: 1200,
+      grossNetCents: 1200,
+      paidCount: 2,
+    });
   });
 
   it('filters by date range using paidAt/refundedAt depending on status', async () => {
