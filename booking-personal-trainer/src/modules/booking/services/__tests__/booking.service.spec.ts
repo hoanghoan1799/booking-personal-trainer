@@ -21,10 +21,13 @@ import { EmailService } from '../../../email/services/email.service';
 import { BookingRepositoryToken } from '../../repositories/booking.repository.interface';
 import { UserService } from '../../../user/services/user.service';
 import { EntityManager } from '@mikro-orm/core';
+import { BookingSeries } from '../../entities/booking-series.entity';
+import { CreateBookingsBulkDto } from '../../dtos/create-bookings-bulk.dto';
 
 type TransactionalEntityManagerMock = {
   readonly create: jest.Mock;
   readonly persist: jest.Mock;
+  readonly flush: jest.Mock;
 };
 
 type TransactionalHandler<T> = (
@@ -41,6 +44,7 @@ const NO_OVERLAP_COUNT = 0;
 const HOURS_FUTURE_START = 2;
 const HOURS_PAST_OFFSET = -2;
 const HOURS_DURATION = 1;
+const FIXED_NOW = new Date('2030-01-01T00:00:00.000Z');
 
 describe('BookingService', () => {
   let service: BookingService;
@@ -49,6 +53,7 @@ describe('BookingService', () => {
     create: jest.Mock;
     findById: jest.Mock;
     findAndCount: jest.Mock;
+    findTraineeIdsByTrainerId: jest.Mock;
     save: jest.Mock;
   };
   let userService: {
@@ -93,11 +98,14 @@ describe('BookingService', () => {
   };
 
   beforeEach(async () => {
+    jest.useFakeTimers();
+    jest.setSystemTime(FIXED_NOW);
     bookingRepo = {
       countOverlapping: jest.fn(),
       create: jest.fn(),
       findById: jest.fn(),
       findAndCount: jest.fn(),
+      findTraineeIdsByTrainerId: jest.fn(),
       save: jest.fn().mockResolvedValue(undefined),
     };
     userService = {
@@ -151,7 +159,34 @@ describe('BookingService', () => {
     service = module.get<BookingService>(BookingService);
   });
 
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
   describe('create', () => {
+    it('should throw BadRequestException when time range is invalid format', async () => {
+      await expect(
+        service.create(
+          {
+            trainerId: mockTrainer.id,
+            startTime: 'not-a-date',
+            endTime: 'not-a-date',
+          },
+          mockTrainee,
+        ),
+      ).rejects.toThrow(BadRequestException);
+      await expect(
+        service.create(
+          {
+            trainerId: mockTrainer.id,
+            startTime: 'not-a-date',
+            endTime: 'not-a-date',
+          },
+          mockTrainee,
+        ),
+      ).rejects.toThrow(ERROR_MESSAGES.BOOKING.INVALID_TIME_RANGE);
+    });
+
     it('should throw BadRequestException when start >= end', async () => {
       const { startTime, endTime } = createValidFutureDates();
       const data = {
@@ -185,6 +220,23 @@ describe('BookingService', () => {
       await expect(service.create(data, mockTrainee)).rejects.toThrow(
         ERROR_MESSAGES.BOOKING.CANNOT_BOOK_IN_PAST,
       );
+    });
+
+    it('should throw BadRequestException when booking is less than 30 minutes from now', async () => {
+      const start = new Date(FIXED_NOW.getTime() + 10 * 60 * 1000);
+      const end = new Date(FIXED_NOW.getTime() + 70 * 60 * 1000);
+      userService.findByIdOrNull.mockResolvedValue(mockTrainer);
+
+      await expect(
+        service.create(
+          {
+            trainerId: mockTrainer.id,
+            startTime: start.toISOString(),
+            endTime: end.toISOString(),
+          },
+          mockTrainee,
+        ),
+      ).rejects.toThrow(ERROR_MESSAGES.BOOKING.MUST_BOOK_BEFORE_30_MINUTES);
     });
 
     it('should throw NotFoundException when trainer not found', async () => {
@@ -260,6 +312,7 @@ describe('BookingService', () => {
           handler({
             create: jest.fn().mockReturnValue(createdBooking),
             persist: jest.fn().mockReturnValue({ flush: jest.fn() }),
+            flush: jest.fn().mockResolvedValue(undefined),
           }),
       );
 
@@ -270,6 +323,160 @@ describe('BookingService', () => {
 
       expect(actual).toBe(createdBooking);
       expect(em.transactional).toHaveBeenCalled();
+    });
+
+    it('should throw time slot not available when transactional throws exclusion violation', async () => {
+      const { startTime, endTime } = createValidFutureDates();
+      userService.findByIdOrNull.mockResolvedValue(mockTrainer);
+      em.transactional.mockRejectedValue({ code: '23P01' });
+
+      await expect(
+        service.create(
+          { trainerId: mockTrainer.id, startTime, endTime },
+          mockTrainee,
+        ),
+      ).rejects.toThrow(ERROR_MESSAGES.BOOKING.TIME_SLOT_NOT_AVAILABLE);
+    });
+  });
+
+  describe('createBulk', () => {
+    const buildBulkInput = (
+      override: Partial<CreateBookingsBulkDto> = {},
+    ): CreateBookingsBulkDto =>
+      ({
+        trainerId: mockTrainer.id,
+        startDate: '2030-01-01',
+        startClockTime: '10:00',
+        endClockTime: '11:00',
+        period: 'day',
+        ...override,
+      }) as CreateBookingsBulkDto;
+
+    it('should throw NotFoundException when trainer not found', async () => {
+      userService.findByIdOrNull.mockResolvedValue(null);
+
+      await expect(
+        service.createBulk(buildBulkInput(), mockTrainee),
+      ).rejects.toThrow(ERROR_MESSAGES.USER.TRAINER_NOT_AVAILABLE);
+    });
+
+    it('should throw BadRequestException when trainee books self', async () => {
+      userService.findByIdOrNull.mockResolvedValue(mockTrainee);
+
+      await expect(
+        service.createBulk(
+          buildBulkInput({ trainerId: mockTrainee.id }),
+          mockTrainee,
+        ),
+      ).rejects.toThrow(ERROR_MESSAGES.BOOKING.CANNOT_BOOK_SELF);
+    });
+
+    it('should throw BadRequestException when startDate is invalid', async () => {
+      userService.findByIdOrNull.mockResolvedValue(mockTrainer);
+
+      await expect(
+        service.createBulk(
+          buildBulkInput({ startDate: 'invalid' }),
+          mockTrainee,
+        ),
+      ).rejects.toThrow('Invalid start date');
+    });
+
+    it('should throw BadRequestException when time format is invalid', async () => {
+      userService.findByIdOrNull.mockResolvedValue(mockTrainer);
+
+      await expect(
+        service.createBulk(
+          buildBulkInput({ startClockTime: 'xx:yy' }),
+          mockTrainee,
+        ),
+      ).rejects.toThrow(ERROR_MESSAGES.BOOKING.INVALID_TIME_RANGE);
+    });
+
+    it('should throw BadRequestException when any occurrence is in the past', async () => {
+      userService.findByIdOrNull.mockResolvedValue(mockTrainer);
+
+      await expect(
+        service.createBulk(
+          buildBulkInput({
+            startDate: '2020-01-01',
+            startClockTime: '10:00',
+            endClockTime: '11:00',
+          }),
+          mockTrainee,
+        ),
+      ).rejects.toThrow(ERROR_MESSAGES.BOOKING.CANNOT_BOOK_IN_PAST);
+    });
+
+    it('should throw BadRequestException when violates notice period', async () => {
+      userService.findByIdOrNull.mockResolvedValue(mockTrainer);
+      const startDateLocal = '2030-01-01';
+
+      await expect(
+        service.createBulk(
+          buildBulkInput({
+            startDate: startDateLocal,
+            startClockTime: '00:10',
+            endClockTime: '01:10',
+            period: 'day',
+          }),
+          mockTrainee,
+        ),
+      ).rejects.toThrow(ERROR_MESSAGES.BOOKING.MUST_BOOK_BEFORE_30_MINUTES);
+    });
+
+    it('should create bulk booking series when valid', async () => {
+      process.env.FRONTEND_URL = 'https://example.com/';
+      userService.findByIdOrNull.mockResolvedValue(mockTrainer);
+      bookingAvailabilityService.assertTrainerCanBeBookedForRange.mockResolvedValue(
+        undefined,
+      );
+      const bulkInput = buildBulkInput({
+        startDate: '2030-01-01',
+        startClockTime: '10:00',
+        endClockTime: '11:00',
+        period: 'day',
+      });
+      const series = { id: 'series-id' } as BookingSeries;
+      const createdBooking = {
+        id: 'booking-1',
+        trainer: mockTrainer,
+        trainee: mockTrainee,
+        series,
+        startTime: new Date('2030-01-01T10:00:00.000Z'),
+        endTime: new Date('2030-01-01T11:00:00.000Z'),
+        status: BookingStatus.PENDING,
+      } as Booking;
+      em.transactional.mockImplementation(
+        async (handler: TransactionalHandler<Booking[]>) =>
+          handler({
+            create: jest
+              .fn()
+              .mockImplementation(
+                (entity: unknown, data: Record<string, unknown>): unknown => {
+                  if (entity === BookingSeries) {
+                    return { ...series, ...data } as BookingSeries;
+                  }
+                  if (entity === Booking) {
+                    return { ...createdBooking, ...data } as Booking;
+                  }
+                  return { ...data };
+                },
+              ),
+            persist: jest.fn(),
+            flush: jest.fn().mockResolvedValue(undefined),
+          }),
+      );
+
+      const actual = await service.createBulk(bulkInput, mockTrainee);
+
+      expect(actual.length).toBe(1);
+      expect(actual[0]?.status).toBe(BookingStatus.PENDING);
+      expect(notificationsService.notifyAdmins).toHaveBeenCalled();
+      expect(
+        notificationsService.createAndPublishToUsers,
+      ).toHaveBeenCalledTimes(2);
+      expect(emailService.send).toHaveBeenCalled();
     });
   });
 
@@ -449,12 +656,166 @@ describe('BookingService', () => {
       expect(actual.status).toBe(BookingStatus.REJECTED);
       expect(bookingRepo.save).toHaveBeenCalled();
     });
+
+    it('should require rejectionReason when rejecting', async () => {
+      const adminUser = { ...mockTrainee, role: UserRole.ADMIN } as User;
+      const booking = {
+        id: 'booking-id',
+        trainer: mockTrainer,
+        trainee: mockTrainee,
+        status: BookingStatus.PENDING,
+      };
+      bookingRepo.findById.mockResolvedValue(booking);
+
+      await expect(
+        service.updateStatus(
+          booking.id,
+          { status: BookingStatus.REJECTED, rejectionReason: ' ' },
+          adminUser,
+        ),
+      ).rejects.toThrow('Rejection reason is required');
+    });
+
+    it('should require cancellationReason when cancelling', async () => {
+      const booking = {
+        id: 'booking-id',
+        trainer: mockTrainer,
+        trainee: mockTrainee,
+        status: BookingStatus.PENDING,
+      };
+      bookingRepo.findById.mockResolvedValue(booking);
+
+      await expect(
+        service.updateStatus(
+          booking.id,
+          { status: BookingStatus.CANCELLED, cancellationReason: ' ' },
+          mockTrainer,
+        ),
+      ).rejects.toThrow('Cancellation reason is required');
+    });
+
+    it('should send side effects when confirming booking', async () => {
+      process.env.FRONTEND_URL = 'https://example.com/';
+      const booking = {
+        id: 'booking-id',
+        trainer: mockTrainer,
+        trainee: mockTrainee,
+        status: BookingStatus.PENDING,
+        startTime: new Date('2030-01-01T10:00:00.000Z'),
+        endTime: new Date('2030-01-01T11:00:00.000Z'),
+      } as Booking;
+      bookingRepo.findById.mockResolvedValue(booking);
+
+      const actual = await service.updateStatus(
+        booking.id,
+        { status: BookingStatus.CONFIRMED },
+        mockTrainer,
+      );
+
+      expect(actual.status).toBe(BookingStatus.CONFIRMED);
+      expect(notificationsService.createAndPublishToUsers).toHaveBeenCalled();
+      expect(emailService.send).toHaveBeenCalled();
+    });
+
+    it('should send side effects when rejecting booking', async () => {
+      process.env.FRONTEND_URL = 'https://example.com/';
+      const booking = {
+        id: 'booking-id',
+        trainer: mockTrainer,
+        trainee: mockTrainee,
+        status: BookingStatus.PENDING,
+        startTime: new Date('2030-01-01T10:00:00.000Z'),
+        endTime: new Date('2030-01-01T11:00:00.000Z'),
+        rejectionReason: null,
+      } as Booking;
+      bookingRepo.findById.mockResolvedValue(booking);
+
+      const actual = await service.updateStatus(
+        booking.id,
+        { status: BookingStatus.REJECTED, rejectionReason: 'Not available' },
+        mockTrainer,
+      );
+
+      expect(actual.status).toBe(BookingStatus.REJECTED);
+      expect(notificationsService.createAndPublishToUsers).toHaveBeenCalled();
+      expect(emailService.send).toHaveBeenCalled();
+    });
+
+    it('should send side effects when trainer cancels booking', async () => {
+      process.env.FRONTEND_URL = 'https://example.com/';
+      const booking = {
+        id: 'booking-id',
+        trainer: mockTrainer,
+        trainee: mockTrainee,
+        status: BookingStatus.PENDING,
+        startTime: new Date('2030-01-01T10:00:00.000Z'),
+        endTime: new Date('2030-01-01T11:00:00.000Z'),
+        cancellationReason: null,
+      } as Booking;
+      bookingRepo.findById.mockResolvedValue(booking);
+
+      const actual = await service.updateStatus(
+        booking.id,
+        { status: BookingStatus.CANCELLED, cancellationReason: 'Busy' },
+        mockTrainer,
+      );
+
+      expect(actual.status).toBe(BookingStatus.CANCELLED);
+      expect(notificationsService.createAndPublishToUsers).toHaveBeenCalled();
+      expect(emailService.send).toHaveBeenCalled();
+    });
+
+    it('should send side effects when trainee cancels booking', async () => {
+      process.env.FRONTEND_URL = 'https://example.com/';
+      const booking = {
+        id: 'booking-id',
+        trainer: mockTrainer,
+        trainee: mockTrainee,
+        status: BookingStatus.PENDING,
+        startTime: new Date('2030-01-01T10:00:00.000Z'),
+        endTime: new Date('2030-01-01T11:00:00.000Z'),
+        cancellationReason: null,
+      } as Booking;
+      bookingRepo.findById.mockResolvedValue(booking);
+
+      const actual = await service.updateStatus(
+        booking.id,
+        { status: BookingStatus.CANCELLED, cancellationReason: 'Sick' },
+        mockTrainee,
+      );
+
+      expect(actual.status).toBe(BookingStatus.CANCELLED);
+      expect(notificationsService.createAndPublishToUsers).toHaveBeenCalled();
+      expect(emailService.send).toHaveBeenCalled();
+    });
   });
 
   describe('getOne', () => {
     it('should return placeholder string', () => {
       const actual = service.getOne('some-id');
       expect(actual).toBe('This action returns a #some-id booking');
+    });
+  });
+
+  describe('findBookingById', () => {
+    it('should delegate to repository', async () => {
+      const booking = { id: 'booking-id' } as Booking;
+      bookingRepo.findById.mockResolvedValue(booking);
+
+      const actual = await service.findBookingById('booking-id');
+
+      expect(actual).toBe(booking);
+      expect(bookingRepo.findById).toHaveBeenCalledWith('booking-id');
+    });
+  });
+
+  describe('findTraineeIdsByTrainerId', () => {
+    it('should return trainee ids from repository', async () => {
+      bookingRepo.findTraineeIdsByTrainerId.mockResolvedValue(['a', 'b']);
+
+      const actual = await service.findTraineeIdsByTrainerId('trainer-id');
+
+      expect(actual).toEqual(['a', 'b']);
     });
   });
 });
