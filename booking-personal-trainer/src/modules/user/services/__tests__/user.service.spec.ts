@@ -193,6 +193,70 @@ describe('UserService', () => {
     });
   });
 
+  describe('findByIdOrNull', () => {
+    it('should return user when found', async () => {
+      userRepo.findById.mockResolvedValue(mockUser);
+      const actual = await service.findByIdOrNull(mockUser.id);
+      expect(actual).toBe(mockUser);
+    });
+
+    it('should return null when not found', async () => {
+      userRepo.findById.mockResolvedValue(null);
+      const actual = await service.findByIdOrNull('missing');
+      expect(actual).toBeNull();
+    });
+  });
+
+  describe('findByEmail', () => {
+    it('should return user when found', async () => {
+      userRepo.findByEmail.mockResolvedValue(mockUser);
+      const actual = await service.findByEmail(mockUser.email);
+      expect(actual).toBe(mockUser);
+    });
+  });
+
+  describe('findByUserName', () => {
+    it('should return user when found', async () => {
+      userRepo.findByUserName.mockResolvedValue(mockUser);
+      const actual = await service.findByUserName(mockUser.userName);
+      expect(actual).toBe(mockUser);
+    });
+  });
+
+  describe('findUsersByRole', () => {
+    it('should return empty array when repo returns null list', async () => {
+      userRepo.findAndCount.mockResolvedValue([null, 0]);
+
+      const actual = await service.findUsersByRole({
+        role: UserRole.ADMIN,
+        limit: 10,
+        offset: 0,
+      });
+
+      expect(actual).toEqual([]);
+    });
+
+    it('should return users for role', async () => {
+      userRepo.findAndCount.mockResolvedValue([[mockUser], 1]);
+
+      const actual = await service.findUsersByRole({
+        role: UserRole.TRAINEE,
+        limit: 10,
+        offset: 0,
+      });
+
+      expect(userRepo.findAndCount).toHaveBeenCalledWith(
+        { role: UserRole.TRAINEE },
+        expect.objectContaining({
+          limit: 10,
+          offset: 0,
+          orderBy: { createdAt: SortOrder.DESC },
+        }),
+      );
+      expect(actual).toEqual([mockUser]);
+    });
+  });
+
   describe('getAll', () => {
     it('should filter by TRAINER and APPROVED when current user is TRAINEE', async () => {
       const currentUser: JwtAuthPayload = {
@@ -243,6 +307,88 @@ describe('UserService', () => {
           limit: DEFAULT_LIMIT,
           totalItems: TOTAL_ITEMS_ONE,
         }),
+      );
+    });
+
+    it('should set filter to trainees for trainer role by default and scope by booking traineeIds', async () => {
+      const currentUser: JwtAuthPayload = {
+        id: 'trainer-id',
+        email: 'trainer@test.com',
+        userName: 'trainer',
+        role: UserRole.TRAINER,
+      };
+      bookingService.findTraineeIdsByTrainerId.mockResolvedValue(['t1', 't2']);
+      userRepo.findAndCount.mockResolvedValue([[], 0]);
+
+      await service.getAll({ page: 1, limit: 10 }, currentUser);
+
+      expect(userRepo.findAndCount).toHaveBeenCalledWith(
+        expect.objectContaining({
+          role: UserRole.TRAINEE,
+          onlyTraineeIds: ['t1', 't2'],
+        }),
+        expect.any(Object),
+      );
+    });
+
+    it('should allow trainer to discover other approved trainers when query role=TRAINER and approvalStatus=APPROVED', async () => {
+      const currentUser: JwtAuthPayload = {
+        id: 'trainer-id',
+        email: 'trainer@test.com',
+        userName: 'trainer',
+        role: UserRole.TRAINER,
+      };
+      userRepo.findAndCount.mockResolvedValue([[], 0]);
+
+      await service.getAll(
+        {
+          page: 1,
+          limit: 10,
+          role: UserRole.TRAINER,
+          approvalStatus: TrainerApprovalStatus.APPROVED,
+        },
+        currentUser,
+      );
+
+      expect(userRepo.findAndCount).toHaveBeenCalledWith(
+        expect.objectContaining({
+          role: UserRole.TRAINER,
+          approvalStatus: TrainerApprovalStatus.APPROVED,
+          excludeUserId: 'trainer-id',
+        }),
+        expect.any(Object),
+      );
+    });
+
+    it('should apply admin filters when current user is ADMIN', async () => {
+      const currentUser: JwtAuthPayload = {
+        id: 'admin-id',
+        email: 'admin@test.com',
+        userName: 'admin',
+        role: UserRole.ADMIN,
+      };
+      userRepo.findAndCount.mockResolvedValue([[], 0]);
+
+      await service.getAll(
+        {
+          page: 1,
+          limit: 10,
+          userType: UserType.TRAINER,
+          role: UserRole.TRAINER,
+          approvalStatus: TrainerApprovalStatus.APPROVED,
+          search: 'john',
+        },
+        currentUser,
+      );
+
+      expect(userRepo.findAndCount).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userType: UserType.TRAINER,
+          role: UserRole.TRAINER,
+          approvalStatus: TrainerApprovalStatus.APPROVED,
+          search: 'john',
+        }),
+        expect.any(Object),
       );
     });
   });
@@ -393,6 +539,62 @@ describe('UserService', () => {
       expect(actual.data.role).toBe(UserRole.TRAINER);
       expect(actual.data.approvalStatus).toBe(TrainerApprovalStatus.APPROVED);
       expect(userRepo.save).toHaveBeenCalled();
+    });
+
+    it('should throw ForbiddenException when target user is admin', async () => {
+      const targetUser = { ...mockUser, role: UserRole.ADMIN };
+      userRepo.findById.mockResolvedValue(targetUser);
+      const currentUser: JwtAuthPayload = {
+        id: 'admin-id',
+        email: 'admin@test.com',
+        userName: 'admin',
+        role: UserRole.ADMIN,
+      };
+
+      await expect(
+        service.updateUserRole(
+          'target-id',
+          { role: UserRole.TRAINER },
+          currentUser,
+        ),
+      ).rejects.toThrow(ForbiddenException);
+      await expect(
+        service.updateUserRole(
+          'target-id',
+          { role: UserRole.TRAINER },
+          currentUser,
+        ),
+      ).rejects.toThrow(ERROR_MESSAGES.USER.ADMIN_UPDATE);
+    });
+
+    it('should return early when role and approval status do not change', async () => {
+      const targetUser = {
+        ...mockUser,
+        id: 'target-id',
+        userType: UserType.TRAINEE,
+        role: UserRole.TRAINEE,
+        approvalStatus: TrainerApprovalStatus.NONE,
+      };
+      userRepo.findById.mockResolvedValue(targetUser);
+      const currentUser: JwtAuthPayload = {
+        id: 'admin-id',
+        email: 'admin@test.com',
+        userName: 'admin',
+        role: UserRole.ADMIN,
+      };
+
+      const actual = await service.updateUserRole(
+        targetUser.id,
+        { role: UserRole.TRAINEE },
+        currentUser,
+      );
+
+      expect(actual.data.role).toBe(UserRole.TRAINEE);
+      expect(userRepo.save).not.toHaveBeenCalled();
+      expect(
+        notificationsService.createAndPublishToUsers,
+      ).not.toHaveBeenCalled();
+      expect(emailService.send).not.toHaveBeenCalled();
     });
   });
 
@@ -558,6 +760,68 @@ describe('UserService', () => {
 
       expect(actual.data.age).toBe(30);
       expect(userRepo.save).toHaveBeenCalled();
+    });
+  });
+
+  describe('ensureLocalUserProviderForUser', () => {
+    it('should return early when local provider exists', async () => {
+      userProviderRepo.findByProviderIdentity.mockResolvedValue({
+        id: 'p1',
+      });
+
+      await service.ensureLocalUserProviderForUser({
+        id: 'u1',
+        email: 'User@Test.com',
+      } as User);
+
+      expect(userProviderRepo.create).not.toHaveBeenCalled();
+    });
+
+    it('should create local provider when missing', async () => {
+      userProviderRepo.findByProviderIdentity.mockResolvedValue(null);
+      userProviderRepo.create.mockResolvedValue({ id: 'p1' });
+
+      await service.ensureLocalUserProviderForUser({
+        id: 'u1',
+        email: 'User@Test.com',
+      } as User);
+
+      expect(userProviderRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: 'u1',
+          providerUserId: 'user@test.com',
+        }),
+      );
+    });
+  });
+
+  describe('pickUniqueUserNameFromEmail', () => {
+    it('should return base username when available', async () => {
+      userRepo.findByUserName.mockResolvedValue(null);
+      const actual =
+        await service.pickUniqueUserNameFromEmail('john.doe@test.com');
+      expect(actual).toBe('john_doe');
+    });
+
+    it('should append suffix when base is taken', async () => {
+      userRepo.findByUserName
+        .mockResolvedValueOnce({ id: 'u1' })
+        .mockResolvedValueOnce(null);
+
+      const actual = await service.pickUniqueUserNameFromEmail('john@test.com');
+
+      expect(actual).toBe('john_1');
+    });
+
+    it('should throw ConflictException when too many attempts', async () => {
+      userRepo.findByUserName.mockResolvedValue({ id: 'u1' });
+
+      await expect(
+        service.pickUniqueUserNameFromEmail('john@test.com'),
+      ).rejects.toThrow(ConflictException);
+      await expect(
+        service.pickUniqueUserNameFromEmail('john@test.com'),
+      ).rejects.toThrow(ERROR_MESSAGES.USER.USERNAME_TAKEN);
     });
   });
 });
