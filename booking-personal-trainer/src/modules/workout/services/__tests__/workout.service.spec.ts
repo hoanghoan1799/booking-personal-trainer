@@ -17,9 +17,23 @@ import { EntityManager } from '@mikro-orm/core';
 import { Booking } from '../../../booking/entities/booking.entity';
 import { ExerciseTemplate } from '../../../templates/entities/exercise-template.entity';
 import { Workout } from '../../entities/workout.entity';
+import { WorkoutStatus } from '../../../../common/enums/workout/workout.enum';
+import type { User } from '../../../user/entities/user.entity';
 
 const createItemsCollection = <T>(items: T[]): { getItems: () => T[] } => ({
   getItems: () => items,
+});
+
+type ExercisesCollectionMock<T> = {
+  readonly getItems: () => T[];
+  readonly add?: jest.Mock;
+};
+
+const createExercisesCollection = <T>(
+  items: readonly T[],
+): ExercisesCollectionMock<T> => ({
+  getItems: () => [...items],
+  add: jest.fn(),
 });
 
 type TransactionalEntityManagerMock = {
@@ -108,6 +122,364 @@ describe('WorkoutService', () => {
     }).compile();
 
     service = module.get<WorkoutService>(WorkoutService);
+  });
+
+  afterEach(() => {
+    delete process.env.DEFAULT_WORKOUT_PRICE_CENTS;
+    delete process.env.FRONTEND_URL;
+  });
+
+  describe('create', () => {
+    it('should throw NotFoundException when trainer missing', async () => {
+      userService.findByIdOrNull.mockResolvedValueOnce(null);
+
+      await expect(
+        service.create('trainer-id', {
+          traineeId: 'trainee-id',
+          startTime: '2026-01-01T10:00:00.000Z',
+          endTime: '2026-01-01T11:00:00.000Z',
+          exerciseIds: [],
+          amountCents: 1000,
+          currency: 'USD',
+        }),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it('should throw NotFoundException when trainee missing', async () => {
+      userService.findByIdOrNull
+        .mockResolvedValueOnce({ id: 'trainer-id', userName: 't' })
+        .mockResolvedValueOnce(null);
+
+      await expect(
+        service.create('trainer-id', {
+          traineeId: 'trainee-id',
+          startTime: '2026-01-01T10:00:00.000Z',
+          endTime: '2026-01-01T11:00:00.000Z',
+          exerciseIds: [],
+          amountCents: 1000,
+          currency: 'USD',
+        }),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it('should create workout and trigger billing + notifications + email', async () => {
+      const trainer = { id: 'trainer-id', userName: 'trainer' };
+      const trainee = {
+        id: 'trainee-id',
+        userName: 'trainee',
+        email: 'trainee@test.com',
+      };
+      userService.findByIdOrNull
+        .mockResolvedValueOnce(trainer)
+        .mockResolvedValueOnce(trainee);
+      workoutRepository.create.mockResolvedValue({
+        id: 'workout-id',
+        booking: null,
+        template: null,
+        startTime: new Date('2026-01-01T10:00:00.000Z'),
+        endTime: new Date('2026-01-01T11:00:00.000Z'),
+        status: WorkoutStatus.PENDING,
+        trainer,
+        trainee,
+        exercises: createExercisesCollection([]),
+      });
+
+      const actual = await service.create('trainer-id', {
+        traineeId: 'trainee-id',
+        startTime: '2026-01-01T10:00:00.000Z',
+        endTime: '2026-01-01T11:00:00.000Z',
+        exerciseIds: [],
+        amountCents: 1500,
+        currency: 'USD',
+      });
+
+      expect(workoutRepository.create).toHaveBeenCalled();
+      expect(billingService.createWorkoutCharge).toHaveBeenCalled();
+      expect(billingService.activateCharge).toHaveBeenCalledWith('charge-id');
+      expect(notificationsService.createAndPublishToUsers).toHaveBeenCalled();
+      expect(emailService.send).toHaveBeenCalledWith(
+        expect.objectContaining({ to: 'trainee@test.com' }),
+      );
+      expect(actual.id).toBe('workout-id');
+    });
+  });
+
+  describe('getAll', () => {
+    it('should scope to trainee workouts for TRAINEE user', async () => {
+      const currentUser: User = {
+        id: 'trainee-id',
+        role: UserRole.TRAINEE,
+      } as unknown as User;
+      workoutRepository.findAndCount.mockResolvedValue([[], 0]);
+
+      const actual = await service.getAll({ page: 1, limit: 20 }, currentUser);
+
+      expect(workoutRepository.findAndCount).toHaveBeenCalledWith(
+        expect.objectContaining({
+          isDeleted: false,
+          traineeId: 'trainee-id',
+        }),
+        expect.any(Object),
+      );
+      expect(actual.data).toEqual([]);
+    });
+
+    it('should scope to trainer workouts for TRAINER user and allow traineeId filter', async () => {
+      const currentUser: User = {
+        id: 'trainer-id',
+        role: UserRole.TRAINER,
+      } as unknown as User;
+      workoutRepository.findAndCount.mockResolvedValue([[], 0]);
+
+      await service.getAll(
+        { page: 1, limit: 20, traineeId: 'trainee-id' },
+        currentUser,
+      );
+
+      expect(workoutRepository.findAndCount).toHaveBeenCalledWith(
+        expect.objectContaining({
+          isDeleted: false,
+          trainerId: 'trainer-id',
+          traineeId: 'trainee-id',
+        }),
+        expect.any(Object),
+      );
+    });
+
+    it('should allow admin to filter by trainerId and traineeId', async () => {
+      const currentUser: User = {
+        id: 'admin-id',
+        role: UserRole.ADMIN,
+      } as unknown as User;
+      workoutRepository.findAndCount.mockResolvedValue([[], 0]);
+
+      await service.getAll(
+        { page: 1, limit: 20, trainerId: 't1', traineeId: 'u1' },
+        currentUser,
+      );
+
+      expect(workoutRepository.findAndCount).toHaveBeenCalledWith(
+        expect.objectContaining({
+          isDeleted: false,
+          trainerId: 't1',
+          traineeId: 'u1',
+        }),
+        expect.any(Object),
+      );
+    });
+
+    it('should hide exercises for trainee when unpaid', async () => {
+      const currentUser: User = {
+        id: 'trainee-id',
+        role: UserRole.TRAINEE,
+      } as unknown as User;
+      workoutRepository.findAndCount.mockResolvedValue([
+        [
+          {
+            id: 'w1',
+            booking: null,
+            template: { id: 'tpl', name: 'T' },
+            startTime: new Date(),
+            endTime: new Date(),
+            status: WorkoutStatus.PENDING,
+            trainer: { id: 'trainer-id' },
+            trainee: { id: 'trainee-id' },
+            exercises: createExercisesCollection([
+              { id: 'we1', isCompleted: false },
+            ]),
+          },
+        ],
+        1,
+      ]);
+      workoutPaymentPolicyService.isWorkoutPaid.mockResolvedValue(false);
+
+      const actual = await service.getAll({ page: 1, limit: 20 }, currentUser);
+
+      expect(actual.data[0]?.exercises).toEqual([]);
+      expect(actual.data[0]?.templateId).toBeNull();
+      expect(actual.data[0]?.totalExercises).toBeUndefined();
+      expect(actual.data[0]?.completedExercises).toBeUndefined();
+    });
+  });
+
+  describe('getOneForUser', () => {
+    it('should throw NotFoundException when workout missing', async () => {
+      workoutRepository.findByIdWithExercises.mockResolvedValue(null);
+      const currentUser: User = {
+        id: 'u1',
+        role: UserRole.ADMIN,
+      } as unknown as User;
+
+      await expect(
+        service.getOneForUser('missing', currentUser),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it('should throw BadRequestException when user is not admin/trainer/trainee of workout', async () => {
+      workoutRepository.findByIdWithExercises.mockResolvedValue({
+        id: 'w1',
+        trainer: { id: 't1' },
+        trainee: { id: 'u1' },
+        exercises: createExercisesCollection([]),
+      });
+      const currentUser: User = {
+        id: 'intruder',
+        role: UserRole.TRAINEE,
+      } as unknown as User;
+
+      await expect(
+        service.getOneForUser('w1', currentUser),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('should hide exercises for trainee when unpaid', async () => {
+      workoutRepository.findByIdWithExercises.mockResolvedValue({
+        id: 'w1',
+        booking: null,
+        template: { id: 'tpl', name: 'T' },
+        startTime: new Date(),
+        endTime: new Date(),
+        status: WorkoutStatus.PENDING,
+        trainer: { id: 't1' },
+        trainee: { id: 'u1' },
+        exercises: createExercisesCollection([
+          { id: 'we1', isCompleted: false },
+        ]),
+      });
+      workoutPaymentPolicyService.isWorkoutPaid.mockResolvedValue(false);
+
+      const currentUser: User = {
+        id: 'u1',
+        role: UserRole.TRAINEE,
+      } as unknown as User;
+      const actual = await service.getOneForUser('w1', currentUser);
+
+      expect(actual.exercises).toEqual([]);
+      expect(actual.templateId).toBeNull();
+    });
+  });
+
+  describe('updateDetail', () => {
+    it('should throw NotFoundException when workout missing', async () => {
+      workoutRepository.findByIdWithExercises.mockResolvedValue(null);
+      const currentUser: User = {
+        id: 'admin-id',
+        role: UserRole.ADMIN,
+      } as unknown as User;
+
+      await expect(
+        service.updateDetail(
+          'missing',
+          { status: WorkoutStatus.PENDING },
+          currentUser,
+        ),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it('should throw BadRequestException when trainer is not owner', async () => {
+      workoutRepository.findByIdWithExercises.mockResolvedValue({
+        id: 'w1',
+        trainer: { id: 'other-trainer' },
+        trainee: { id: 'u1' },
+        exercises: createExercisesCollection([]),
+      });
+      const currentUser: User = {
+        id: 'trainer-id',
+        role: UserRole.TRAINER,
+      } as unknown as User;
+
+      await expect(
+        service.updateDetail(
+          'w1',
+          { status: WorkoutStatus.PENDING },
+          currentUser,
+        ),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('should throw when trying to set IN_PROGRESS and workout is unpaid', async () => {
+      workoutRepository.findByIdWithExercises.mockResolvedValue({
+        id: 'w1',
+        trainer: { id: 'trainer-id' },
+        trainee: { id: 'u1' },
+        exercises: createExercisesCollection([]),
+      });
+      workoutPaymentPolicyService.isWorkoutPaid.mockResolvedValue(false);
+
+      await expect(
+        service.updateDetail(
+          'w1',
+          { status: WorkoutStatus.IN_PROGRESS, exerciseCompletions: [] },
+          { id: 'trainer-id', role: UserRole.TRAINER } as unknown as User,
+        ),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('should update status and completions when valid', async () => {
+      workoutRepository.findByIdWithExercises.mockResolvedValue({
+        id: 'w1',
+        trainer: { id: 'trainer-id' },
+        trainee: { id: 'u1' },
+        exercises: createExercisesCollection([]),
+      });
+      workoutPaymentPolicyService.isWorkoutPaid.mockResolvedValue(true);
+      workoutRepository.updateStatusAndCompletions.mockResolvedValue({
+        id: 'w1',
+        booking: null,
+        template: null,
+        startTime: new Date(),
+        endTime: new Date(),
+        status: WorkoutStatus.IN_PROGRESS,
+        trainer: { id: 'trainer-id' },
+        trainee: { id: 'u1' },
+        exercises: createExercisesCollection([]),
+      });
+
+      const actual = await service.updateDetail(
+        'w1',
+        { status: WorkoutStatus.IN_PROGRESS, exerciseCompletions: [] },
+        { id: 'trainer-id', role: UserRole.TRAINER } as unknown as User,
+      );
+
+      expect(workoutRepository.updateStatusAndCompletions).toHaveBeenCalledWith(
+        'w1',
+        WorkoutStatus.IN_PROGRESS,
+        [],
+      );
+      expect(actual.status).toBe(WorkoutStatus.IN_PROGRESS);
+    });
+  });
+
+  describe('removeAll', () => {
+    it('should return message with deleted count', async () => {
+      workoutRepository.removeAll.mockResolvedValue(3);
+
+      const actual = await service.removeAll();
+
+      expect(actual.message).toBe('Deleted 3 workouts');
+    });
+  });
+
+  describe('softDelete', () => {
+    it('should throw NotFoundException when workout missing', async () => {
+      workoutRepository.findByIdWithExercises.mockResolvedValue(null);
+
+      await expect(service.softDelete('missing')).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+    });
+
+    it('should call repo.softDelete when exists', async () => {
+      workoutRepository.findByIdWithExercises.mockResolvedValue({
+        id: 'w1',
+        exercises: createExercisesCollection([]),
+      });
+      workoutRepository.softDelete.mockResolvedValue(undefined);
+
+      await service.softDelete('w1');
+
+      expect(workoutRepository.softDelete).toHaveBeenCalledWith('w1');
+    });
   });
 
   describe('createForBookingFromTemplate', () => {
@@ -229,6 +601,203 @@ describe('WorkoutService', () => {
           'booking-id',
           { templateId: 'template-id', amountCents: 1000 },
           { id: 'trainer-id', role: UserRole.TRAINER },
+        ),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('should throw BadRequestException when non-admin tries to create for another trainer booking', async () => {
+      const booking = {
+        id: 'booking-id',
+        status: BookingStatus.CONFIRMED,
+        trainer: { id: 'other-trainer' },
+        trainee: { id: 'trainee-id' },
+      } as unknown as Booking;
+      em.transactional.mockImplementation(
+        async (handler: TransactionalHandler<unknown>) =>
+          handler({
+            findOne: jest.fn().mockImplementation((entity: EntityClass) => {
+              if (entity === Booking) return booking;
+              if (entity === ExerciseTemplate)
+                return {
+                  id: 'template-id',
+                  templateType: TemplateType.SYSTEM,
+                  isDeleted: false,
+                  createdBy: { id: 'admin-id' },
+                  items: createItemsCollection([]),
+                } as unknown as ExerciseTemplate;
+              return null;
+            }),
+            create: jest.fn(),
+            persist: jest.fn().mockReturnValue({ flush: jest.fn() }),
+            flush: jest.fn(),
+          }),
+      );
+
+      await expect(
+        service.createForBookingFromTemplate(
+          'booking-id',
+          { templateId: 'template-id', amountCents: 1000 },
+          { id: 'trainer-id', role: UserRole.TRAINER },
+        ),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('should throw NotFoundException when template missing', async () => {
+      const booking = {
+        id: 'booking-id',
+        status: BookingStatus.CONFIRMED,
+        trainer: { id: 'trainer-id' },
+        trainee: { id: 'trainee-id' },
+      } as unknown as Booking;
+      em.transactional.mockImplementation(
+        async (handler: TransactionalHandler<unknown>) =>
+          handler({
+            findOne: jest.fn().mockImplementation((entity: EntityClass) => {
+              if (entity === Booking) return booking;
+              if (entity === ExerciseTemplate) return null;
+              return null;
+            }),
+            create: jest.fn(),
+            persist: jest.fn().mockReturnValue({ flush: jest.fn() }),
+            flush: jest.fn(),
+          }),
+      );
+
+      await expect(
+        service.createForBookingFromTemplate(
+          'booking-id',
+          { templateId: 'missing', amountCents: 1000 },
+          { id: 'trainer-id', role: UserRole.TRAINER },
+        ),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it('should block using trainer template not owned by current trainer', async () => {
+      const booking = {
+        id: 'booking-id',
+        status: BookingStatus.CONFIRMED,
+        trainer: { id: 'trainer-id' },
+        trainee: { id: 'trainee-id' },
+      } as unknown as Booking;
+      const template = {
+        id: 'template-id',
+        templateType: TemplateType.TRAINER,
+        isDeleted: false,
+        createdBy: { id: 'other-trainer' },
+        items: createItemsCollection([]),
+      } as unknown as ExerciseTemplate;
+      em.transactional.mockImplementation(
+        async (handler: TransactionalHandler<unknown>) =>
+          handler({
+            findOne: jest.fn().mockImplementation((entity: EntityClass) => {
+              if (entity === Booking) return booking;
+              if (entity === ExerciseTemplate) return template;
+              return null;
+            }),
+            create: jest.fn(),
+            persist: jest.fn().mockReturnValue({ flush: jest.fn() }),
+            flush: jest.fn(),
+          }),
+      );
+
+      await expect(
+        service.createForBookingFromTemplate(
+          'booking-id',
+          { templateId: 'template-id', amountCents: 1000 },
+          { id: 'trainer-id', role: UserRole.TRAINER },
+        ),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('should throw BadRequestException when unique violation occurs', async () => {
+      const uniqueErr = Object.assign(new Error('unique violation'), {
+        code: '23505' as const,
+      });
+      em.transactional.mockImplementation(() => Promise.reject(uniqueErr));
+
+      await expect(
+        service.createForBookingFromTemplate(
+          'booking-id',
+          { templateId: 'template-id', amountCents: 1000 },
+          { id: 'trainer-id', role: UserRole.TRAINER },
+        ),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('should not throw when side effects fail after creation', async () => {
+      const booking = {
+        id: 'booking-id',
+        status: BookingStatus.CONFIRMED,
+        startTime: new Date('2026-01-01T10:00:00.000Z'),
+        endTime: new Date('2026-01-01T11:00:00.000Z'),
+        trainer: { id: 'trainer-id', userName: 'trainer' },
+        trainee: { id: 'trainee-id', userName: 'trainee', email: 't@test.com' },
+      } as unknown as Booking;
+      const template = {
+        id: 'template-id',
+        templateType: TemplateType.SYSTEM,
+        isDeleted: false,
+        createdBy: { id: 'admin-id' },
+        items: createItemsCollection([]),
+      } as unknown as ExerciseTemplate;
+      const workout = {
+        id: 'workout-id',
+        booking: { id: 'booking-id' },
+        template: { id: 'template-id', name: 'Template' },
+        startTime: booking.startTime,
+        endTime: booking.endTime,
+        status: 'PENDING',
+        trainer: { id: 'trainer-id' },
+        trainee: { id: 'trainee-id' },
+        exercises: { getItems: () => [], add: jest.fn() },
+      } as unknown as Workout;
+      em.transactional.mockImplementation(
+        async (handler: TransactionalHandler<Workout>) =>
+          handler({
+            findOne: jest.fn().mockImplementation((entity: EntityClass) => {
+              if (entity === Booking) return booking;
+              if (entity === ExerciseTemplate) return template;
+              return null;
+            }),
+            create: jest.fn().mockImplementation((entity: EntityClass) => {
+              if (entity === Workout) return workout;
+              return {};
+            }),
+            persist: jest.fn().mockReturnValue({ flush: jest.fn() }),
+            flush: jest.fn().mockResolvedValue(undefined),
+          }),
+      );
+      bookingService.findBookingById.mockRejectedValue(new Error('boom'));
+
+      const actual = await service.createForBookingFromTemplate(
+        'booking-id',
+        { templateId: 'template-id', amountCents: 1000, currency: 'USD' },
+        { id: 'trainer-id', role: UserRole.TRAINER },
+      );
+
+      expect(actual.id).toBe('workout-id');
+    });
+
+    it('should throw when amountCents missing and DEFAULT_WORKOUT_PRICE_CENTS unset', async () => {
+      delete process.env.DEFAULT_WORKOUT_PRICE_CENTS;
+
+      await expect(
+        service.createForBookingFromTemplate(
+          'booking-id',
+          { templateId: 'template-id' },
+          { id: 'admin-id', role: UserRole.ADMIN },
+        ),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('should throw when DEFAULT_WORKOUT_PRICE_CENTS is invalid', async () => {
+      process.env.DEFAULT_WORKOUT_PRICE_CENTS = '0';
+
+      await expect(
+        service.createForBookingFromTemplate(
+          'booking-id',
+          { templateId: 'template-id' },
+          { id: 'admin-id', role: UserRole.ADMIN },
         ),
       ).rejects.toBeInstanceOf(BadRequestException);
     });
