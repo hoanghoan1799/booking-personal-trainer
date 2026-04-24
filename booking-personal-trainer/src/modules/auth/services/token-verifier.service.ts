@@ -17,14 +17,14 @@ import {
   verifyJwtWithJwks,
 } from '../helpers/token-verifier.helper';
 import type { Auth0VerifiedClaims } from '../types/auth0-verified-claims.type';
+import type { JwksRsaClient } from '../helpers/token-verifier.helper';
 
 /**
  * Verifies Auth0-issued JWTs (RS256) via JWKS and returns normalized profile claims.
  */
 @Injectable()
 export class TokenVerifierService {
-  private jwksClient: ReturnType<typeof jwksRsa> | null = null;
-
+  private jwksClient: JwksRsaClient | null = null;
   private cachedJwksUri: string | null = null;
 
   constructor(private readonly configService: ConfigService) {}

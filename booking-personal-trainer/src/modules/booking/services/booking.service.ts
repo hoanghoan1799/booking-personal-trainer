@@ -278,7 +278,7 @@ export class BookingService {
       period: data.period,
     });
     if (dateLocals.length === 0) {
-      throw new BadRequestException('Invalid start date');
+      throw new BadRequestException(ERROR_MESSAGES.DATE.INVALID_START_DATE);
     }
     const occurrences = dateLocals.map((dateLocal) => {
       const start = this.buildUtcDateTimeForLocalDay({
@@ -329,7 +329,7 @@ export class BookingService {
         const startDate = occurrences[0]?.start;
         const endDate = occurrences[occurrences.length - 1]?.start;
         if (!startDate || !endDate) {
-          throw new BadRequestException('Invalid occurrences');
+          throw new BadRequestException(ERROR_MESSAGES.DATE.INVALID_OCCURRENCE);
         }
         const series = em.create(BookingSeries, {
           trainer,
@@ -603,7 +603,9 @@ export class BookingService {
         );
       }
       if (!dto.rejectionReason || dto.rejectionReason.trim().length < 3) {
-        throw new BadRequestException('Rejection reason is required');
+        throw new BadRequestException(
+          ERROR_MESSAGES.BOOKING.REJECT_REASON_REQUIRED,
+        );
       }
     }
     if (isCancelling) {
@@ -613,7 +615,9 @@ export class BookingService {
         );
       }
       if (!dto.cancellationReason || dto.cancellationReason.trim().length < 3) {
-        throw new BadRequestException('Cancellation reason is required');
+        throw new BadRequestException(
+          ERROR_MESSAGES.BOOKING.CANCEL_REASON_REQUIRED,
+        );
       }
     }
     if (!isRejecting && !isCancelling) {

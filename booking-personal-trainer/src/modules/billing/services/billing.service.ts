@@ -11,6 +11,8 @@ import {
   BillableTargetType,
   BillingChargeStatus,
 } from '../../../common/enums/billing/billing.enum';
+import { ERROR_MESSAGES } from '../../../common/constants/message.constant';
+import { BillingConstants } from '../constants/billing.constants';
 
 // Entities
 import { BillingCharge } from '../entities/billing-charge.entity';
@@ -22,7 +24,6 @@ import {
   BillingChargeRepositoryToken,
   type BillingChargeRepository,
 } from '../repositories/billing-charge.repository.interface';
-import { BillingConstants } from '../constants/billing.constants';
 
 export type CreateWorkoutChargeInput = {
   readonly workoutId: string;
@@ -48,14 +49,14 @@ export class BillingService {
     input: CreateWorkoutChargeInput,
   ): Promise<BillingCharge> {
     if (input.amountCents < BillingConstants.MinimumAmountCents) {
-      throw new BadRequestException('Amount must be greater than 0');
+      throw new BadRequestException(ERROR_MESSAGES.BILLING.MIN_AMOUNT);
     }
     const workout: Workout | null = await this.em.findOne(Workout, {
       id: input.workoutId,
       isDeleted: false,
     });
     if (!workout) {
-      throw new NotFoundException('Workout not found');
+      throw new NotFoundException(ERROR_MESSAGES.WORKOUT.NOT_FOUND);
     }
     return this.billingChargeRepo.create({
       targetType: BillableTargetType.WORKOUT,
@@ -75,7 +76,7 @@ export class BillingService {
   async activateCharge(chargeId: string): Promise<BillingCharge> {
     const charge = await this.billingChargeRepo.findById(chargeId);
     if (!charge) {
-      throw new NotFoundException('Billing charge not found');
+      throw new NotFoundException(ERROR_MESSAGES.BILLING.CHARGE_NOT_FOUND);
     }
     if (charge.status !== BillingChargeStatus.DRAFT) {
       return charge;
@@ -131,14 +132,14 @@ export class BillingService {
     readonly expiresAt?: Date | null;
   }): Promise<BillingCharge> {
     if (input.amountCents < BillingConstants.MinimumAmountCents) {
-      throw new BadRequestException('Amount must be greater than 0');
+      throw new BadRequestException(ERROR_MESSAGES.BILLING.MIN_AMOUNT);
     }
     const workout: Workout | null = await input.em.findOne(Workout, {
       id: input.workoutId,
       isDeleted: false,
     });
     if (!workout) {
-      throw new NotFoundException('Workout not found');
+      throw new NotFoundException(ERROR_MESSAGES.WORKOUT.NOT_FOUND);
     }
     await input.em.nativeUpdate(
       BillingCharge,

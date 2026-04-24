@@ -323,7 +323,7 @@ describe('BookingAvailabilityService', () => {
           endClockTime: '11:00',
           period: 'week',
         }),
-      ).rejects.toThrow('Invalid time format');
+      ).rejects.toThrow(ERROR_MESSAGES.DATE.INVALID_DATE_FORMAT);
     });
 
     it('should throw when first day start is not before end', async () => {
