@@ -127,7 +127,10 @@ export default function CreateBookingFromCalendarModal({
     return d.isValid() ? d.format("ddd, MMM D, YYYY") : "—";
   }, [selectedDateLocal]);
 
-  const periodDates = useMemo(() => getPeriodDates({ selectedDateLocal, period }), [period, selectedDateLocal]);
+  const periodDates = useMemo(
+    () => getPeriodDates({ selectedDateLocal: startDateLocal, period }),
+    [period, startDateLocal],
+  );
 
   useEffect(() => {
     if (!isOpen) return;

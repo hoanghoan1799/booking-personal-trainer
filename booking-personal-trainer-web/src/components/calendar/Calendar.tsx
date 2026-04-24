@@ -8,14 +8,12 @@ import interactionPlugin from "@fullcalendar/interaction";
 import type { DateClickArg } from "@fullcalendar/interaction";
 import type { EventClickArg, EventContentArg } from "@fullcalendar/core";
 import type { EventInput } from "@fullcalendar/core";
-import { formatInstantUtc } from "@/lib/date-time/utc-date-time.helper";
 import dayjs from "@/lib/date-time/utc-dayjs";
 import type { Booking } from "@/services/bookings/bookings.service";
-import { getBookings, updateBookingStatus } from "@/services/bookings/bookings.service";
+import { getBookings } from "@/services/bookings/bookings.service";
 import { useProfile } from "@/hooks/useProfile";
-import { Modal } from "@/components/ui/modal";
+import BookingDetailModal from "@/components/bookings/BookingDetailModal";
 import CreateBookingFromCalendarModal from "@/components/bookings/CreateBookingFromCalendarModal";
-import Badge from "@/components/ui/badge/Badge";
 import { useToast } from "@/context/ToastContext";
 
 interface BookingEvent extends EventInput {
@@ -54,10 +52,6 @@ function getDisplayName(user?: { firstName?: string; lastName?: string; userName
   return user.userName?.trim() ? user.userName : "—";
 }
 
-function formatDateTime(iso: string) {
-  return formatInstantUtc(iso, "ddd, D MMM YYYY, HH:mm");
-}
-
 const Calendar: React.FC = () => {
   const [events, setEvents] = useState<BookingEvent[]>([]);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
@@ -66,9 +60,6 @@ const Calendar: React.FC = () => {
   const [isCreateBookingOpen, setIsCreateBookingOpen] = useState(false);
   const [selectedDateLocal, setSelectedDateLocal] = useState<string | null>(null);
   const [prefilledStartClockTime, setPrefilledStartClockTime] = useState<string | null>(null);
-  const [isUpdating, setIsUpdating] = useState(false);
-  const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
-  const [rejectReason, setRejectReason] = useState("");
   const calendarRef = useRef<FullCalendar>(null);
   const { user: currentUser, isLoading: isProfileLoading } = useProfile();
   const toast = useToast();
@@ -142,43 +133,6 @@ const Calendar: React.FC = () => {
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setSelectedBooking(null);
-  };
-
-  const handleOpenRejectModal = () => {
-    if (!selectedBooking) return;
-    setRejectReason("");
-    setIsRejectModalOpen(true);
-  };
-
-  const handleCloseRejectModal = () => {
-    setIsRejectModalOpen(false);
-    setRejectReason("");
-  };
-
-  const canUpdateStatus = selectedBooking && currentUser && (
-    currentUser.role === "ADMIN" ||
-    (currentUser.role === "TRAINER" && selectedBooking.trainer?.id === currentUser.id)
-  ) && selectedBooking.status === "PENDING";
-
-  const handleUpdateStatus = async (status: "CONFIRMED" | "REJECTED") => {
-    if (!selectedBooking || isUpdating) return;
-    setIsUpdating(true);
-    try {
-      await updateBookingStatus(selectedBooking.id, {
-        status,
-        rejectionReason:
-          status === "REJECTED" ? rejectReason.trim() : undefined,
-      });
-      toast.success(status === "CONFIRMED" ? "Booking approved" : "Booking rejected");
-      handleCloseRejectModal();
-      handleCloseModal();
-      fetchBookings();
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Failed to update booking status";
-      toast.error(msg);
-    } finally {
-      setIsUpdating(false);
-    }
   };
 
   const renderEventContent = (eventInfo: EventContentArg) => {
@@ -258,139 +212,16 @@ const Calendar: React.FC = () => {
         }}
       />
 
-      <Modal
+      <BookingDetailModal
         isOpen={isModalOpen}
+        booking={selectedBooking}
         onClose={handleCloseModal}
-        className="max-w-md p-6"
-      >
-        {selectedBooking && (
-          <div className="space-y-4">
-            <h5 className="text-lg font-semibold text-gray-800 dark:text-white/90">
-              Booking Details
-            </h5>
-            <div className="space-y-2 text-sm">
-              <div>
-                <span className="font-medium text-gray-500 dark:text-gray-500">
-                  Trainer:{" "}
-                </span>
-                <span className="text-gray-800 dark:text-white/90">
-                  {getDisplayName(selectedBooking.trainer)}
-                </span>
-              </div>
-              <div>
-                <span className="font-medium text-gray-500 dark:text-gray-500">
-                  Trainee:{" "}
-                </span>
-                <span className="text-gray-800 dark:text-white/90">
-                  {getDisplayName(selectedBooking.trainee)}
-                </span>
-              </div>
-              <div>
-                <span className="font-medium text-gray-500 dark:text-gray-500">
-                  Status:{" "}
-                </span>
-                <Badge color={getStatusBadgeColor(selectedBooking.status)} size="sm">
-                  {selectedBooking.status}
-                </Badge>
-              </div>
-              <div>
-                <span className="font-medium text-gray-500 dark:text-gray-500">
-                  Start:{" "}
-                </span>
-                <span className="text-gray-800 dark:text-white/90">
-                  {formatDateTime(selectedBooking.startTime)}
-                </span>
-              </div>
-              <div>
-                <span className="font-medium text-gray-500 dark:text-gray-500">
-                  End:{" "}
-                </span>
-                <span className="text-gray-800 dark:text-white/90">
-                  {formatDateTime(selectedBooking.endTime)}
-                </span>
-              </div>
-            </div>
-            <div className="flex flex-wrap justify-end gap-2">
-              {canUpdateStatus && (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => handleUpdateStatus("CONFIRMED")}
-                    disabled={isUpdating}
-                    className="rounded-lg bg-success-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-success-700 disabled:opacity-50"
-                    aria-label="Approve booking"
-                  >
-                    {isUpdating ? "Updating…" : "Approve"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleOpenRejectModal}
-                    disabled={isUpdating}
-                    className="rounded-lg bg-error-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-error-700 disabled:opacity-50"
-                    aria-label="Reject booking"
-                  >
-                    Reject
-                  </button>
-                </>
-              )}
-              <button
-                type="button"
-                onClick={handleCloseModal}
-                className="rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-white/[0.03]"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        )}
-      </Modal>
-
-      <Modal
-        isOpen={isRejectModalOpen}
-        onClose={handleCloseRejectModal}
-        className="max-w-md p-6"
-      >
-        <div className="space-y-4">
-          <h5 className="text-lg font-semibold text-gray-800 dark:text-white/90">
-            Rejection reason
-          </h5>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Please provide a reason before rejecting this booking.
-          </p>
-          <label>
-            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              Reason *
-            </span>
-            <textarea
-              value={rejectReason}
-              onChange={(e) => setRejectReason(e.target.value)}
-              aria-label="Rejection reason"
-              placeholder="Write a short reason..."
-              className="mt-1 min-h-24 w-full resize-y rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none ring-brand-500 focus:ring-2 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
-            />
-          </label>
-          <div className="flex justify-end gap-2">
-            <button
-              type="button"
-              onClick={handleCloseRejectModal}
-              disabled={isUpdating}
-              className="rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-white/[0.03]"
-              aria-label="Cancel rejection"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={() => handleUpdateStatus("REJECTED")}
-              disabled={isUpdating || rejectReason.trim().length < 3}
-              className="rounded-lg bg-error-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-error-700 disabled:opacity-50"
-              aria-label="Confirm rejection"
-            >
-              {isUpdating ? "Rejecting…" : "Reject booking"}
-            </button>
-          </div>
-        </div>
-      </Modal>
+        onUpdated={() => {
+          toast.success("Booking updated");
+          handleCloseModal();
+          void fetchBookings();
+        }}
+      />
     </div>
   );
 };
