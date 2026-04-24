@@ -1,6 +1,5 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import jwksRsa from 'jwks-rsa';
 
 // Commons
 import { ERROR_MESSAGES } from '../../../common/constants/message.constant';
@@ -83,10 +82,23 @@ export class TokenVerifierService {
     return buildAuth0JwksUri(domain);
   }
 
-  private getJwksClient(jwksUri: string): ReturnType<typeof jwksRsa> {
+  private getJwksClient(jwksUri: string): JwksRsaClient {
     if (!this.jwksClient || this.cachedJwksUri !== jwksUri) {
       this.cachedJwksUri = jwksUri;
-      this.jwksClient = jwksRsa({
+      // Lazy load: prevents Jest E2E from parsing ESM-only transitive deps.
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const mod: unknown = require('jwks-rsa');
+      const jwksRsaFactory: (args: {
+        jwksUri: string;
+        cache: boolean;
+        rateLimit: boolean;
+      }) => JwksRsaClient = ((mod as { default?: unknown }).default ??
+        mod) as (args: {
+        jwksUri: string;
+        cache: boolean;
+        rateLimit: boolean;
+      }) => JwksRsaClient;
+      this.jwksClient = jwksRsaFactory({
         jwksUri,
         cache: true,
         rateLimit: true,

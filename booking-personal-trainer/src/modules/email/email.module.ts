@@ -11,6 +11,8 @@ import { ResendEmailSender } from './senders/resend-email.sender';
   imports: [
     BullModule.registerQueue({
       name: EMAIL_QUEUE_NAME,
+      /** Ensure Redis is disconnected when the Nest app shuts down (avoids Jest "open handles" in e2e). */
+      forceDisconnectOnShutdown: true,
       defaultJobOptions: {
         attempts: 5,
         backoff: { type: 'exponential', delay: 3000 },

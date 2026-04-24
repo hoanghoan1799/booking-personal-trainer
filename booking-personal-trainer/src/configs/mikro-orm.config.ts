@@ -8,7 +8,8 @@ import { Migrator } from '@mikro-orm/migrations';
 // Commons
 import { POSTGRES_PORT_DEFAULT } from '../common/constants/app.constant';
 
-config({ path: '.env' });
+const dotenvPath: string = process.env['DOTENV_CONFIG_PATH'] ?? '.env';
+config({ path: dotenvPath });
 
 export default defineConfig({
   host: process.env.POSTGRES_HOST,
