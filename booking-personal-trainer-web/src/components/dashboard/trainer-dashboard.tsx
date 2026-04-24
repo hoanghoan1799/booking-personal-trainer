@@ -22,6 +22,7 @@ import Button from "@/components/ui/button/Button";
 import { DashboardSection } from "./dashboard-section";
 import { DashboardStatCard } from "./dashboard-stat-card";
 import { DashboardStateMessage } from "./dashboard-state-message";
+import { TikTokQuickAccessCard } from "./tiktok-quick-access-card";
 import { BookingsTable } from "./bookings-table";
 import { WorkoutsTable } from "./workouts-table";
 import { RevenueBucketsTable } from "./revenue-buckets-table";
@@ -93,11 +94,14 @@ export const TrainerDashboard = (): React.ReactNode => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-gray-800 dark:text-white/90">Trainer dashboard</h1>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-          Your trainees, sessions, and performance (last {REPORT_RANGE_DAYS} days for charts).
-        </p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold text-gray-800 dark:text-white/90">Trainer dashboard</h1>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            Your trainees, sessions, and performance (last {REPORT_RANGE_DAYS} days for charts).
+          </p>
+        </div>
+        <TikTokQuickAccessCard className="w-full max-w-[320px] sm:shrink-0 sm:self-start sm:justify-self-end" />
       </div>
 
       {listError ? (

@@ -3,7 +3,6 @@
 import React from "react";
 import PageBreadcrumb from "@/components/common/PageBreadCrumb";
 import { useProfile } from "@/hooks/useProfile";
-import UserAddressCard from "./UserAddressCard";
 import UserInfoCard from "./UserInfoCard";
 import UserMetaCard from "./UserMetaCard";
 import TrainerStripeConnectCard from "./TrainerStripeConnectCard";
@@ -76,7 +75,6 @@ export default function ProfileContent() {
               updateUser({ stripeAccountId });
             }}
           />
-          <UserAddressCard />
         </div>
       </div>
     </div>

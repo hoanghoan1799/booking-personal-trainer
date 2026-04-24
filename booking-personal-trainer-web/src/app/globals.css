@@ -230,6 +230,27 @@
   }
 }
 
+@layer utilities {
+  .animate-tiktok-card-enter {
+    animation: tiktok-card-enter 0.45s ease-out both;
+  }
+  @keyframes tiktok-card-enter {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .animate-tiktok-card-enter {
+      animation: none;
+    }
+  }
+}
+
 @utility menu-item {
   @apply relative flex items-center w-full gap-3 px-3 py-2 font-medium rounded-lg text-theme-sm;
 }
