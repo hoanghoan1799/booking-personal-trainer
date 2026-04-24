@@ -1,22 +1,27 @@
 import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 
+// Commons
 import dayjs from '../../../common/utils/date-time/utc-dayjs';
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { SWAGGER_ACCESS_TOKEN } from '../../../common/constants/api-document.constants';
 import { BaseResponseDto } from '../../../common/dtos/base-response.dto';
-
-import { ResponseUserDto } from '../../user/dtos/response-user.dto';
 import { Serialize } from '../../../common/decorators/serialize.decorator';
 
-import {
-  BookingAvailabilityService,
-  type BookingTimeSlot,
-} from '../services/booking-availability.service';
+// Constants
+import { BookingSwagger } from '../constants/booking-swagger.constants';
+
+// Types
+import { BookingTimeSlot } from '../types/booking.type';
+
+// DTOs
+import { ResponseUserDto } from '../../user/dtos/response-user.dto';
 import { GetAvailableTrainersQueryDto } from '../dtos/get-available-trainers.dto';
 import { GetAvailableSlotsQueryDto } from '../dtos/get-available-slots.dto';
 import { GetAvailableTrainersForPeriodQueryDto } from '../dtos/get-available-trainers-for-period.dto';
-import { BookingSwagger } from '../constants/booking-swagger.constants';
+
+// Services
+import { BookingAvailabilityService } from '../services/booking-availability.service';
 
 @ApiTags('Booking discovery')
 @ApiBearerAuth(SWAGGER_ACCESS_TOKEN)

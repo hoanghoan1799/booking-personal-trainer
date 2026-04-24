@@ -64,3 +64,18 @@ docker compose up --build
 
 - Run test: pnpm test
 - Run test with coverage: pnpm test:cov
+
+#### End-to-end tests
+
+Run the full HTTP stack (see `src/test/jest-e2e.json` and `src/test/e2e/`):
+
+```bash
+cd booking-personal-trainer
+pnpm test:e2e
+```
+
+E2E tests load environment from a dedicated `.test.env` file (see `src/test/e2e-setup-env.ts`). Create it by copying `.test.env.sample` and filling values. You need a reachable **PostgreSQL** (migrations are applied by `createTestApp` via `migrator.up()`) and **Redis** (BullMQ in `AppModule` opens a real connection; rate-limiting and cache behavior depend on the scenario). The default API e2e app swaps in an in-memory cache and mocked Redis service clients, but Bull still uses `REDIS_HOST` / `REDIS_PORT` from the environment. Set at least: `POSTGRES_*`, `JWT_SECRET`, and Redis host/port.
+
+Teardown in `teardownTestApp` closes the email Bull `Queue` and the MikroORM connection. The email queue is registered with `forceDisconnectOnShutdown: true` so Bull disconnects from Redis on app shutdown.
+
+Jest is configured with `forceExit: true` in `src/test/jest-e2e.json` so the process always exits on time. You may see a line: `Force exiting Jest: ...` at the end — **that is not a test failure**; it is Jest noting that it chose to exit while some integration (Redis, Bull, or similar) may still be winding down. If you need to find remaining open handles, run: `pnpm exec jest --config ./src/test/jest-e2e.json --detectOpenHandles --runInBand` (and consider removing `forceExit` only while debugging).

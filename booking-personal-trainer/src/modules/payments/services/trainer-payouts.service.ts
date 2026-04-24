@@ -11,6 +11,7 @@ import {
   TrainerPayoutsTransferRowDto,
 } from '../dtos/trainer-payouts-response.dto';
 import { TrainerPayoutsConstants } from '../constants/trainer-payouts.constants';
+import { PAYMENT_STATUS } from '../constants/payment.constants';
 
 @Injectable()
 export class TrainerPayoutsService {
@@ -72,7 +73,7 @@ export class TrainerPayoutsService {
       }
 
       const payout = this.readTrainerPayout(payment.metadata);
-      const payoutStatus: string = payout?.status ?? 'UNKNOWN';
+      const payoutStatus: string = payout?.status ?? PAYMENT_STATUS.UNKNOWN;
       summary.payoutStatusCounts[payoutStatus] =
         (summary.payoutStatusCounts[payoutStatus] ?? 0) + 1;
 
@@ -183,7 +184,9 @@ export class TrainerPayoutsService {
     const errorMessage = (payout as Record<string, unknown>).errorMessage;
     return {
       status:
-        typeof status === 'string' && status.trim() !== '' ? status : 'UNKNOWN',
+        typeof status === 'string' && status.trim() !== ''
+          ? status
+          : PAYMENT_STATUS.UNKNOWN,
       transferId:
         typeof transferId === 'string' && transferId.trim() !== ''
           ? transferId

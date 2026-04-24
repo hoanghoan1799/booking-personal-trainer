@@ -1,20 +1,14 @@
-import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
-import { VersioningType } from '@nestjs/common';
-import { APP_GUARD } from '@nestjs/core';
+import { MikroORM } from '@mikro-orm/core';
 import request from 'supertest';
 
-// Constants
-import { API_PREFIX } from '../common/constants/app.constant';
-
-// Configs
-import { GLOBAL_PIPE_CONFIG } from '../configs/pipe.config';
-
-// Modules
-import { AppModule } from '../app.module';
-
 // Enums
-import { UserType } from '../common/enums/user/user.enum';
+import { UserType } from '../../common/enums/user/user.enum';
+import {
+  createAuthE2eTestApp,
+  teardownTestApp,
+} from '../setup/test-app.factory';
+import { e2ePath } from '../utils/helpers';
 
 const HTTP_STATUS = {
   OK: 200,
@@ -24,8 +18,7 @@ const HTTP_STATUS = {
   CONFLICT: 409,
 } as const;
 
-const AUTH_PATH = '/auth';
-const API_VERSION_PATH = '/api/v1';
+const AUTH_BASE = e2ePath('/auth');
 
 interface AuthRegisterResponse {
   data: {
@@ -50,35 +43,18 @@ interface ApiErrorResponse {
   message: string;
 }
 
-/**
- * E2E tests for Auth API.
- * Require test database and Redis (e.g. .env.test or docker).
- */
 describe('Auth (e2e)', () => {
-  let app: INestApplication;
+  let app!: INestApplication;
+  let orm!: MikroORM;
 
   beforeAll(async () => {
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
-    })
-      .overrideProvider(APP_GUARD)
-      .useValue({ canActivate: () => Promise.resolve(true) })
-      .compile();
-
-    app = moduleFixture.createNestApplication();
-
-    app.setGlobalPrefix(API_PREFIX);
-    app.enableVersioning({
-      type: VersioningType.URI,
-      defaultVersion: '1',
-    });
-    app.useGlobalPipes(GLOBAL_PIPE_CONFIG);
-
-    await app.init();
+    const t = await createAuthE2eTestApp();
+    app = t.app;
+    orm = t.orm;
   });
 
   afterAll(async () => {
-    await app.close();
+    await teardownTestApp({ app, orm });
   });
 
   const createRegisterBody = () => ({
@@ -100,10 +76,9 @@ describe('Auth (e2e)', () => {
       const res = await request(
         app.getHttpServer() as Parameters<typeof request>[0],
       )
-        .post(`${API_VERSION_PATH}${AUTH_PATH}/register`)
+        .post(`${AUTH_BASE}/register`)
         .send(body)
         .expect(HTTP_STATUS.CREATED);
-
       const data = (res.body as AuthRegisterResponse).data;
       expect(data).toHaveProperty('accessToken');
       expect(data).toHaveProperty('refreshToken');
@@ -115,17 +90,15 @@ describe('Auth (e2e)', () => {
     it('should return 409 when email is already taken', async () => {
       const body = createRegisterBody();
       await request(app.getHttpServer() as Parameters<typeof request>[0])
-        .post(`${API_VERSION_PATH}${AUTH_PATH}/register`)
+        .post(`${AUTH_BASE}/register`)
         .send(body)
         .expect(HTTP_STATUS.CREATED);
-
       const res = await request(
         app.getHttpServer() as Parameters<typeof request>[0],
       )
-        .post(`${API_VERSION_PATH}${AUTH_PATH}/register`)
+        .post(`${AUTH_BASE}/register`)
         .send(body)
         .expect(HTTP_STATUS.CONFLICT);
-
       expect((res.body as ApiErrorResponse).message).toContain('Email');
     });
   });
@@ -135,10 +108,9 @@ describe('Auth (e2e)', () => {
       const res = await request(
         app.getHttpServer() as Parameters<typeof request>[0],
       )
-        .post(`${API_VERSION_PATH}${AUTH_PATH}/login`)
+        .post(`${AUTH_BASE}/login`)
         .send(sharedCredentials)
         .expect(HTTP_STATUS.OK);
-
       const data = (res.body as AuthLoginResponse).data;
       expect(data).toHaveProperty('accessToken');
       expect(data).toHaveProperty('user');
@@ -147,7 +119,7 @@ describe('Auth (e2e)', () => {
 
     it('should return 404 when user not found', async () => {
       await request(app.getHttpServer() as Parameters<typeof request>[0])
-        .post(`${API_VERSION_PATH}${AUTH_PATH}/login`)
+        .post(`${AUTH_BASE}/login`)
         .send({ email: 'nonexistent@test.com', password: 'any' })
         .expect(HTTP_STATUS.NOT_FOUND);
     });
@@ -158,10 +130,9 @@ describe('Auth (e2e)', () => {
       const res = await request(
         app.getHttpServer() as Parameters<typeof request>[0],
       )
-        .get(`${API_VERSION_PATH}${AUTH_PATH}/profile`)
+        .get(`${AUTH_BASE}/profile`)
         .set('Authorization', `Bearer ${sharedAccessToken}`)
         .expect(HTTP_STATUS.OK);
-
       const data = (res.body as AuthProfileResponse).data;
       expect(data).toHaveProperty('email');
       expect(data).toHaveProperty('userName');
@@ -169,7 +140,7 @@ describe('Auth (e2e)', () => {
 
     it('should return 401 when no token provided', async () => {
       await request(app.getHttpServer() as Parameters<typeof request>[0])
-        .get(`${API_VERSION_PATH}${AUTH_PATH}/profile`)
+        .get(`${AUTH_BASE}/profile`)
         .expect(HTTP_STATUS.UNAUTHORIZED);
     });
   });

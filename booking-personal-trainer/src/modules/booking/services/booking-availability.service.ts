@@ -1,5 +1,6 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 
+// Commons
 import { MIN_BOOKING_NOTICE_MINUTES } from '../../../common/constants/time.constant';
 import { ERROR_MESSAGES } from '../../../common/constants/message.constant';
 import { addMinutesToDate } from '../../../common/helpers/time.helper';
@@ -12,12 +13,15 @@ import {
   UserStatus,
 } from '../../../common/enums/user/user.enum';
 
-import type { BookingRepository } from '../repositories/booking.repository.interface';
-import { BookingRepositoryToken } from '../repositories/booking.repository.interface';
+// Types
+import {
+  BookingTimeRange,
+  BookingTimeSlot,
+  GetAvailableSlotsInput,
+  GetAvailableTrainersForRangeInput,
+} from '../types/booking.type';
 
-import type { User } from '../../user/entities/user.entity';
-import { TrainerAvailabilityService } from '../../trainer-scheduling/services/trainer-availability.service';
-import { TrainerTimeOffService } from '../../trainer-scheduling/services/trainer-time-off.service';
+// Helpers
 import {
   assertValidSlotQueryInput,
   buildDateLocalsForRollingPeriod,
@@ -27,28 +31,16 @@ import {
   toCeilStepDate,
 } from '../helpers/booking-availability.helpers';
 
-export type BookingTimeRange = {
-  readonly start: Date;
-  readonly end: Date;
-};
+// Repositories
+import type { BookingRepository } from '../repositories/booking.repository.interface';
+import { BookingRepositoryToken } from '../repositories/booking.repository.interface';
 
-export type BookingTimeSlot = {
-  readonly startTime: string;
-  readonly endTime: string;
-};
+// Entities
+import type { User } from '../../user/entities/user.entity';
 
-type GetAvailableSlotsInput = {
-  readonly trainerId: string;
-  readonly rangeStart: Date;
-  readonly rangeEnd: Date;
-  readonly durationMinutes: number;
-  readonly stepMinutes: number;
-};
-
-type GetAvailableTrainersForRangeInput = {
-  readonly start: Date;
-  readonly end: Date;
-};
+// Services
+import { TrainerAvailabilityService } from '../../trainer-scheduling/services/trainer-availability.service';
+import { TrainerTimeOffService } from '../../trainer-scheduling/services/trainer-time-off.service';
 
 @Injectable()
 export class BookingAvailabilityService {
@@ -165,7 +157,7 @@ export class BookingAvailabilityService {
       period: input.period,
     });
     if (dateLocals.length === 0) {
-      throw new BadRequestException('Invalid start date');
+      throw new BadRequestException(ERROR_MESSAGES.DATE.INVALID_START_DATE);
     }
     const first = dateLocals[0];
     const firstStart = buildDayjsUtcFromLocalDateAndClockTime({
@@ -177,7 +169,7 @@ export class BookingAvailabilityService {
       clockTime: input.endClockTime,
     });
     if (!firstStart || !firstEnd) {
-      throw new BadRequestException('Invalid time format');
+      throw new BadRequestException(ERROR_MESSAGES.DATE.INVALID_DATE_FORMAT);
     }
     if (!firstStart.isBefore(firstEnd)) {
       throw new BadRequestException(ERROR_MESSAGES.BOOKING.INVALID_TIME_RANGE);
@@ -201,7 +193,7 @@ export class BookingAvailabilityService {
         clockTime: input.endClockTime,
       });
       if (!start || !end) {
-        throw new BadRequestException('Invalid time format');
+        throw new BadRequestException(ERROR_MESSAGES.DATE.INVALID_DATE_FORMAT);
       }
       if (!start.isBefore(end)) {
         throw new BadRequestException(

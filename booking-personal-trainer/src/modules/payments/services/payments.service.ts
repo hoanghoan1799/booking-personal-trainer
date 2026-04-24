@@ -10,6 +10,12 @@ import Stripe from 'stripe';
 // Commons
 import { utcNowAsDate } from '../../../common/utils/date-time/utc-date-time.helper';
 import { PaymentStatus } from '../../../common/enums/billing/billing.enum';
+import { ERROR_MESSAGES } from '../../../common/constants/message.constant';
+import {
+  PLATFORM_WORKOUT_FEE_BPS_ENV,
+  SETTLEMENT_MODEL_PLATFORM_COLLECT,
+  STRIPE_PROVIDER,
+} from '../constants/stripe-webhook.constants';
 
 // Shared
 import { StripeService } from '../../../shared/stripe/stripe.service';
@@ -25,6 +31,7 @@ import {
   PaymentRepositoryToken,
   type PaymentRepository,
 } from '../repositories/payment.repository.interface';
+import { PAYMENT_INTENT } from '../constants/payment.constants';
 
 export type CreateWorkoutPaymentIntentResult = {
   readonly paymentId: string;
@@ -33,12 +40,6 @@ export type CreateWorkoutPaymentIntentResult = {
   readonly amountCents: number;
   readonly currency: string;
 };
-
-const STRIPE_PROVIDER = 'stripe' as const;
-
-const SETTLEMENT_MODEL_PLATFORM_COLLECT = 'PLATFORM_COLLECT' as const;
-
-const PLATFORM_WORKOUT_FEE_BPS_ENV = 'PLATFORM_WORKOUT_FEE_BPS' as const;
 
 @Injectable()
 export class PaymentsService {
@@ -62,10 +63,10 @@ export class PaymentsService {
       { populate: ['trainer', 'trainee'] },
     );
     if (!workout) {
-      throw new NotFoundException('Workout not found');
+      throw new NotFoundException(ERROR_MESSAGES.WORKOUT.NOT_FOUND);
     }
     if (workout.trainee.id !== input.traineeId) {
-      throw new BadRequestException('You cannot pay for this workout');
+      throw new BadRequestException(ERROR_MESSAGES.WORKOUT.CAN_NOT_PAY);
     }
     const trainerConnectAccountId: string | null =
       (workout.trainer as unknown as { stripeAccountId?: string | null })
@@ -75,7 +76,7 @@ export class PaymentsService {
     );
     if (!activeCharge) {
       throw new BadRequestException(
-        'No active billing charge found for workout',
+        ERROR_MESSAGES.WORKOUT.NO_ACTIVE_BILLING_CHARGE,
       );
     }
     const grossCents = activeCharge.amountCents;
@@ -84,8 +85,8 @@ export class PaymentsService {
         grossCents,
       });
     const idempotencyKey: string = this.stripeService.createIdempotencyKey({
-      operation: 'create_payment_intent',
-      targetType: 'WORKOUT',
+      operation: PAYMENT_INTENT.OPERATIONS.CREATE,
+      targetType: PAYMENT_INTENT.TYPES.WORKOUT,
       targetId: workout.id,
       billingChargeId: activeCharge.id,
       payerUserId: input.traineeId,
@@ -100,7 +101,7 @@ export class PaymentsService {
         existingPaymentByKey.providerPaymentIntentId,
       );
       if (!latestIntent.client_secret) {
-        throw new Error('Stripe PaymentIntent missing client_secret');
+        throw new Error(ERROR_MESSAGES.STRIPE.MISSING_STRIPE_CONFIG);
       }
       return {
         paymentId: existingPaymentByKey.id,
@@ -113,7 +114,7 @@ export class PaymentsService {
     const precreatedPayment =
       existingPaymentByKey ??
       (await this.paymentRepo.create({
-        targetType: 'WORKOUT',
+        targetType: PAYMENT_INTENT.TYPES.WORKOUT,
         targetId: workout.id,
         payerUserId: input.traineeId,
         billingChargeId: activeCharge.id,
@@ -124,7 +125,7 @@ export class PaymentsService {
         providerPaymentIntentId: null,
         idempotencyKey,
         metadata: {
-          stripeStatus: 'created',
+          stripeStatus: PAYMENT_INTENT.STATUS.CREATED,
           settlementModel: SETTLEMENT_MODEL_PLATFORM_COLLECT,
           grossAmountCents: grossCents,
           platformFeeCents,
@@ -167,7 +168,7 @@ export class PaymentsService {
         existing.providerPaymentIntentId ?? existingIntent.id,
       );
       const latestStatus = latestIntent.status;
-      if (latestStatus === 'succeeded') {
+      if (latestStatus === PAYMENT_INTENT.STATUS.SUCCEEDED) {
         existing.status = PaymentStatus.PAID;
         existing.paidAt = existing.paidAt ?? utcNowAsDate();
         existing.failureReason = null;
@@ -176,9 +177,9 @@ export class PaymentsService {
           stripeStatus: latestStatus,
         };
         await this.paymentRepo.save(existing);
-        throw new BadRequestException('Workout already paid');
+        throw new BadRequestException(ERROR_MESSAGES.WORKOUT.ALREADY_PAID);
       }
-      if (latestStatus === 'canceled') {
+      if (latestStatus === PAYMENT_INTENT.STATUS.CANCELED) {
         // Allow retry by creating a fresh intent with a different idempotency key.
         return this.createRetryWorkoutPaymentIntent({
           stripeClient,
@@ -208,7 +209,7 @@ export class PaymentsService {
       };
       await this.paymentRepo.save(existing);
       if (!latestIntent.client_secret) {
-        throw new Error('Stripe PaymentIntent missing client_secret');
+        throw new Error(ERROR_MESSAGES.STRIPE.MISSING_STRIPE_CONFIG);
       }
       return {
         paymentId: existing.id,
@@ -219,10 +220,10 @@ export class PaymentsService {
       };
     }
     const paymentIntent = existingIntent;
-    if (paymentIntent.status === 'succeeded') {
-      throw new BadRequestException('Workout already paid');
+    if (paymentIntent.status === PAYMENT_INTENT.STATUS.SUCCEEDED) {
+      throw new BadRequestException(ERROR_MESSAGES.WORKOUT.ALREADY_PAID);
     }
-    if (paymentIntent.status === 'canceled') {
+    if (paymentIntent.status === PAYMENT_INTENT.STATUS.CANCELED) {
       return this.createRetryWorkoutPaymentIntent({
         stripeClient,
         workout,
@@ -245,7 +246,7 @@ export class PaymentsService {
     };
     await this.paymentRepo.save(precreatedPayment);
     if (!paymentIntent.client_secret) {
-      throw new Error('Stripe PaymentIntent missing client_secret');
+      throw new Error(ERROR_MESSAGES.STRIPE.MISSING_STRIPE_CONFIG);
     }
     return {
       paymentId: precreatedPayment.id,
@@ -266,17 +267,17 @@ export class PaymentsService {
 
   mapStripePaymentIntentToPaymentStatus(status: string): PaymentStatus {
     switch (status) {
-      case 'requires_payment_method':
+      case PAYMENT_INTENT.STATUS.REQUIRES_PAYMENT_METHOD:
         return PaymentStatus.REQUIRES_PAYMENT_METHOD;
-      case 'requires_confirmation':
+      case PAYMENT_INTENT.STATUS.REQUIRES_CONFIRMATION:
         return PaymentStatus.REQUIRES_CONFIRMATION;
-      case 'requires_action':
+      case PAYMENT_INTENT.STATUS.REQUIRES_ACTION:
         return PaymentStatus.REQUIRES_ACTION;
-      case 'processing':
+      case PAYMENT_INTENT.STATUS.PROCESSING:
         return PaymentStatus.PROCESSING;
-      case 'succeeded':
+      case PAYMENT_INTENT.STATUS.SUCCEEDED:
         return PaymentStatus.PAID;
-      case 'canceled':
+      case PAYMENT_INTENT.STATUS.CANCELED:
         return PaymentStatus.CANCELLED;
       default:
         return PaymentStatus.PROCESSING;
@@ -309,8 +310,8 @@ export class PaymentsService {
     readonly trainerConnectAccountId: string | null;
   }): Promise<CreateWorkoutPaymentIntentResult> {
     const retryKey = this.stripeService.createIdempotencyKey({
-      operation: 'create_payment_intent_retry',
-      targetType: 'WORKOUT',
+      operation: PAYMENT_INTENT.OPERATIONS.CREATE_RETRY,
+      targetType: PAYMENT_INTENT.TYPES.WORKOUT,
       targetId: input.workout.id,
       billingChargeId: input.activeChargeId,
       payerUserId: input.traineeId,
@@ -332,7 +333,7 @@ export class PaymentsService {
       { idempotencyKey: retryKey },
     );
     const payment = await this.paymentRepo.create({
-      targetType: 'WORKOUT',
+      targetType: PAYMENT_INTENT.TYPES.WORKOUT,
       targetId: input.workout.id,
       payerUserId: input.traineeId,
       billingChargeId: input.activeChargeId,
@@ -355,7 +356,7 @@ export class PaymentsService {
       },
     });
     if (!paymentIntent.client_secret) {
-      throw new Error('Stripe PaymentIntent missing client_secret');
+      throw new Error(ERROR_MESSAGES.STRIPE.MISSING_STRIPE_CONFIG);
     }
     return {
       paymentId: payment.id,

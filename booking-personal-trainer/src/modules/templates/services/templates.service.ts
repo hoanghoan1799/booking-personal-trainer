@@ -3,6 +3,7 @@ import { NotFoundException } from '@nestjs/common';
 
 // Commons
 import { utcNowAsDate } from '../../../common/utils/date-time/utc-date-time.helper';
+import { ERROR_MESSAGES } from '../../../common/constants/message.constant';
 
 // Enums
 import { UserRole } from '../../../common/enums/user/user.enum';
@@ -146,7 +147,9 @@ export class TemplatesService {
       existing.templateType === TemplateType.TRAINER &&
       existing.createdBy.id === currentUser.id
     ) {
-      throw new BadRequestException('Cannot fork your own trainer template');
+      throw new BadRequestException(
+        ERROR_MESSAGES.TEMPLATE.CANNOT_FORK_OWN_TEMPLATE,
+      );
     }
     const forked = await this.templatesRepository.forkTemplate({
       sourceTemplateId: templateId,
@@ -170,7 +173,9 @@ export class TemplatesService {
     const isAdmin = currentUser.role === UserRole.ADMIN;
     const isOwner = existing.createdBy.id === currentUser.id;
     if (!isAdmin && !isOwner) {
-      throw new BadRequestException('Cannot update template you do not own');
+      throw new BadRequestException(
+        ERROR_MESSAGES.TEMPLATE.CANNOT_UPDATE_NOT_OWNED_TEMPLATE,
+      );
     }
     await this.templatesRepository.updateTemplate(templateId, {
       name: dto.name,
@@ -201,7 +206,9 @@ export class TemplatesService {
     const isAdmin = currentUser.role === UserRole.ADMIN;
     const isOwner = existing.createdBy.id === currentUser.id;
     if (!isAdmin && !isOwner) {
-      throw new BadRequestException('Cannot delete template you do not own');
+      throw new BadRequestException(
+        ERROR_MESSAGES.TEMPLATE.CANNOT_DELETE_NOT_OWNED_TEMPLATE,
+      );
     }
     const deleted =
       await this.templatesRepository.softDeleteTemplate(templateId);
@@ -227,7 +234,9 @@ export class TemplatesService {
     const isAdmin = currentUser.role === UserRole.ADMIN;
     const isOwner = template.createdBy.id === currentUser.id;
     if (!isAdmin && !isOwner) {
-      throw new BadRequestException('Cannot edit template you do not own');
+      throw new BadRequestException(
+        ERROR_MESSAGES.TEMPLATE.CANNOT_EDIT_NOT_OWNED_TEMPLATE,
+      );
     }
     const item = await this.templatesRepository.createTemplateItem({
       templateId,
@@ -271,7 +280,9 @@ export class TemplatesService {
     const isAdmin = currentUser.role === UserRole.ADMIN;
     const isOwner = template.createdBy.id === currentUser.id;
     if (!isAdmin && !isOwner) {
-      throw new BadRequestException('Cannot edit template you do not own');
+      throw new BadRequestException(
+        ERROR_MESSAGES.TEMPLATE.CANNOT_EDIT_NOT_OWNED_TEMPLATE,
+      );
     }
     await this.templatesRepository.updateTemplateItem(itemId, {
       exerciseId: dto.exerciseId,
@@ -311,7 +322,9 @@ export class TemplatesService {
     const isAdmin = currentUser.role === UserRole.ADMIN;
     const isOwner = template.createdBy.id === currentUser.id;
     if (!isAdmin && !isOwner) {
-      throw new BadRequestException('Cannot edit template you do not own');
+      throw new BadRequestException(
+        ERROR_MESSAGES.TEMPLATE.CANNOT_DELETE_NOT_OWNED_TEMPLATE,
+      );
     }
     const deleted = await this.templatesRepository.deleteTemplateItem(itemId);
     if (!deleted) {

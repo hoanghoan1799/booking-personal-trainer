@@ -12,18 +12,11 @@ import {
   PaymentRepositoryToken,
   type PaymentRepository,
 } from '../repositories/payment.repository.interface';
-
-const SETTLEMENT_MODEL = 'PLATFORM_COLLECT' as const;
-
-type TrainerPayoutMetadata = {
-  readonly status:
-    | 'TRANSFERRED'
-    | 'AWAITING_TRAINER_CONNECT'
-    | 'SKIPPED_ZERO_SHARE'
-    | 'FAILED';
-  readonly transferId?: string;
-  readonly errorMessage?: string;
-};
+import { TrainerPayoutMetadata } from '../types/payment.types';
+import {
+  PAYMENT_STATUS,
+  SETTLEMENT_MODEL,
+} from '../constants/payment.constants';
 
 /**
  * After a workout payment is collected on the **platform** Stripe account, moves the trainer's
@@ -51,13 +44,16 @@ export class PlatformWorkoutSettlementService {
     const existingPayout = meta.trainerPayout as
       | TrainerPayoutMetadata
       | undefined;
-    if (existingPayout?.status === 'TRANSFERRED' && existingPayout.transferId) {
+    if (
+      existingPayout?.status === PAYMENT_STATUS.TRANSFERRED &&
+      existingPayout.transferId
+    ) {
       return;
     }
     const trainerShareCents = this.readPositiveInt(meta.trainerShareCents);
     if (trainerShareCents == null || trainerShareCents <= 0) {
       meta.trainerPayout = {
-        status: 'SKIPPED_ZERO_SHARE',
+        status: PAYMENT_STATUS.SKIPPED_ZERO_SHARE,
       } satisfies TrainerPayoutMetadata;
       payment.metadata = meta;
       await this.paymentRepo.save(payment);
@@ -70,7 +66,7 @@ export class PlatformWorkoutSettlementService {
         : null;
     if (!destination) {
       meta.trainerPayout = {
-        status: 'AWAITING_TRAINER_CONNECT',
+        status: PAYMENT_STATUS.AWAITING_TRAINER_CONNECT,
       } satisfies TrainerPayoutMetadata;
       payment.metadata = meta;
       await this.paymentRepo.save(payment);
@@ -99,7 +95,7 @@ export class PlatformWorkoutSettlementService {
         { idempotencyKey },
       );
       meta.trainerPayout = {
-        status: 'TRANSFERRED',
+        status: PAYMENT_STATUS.TRANSFERRED,
         transferId: transfer.id,
       } satisfies TrainerPayoutMetadata;
       payment.metadata = meta;
@@ -110,7 +106,7 @@ export class PlatformWorkoutSettlementService {
         `Trainer transfer failed for payment ${payment.id}: ${message}`,
       );
       meta.trainerPayout = {
-        status: 'FAILED',
+        status: PAYMENT_STATUS.FAILED,
         errorMessage: message,
       } satisfies TrainerPayoutMetadata;
       payment.metadata = meta;

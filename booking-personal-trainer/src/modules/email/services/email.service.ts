@@ -11,6 +11,7 @@ import {
   type SendEmailInput,
   type SendEmailResult,
 } from '../types/email.types';
+import { ERROR_MESSAGES } from '../../../common/constants/message.constant';
 
 @Injectable()
 export class EmailService {
@@ -46,9 +47,11 @@ export class EmailService {
       return { jobId };
     } catch (err: unknown) {
       const message: string =
-        err instanceof Error ? err.message : 'Unknown email queue error';
+        err instanceof Error
+          ? err.message
+          : ERROR_MESSAGES.QUEUE.UNKNOWN_EMAIL_QUEUE_ERROR;
       throw new InternalServerErrorException(
-        `Failed to enqueue email: ${message}`,
+        `${ERROR_MESSAGES.QUEUE.FAILED_EMAIL_QUEUE}: ${message}`,
         { cause: err },
       );
     }

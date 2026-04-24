@@ -99,8 +99,12 @@ describe('TokenVerifierService', () => {
       AUTH0_DOMAIN: 'example.auth0.com',
       AUTH0_AUDIENCE: 'aud',
       AUTH0_CLIENT_ID: 'client',
+      AUTH0_JWKS_URI: 'https://example.auth0.com/.well-known/jwks.json',
     });
     const service = new TokenVerifierService(configService);
+    (service as unknown as { jwksClient: unknown }).jwksClient = {};
+    (service as unknown as { cachedJwksUri: string | null }).cachedJwksUri =
+      'https://example.auth0.com/.well-known/jwks.json';
 
     const actual = await service.verifyAndDecode('token');
 
@@ -116,8 +120,12 @@ describe('TokenVerifierService', () => {
     const configService = createConfigServiceMock({
       AUTH0_DOMAIN: 'example.auth0.com',
       AUTH0_AUDIENCE: 'aud',
+      AUTH0_JWKS_URI: 'https://example.auth0.com/.well-known/jwks.json',
     });
     const service = new TokenVerifierService(configService);
+    (service as unknown as { jwksClient: unknown }).jwksClient = {};
+    (service as unknown as { cachedJwksUri: string | null }).cachedJwksUri =
+      'https://example.auth0.com/.well-known/jwks.json';
 
     await expect(service.verifyAndDecode('token')).rejects.toBeInstanceOf(
       UnauthorizedException,

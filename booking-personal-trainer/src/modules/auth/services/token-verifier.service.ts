@@ -1,6 +1,5 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import jwksRsa from 'jwks-rsa';
 
 // Commons
 import { ERROR_MESSAGES } from '../../../common/constants/message.constant';
@@ -17,14 +16,14 @@ import {
   verifyJwtWithJwks,
 } from '../helpers/token-verifier.helper';
 import type { Auth0VerifiedClaims } from '../types/auth0-verified-claims.type';
+import type { JwksRsaClient } from '../helpers/token-verifier.helper';
 
 /**
  * Verifies Auth0-issued JWTs (RS256) via JWKS and returns normalized profile claims.
  */
 @Injectable()
 export class TokenVerifierService {
-  private jwksClient: ReturnType<typeof jwksRsa> | null = null;
-
+  private jwksClient: JwksRsaClient | null = null;
   private cachedJwksUri: string | null = null;
 
   constructor(private readonly configService: ConfigService) {}
@@ -83,10 +82,23 @@ export class TokenVerifierService {
     return buildAuth0JwksUri(domain);
   }
 
-  private getJwksClient(jwksUri: string): ReturnType<typeof jwksRsa> {
+  private getJwksClient(jwksUri: string): JwksRsaClient {
     if (!this.jwksClient || this.cachedJwksUri !== jwksUri) {
       this.cachedJwksUri = jwksUri;
-      this.jwksClient = jwksRsa({
+      // Lazy load: prevents Jest E2E from parsing ESM-only transitive deps.
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const mod: unknown = require('jwks-rsa');
+      const jwksRsaFactory: (args: {
+        jwksUri: string;
+        cache: boolean;
+        rateLimit: boolean;
+      }) => JwksRsaClient = ((mod as { default?: unknown }).default ??
+        mod) as (args: {
+        jwksUri: string;
+        cache: boolean;
+        rateLimit: boolean;
+      }) => JwksRsaClient;
+      this.jwksClient = jwksRsaFactory({
         jwksUri,
         cache: true,
         rateLimit: true,

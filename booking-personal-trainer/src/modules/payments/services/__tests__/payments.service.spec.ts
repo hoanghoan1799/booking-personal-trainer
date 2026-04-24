@@ -4,6 +4,7 @@ import { EntityManager } from '@mikro-orm/core';
 
 // Commons
 import { PaymentStatus } from '../../../../common/enums/billing/billing.enum';
+import { ERROR_MESSAGES } from '../../../../common/constants/message.constant';
 
 // Entities
 import { Workout } from '../../../workout/entities/workout.entity';
@@ -192,7 +193,7 @@ describe('PaymentsService', () => {
           workoutId: 'w1',
           traineeId: 't1',
         }),
-      ).rejects.toThrow('Stripe PaymentIntent missing client_secret');
+      ).rejects.toThrow(ERROR_MESSAGES.STRIPE.MISSING_STRIPE_CONFIG);
     });
 
     it('should map non-terminal Stripe status and persist payment', async () => {

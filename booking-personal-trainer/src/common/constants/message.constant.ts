@@ -53,6 +53,7 @@ export const ERROR_MESSAGES = {
       'This time range overlaps an existing availability or time off.',
     TIME_OFF_NOTHING_TO_UPDATE:
       'Provide at least one field (reason, start time, or end time) to update.',
+    CONNECT_STRIPE: 'Only trainers can onboard Stripe Connect',
   },
   TRAINEE: {
     NOT_FOUND: 'Trainee not found',
@@ -66,10 +67,27 @@ export const ERROR_MESSAGES = {
     CANNOT_UPDATE_EXERCISES:
       'You cannot update exercise completion for this workout',
     EXERCISE_NOT_FOUND: 'Workout exercise not found',
+    NOT_ALLOWED_TO_PAY: 'You are not allowed to pay',
+    CAN_NOT_PAY: 'You can not pay for this workout',
+    NO_ACTIVE_BILLING_CHARGE: 'No active billing charge found for this workout',
+    ALREADY_PAID: 'You have already paid for this workout',
+    REQUIRED_PAID: 'Workout must be paid before starting',
   },
 
   EXERCISE: {
     NOT_FOUND: 'Exercise not found',
+  },
+
+  TEMPLATE: {
+    CANNOT_FORK_OWN_TEMPLATE: 'You cannot fork your own trainer template',
+    CANNOT_UPDATE_NOT_OWNED_TEMPLATE:
+      'You cannot update a template that you do not own',
+    CANNOT_DELETE_NOT_OWNED_TEMPLATE:
+      'You cannot delete a template that you do not own',
+    CANNOT_EDIT_NOT_OWNED_TEMPLATE:
+      'You cannot edit a template that you do not own',
+    CANNOT_USE_TEMPLATE: 'You cannot use a template that you do not own',
+    NOT_FOUND: 'Template not found',
   },
 
   BOOKING: {
@@ -80,6 +98,33 @@ export const ERROR_MESSAGES = {
     MUST_BOOK_BEFORE_30_MINUTES: 'You must book before 30 minutes',
     NOT_FOUND: 'Booking not found',
     CANNOT_UPDATE_STATUS: 'You cannot update this booking status',
+    REJECT_REASON_REQUIRED: 'Reject reason is required',
+    CANCEL_REASON_REQUIRED: 'Cancellation reason is required',
+    CANNOT_BOOK_CANCELLED_OR_REJECTED_BOOKING:
+      'This Booking has been cancelled or rejected',
+    ALREADY_EXISTS_WORKOUT: 'Workout already exists for this booking',
+  },
+
+  STRIPE: {
+    MISSING_STRIPE_CONFIG: 'Missing Stripe configuration',
+    MISSING_URL: 'FRONTEND_URL is required for Stripe onboarding links',
+  },
+
+  EMAIL: {},
+
+  PAYMENT: {
+    REQUIRED_AMOUNT_CENTS: 'Amount cents is required',
+    INVALID_DEFAULT_WORKOUT_PRICE_CENTS: 'default workout price is invalid',
+  },
+
+  QUEUE: {
+    UNKNOWN_EMAIL_QUEUE_ERROR: 'Unknown email queue error',
+    FAILED_EMAIL_QUEUE: 'Failed to enqueue email',
+  },
+
+  BILLING: {
+    MIN_AMOUNT: 'Amount must be greater than 0',
+    CHARGE_NOT_FOUND: 'Billing charge not found',
   },
 
   VALIDATION: {
@@ -91,6 +136,15 @@ export const ERROR_MESSAGES = {
     FIRST_NAME_REQUIRED: 'User first name is required',
     ROLE_REQUIRED: 'User role is required',
     TYPE_REQUIRED: 'User type is required',
+  },
+
+  DATE: {
+    INVALID_START_DATE: 'Invalid start date',
+    INVALID_END_DATE: 'Invalid end date',
+    INVALID_TIME_RANGE: 'Start time must be before end time',
+    INVALID_DATE_FORMAT: 'Invalid date format',
+    INVALID_TIME_FORMAT: 'Invalid time format',
+    INVALID_OCCURRENCE: 'Invalid occurrence',
   },
 
   SYSTEM: {

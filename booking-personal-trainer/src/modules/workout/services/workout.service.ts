@@ -160,7 +160,7 @@ export class WorkoutService {
         }
         if (booking.status !== BookingStatus.CONFIRMED) {
           throw new BadRequestException(
-            'This Booking has been cancelled or rejected',
+            ERROR_MESSAGES.BOOKING.CANNOT_BOOK_CANCELLED_OR_REJECTED_BOOKING,
           );
         }
         const template = await em.findOne(
@@ -176,7 +176,7 @@ export class WorkoutService {
           },
         );
         if (!template) {
-          throw new NotFoundException('Template not found');
+          throw new NotFoundException(ERROR_MESSAGES.TEMPLATE.NOT_FOUND);
         }
         if (
           template.templateType === TemplateType.TRAINER &&
@@ -184,7 +184,7 @@ export class WorkoutService {
           !isAdmin
         ) {
           throw new BadRequestException(
-            'Cannot use trainer template you do not own',
+            ERROR_MESSAGES.TEMPLATE.CANNOT_USE_TEMPLATE,
           );
         }
         const created = em.create(Workout, {
@@ -228,7 +228,9 @@ export class WorkoutService {
       })
       .catch((err: unknown) => {
         if (isUniqueViolation(err)) {
-          throw new BadRequestException('Workout already exists for booking');
+          throw new BadRequestException(
+            ERROR_MESSAGES.BOOKING.ALREADY_EXISTS_WORKOUT,
+          );
         }
         throw err;
       });
@@ -337,11 +339,15 @@ export class WorkoutService {
     }
     const envValue = process.env.DEFAULT_WORKOUT_PRICE_CENTS;
     if (!envValue) {
-      throw new BadRequestException('amountCents is required');
+      throw new BadRequestException(
+        ERROR_MESSAGES.PAYMENT.REQUIRED_AMOUNT_CENTS,
+      );
     }
     const parsed = Number(envValue);
     if (!Number.isFinite(parsed) || parsed <= 0) {
-      throw new BadRequestException('DEFAULT_WORKOUT_PRICE_CENTS is invalid');
+      throw new BadRequestException(
+        ERROR_MESSAGES.PAYMENT.INVALID_DEFAULT_WORKOUT_PRICE_CENTS,
+      );
     }
     return parsed;
   }
@@ -446,7 +452,7 @@ export class WorkoutService {
         workoutId: id,
       });
       if (!isPaid) {
-        throw new BadRequestException('Workout must be paid before starting');
+        throw new BadRequestException(ERROR_MESSAGES.WORKOUT.REQUIRED_PAID);
       }
     }
     const updatedWorkout = await this.workoutRepo.updateStatusAndCompletions(

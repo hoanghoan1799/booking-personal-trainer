@@ -864,7 +864,7 @@ describe('BookingService', () => {
           { status: BookingStatus.REJECTED, rejectionReason: ' ' },
           adminUser,
         ),
-      ).rejects.toThrow('Rejection reason is required');
+      ).rejects.toThrow(String(ERROR_MESSAGES.BOOKING.REJECT_REASON_REQUIRED));
     });
 
     it('should forbid trainee from rejecting booking', async () => {

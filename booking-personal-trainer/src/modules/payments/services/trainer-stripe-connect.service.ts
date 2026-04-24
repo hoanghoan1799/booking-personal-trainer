@@ -18,6 +18,7 @@ import { UserService } from '../../user/services/user.service';
 // Shared
 import { StripeService } from '../../../shared/stripe/stripe.service';
 import { PlatformWorkoutSettlementService } from './platform-workout-settlement.service';
+import { ERROR_MESSAGES } from '../../../common/constants/message.constant';
 
 type StripeConnectOnboardingResult = {
   readonly url: string;
@@ -40,14 +41,14 @@ export class TrainerStripeConnectService {
       input.currentUserId,
     );
     if (!user) {
-      throw new NotFoundException('User not found');
+      throw new NotFoundException(ERROR_MESSAGES.USER.NOT_FOUND);
     }
     if (user.role !== UserRole.TRAINER) {
-      throw new BadRequestException('Only trainers can onboard Stripe Connect');
+      throw new BadRequestException(ERROR_MESSAGES.TRAINER.CONNECT_STRIPE);
     }
     const frontendUrl: string | undefined = process.env.FRONTEND_URL;
     if (!frontendUrl) {
-      throw new Error('FRONTEND_URL is required for Stripe onboarding links');
+      throw new Error(ERROR_MESSAGES.STRIPE.MISSING_URL);
     }
     const stripeClient = this.stripeService.getClient();
     const stripeAccountId: string =

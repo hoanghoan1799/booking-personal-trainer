@@ -3,10 +3,7 @@ import { BadRequestException } from '@nestjs/common';
 import { ERROR_MESSAGES } from '../../../common/constants/message.constant';
 import dayjs from '../../../common/utils/date-time/utc-dayjs';
 
-import type {
-  BookingTimeRange,
-  BookingTimeSlot,
-} from '../services/booking-availability.service';
+import { BookingTimeRange, BookingTimeSlot } from '../types/booking.type';
 import { BookingAvailabilityConstants } from '../constants/booking-availability.constants';
 
 type GetAvailableSlotsInput = {
