@@ -27,23 +27,9 @@ interface BookingEvent extends EventInput {
 const STATUS_COLORS: Record<string, string> = {
   PENDING: "warning",
   CONFIRMED: "success",
-  REJECTED: "error",
-  CANCELLED: "error",
+  REJECTED: "danger",
+  CANCELLED: "danger",
 };
-
-function getStatusBadgeColor(status: string): "primary" | "success" | "error" | "warning" | "info" {
-  switch (status) {
-    case "CONFIRMED":
-      return "success";
-    case "REJECTED":
-    case "CANCELLED":
-      return "error";
-    case "PENDING":
-      return "warning";
-    default:
-      return "info";
-  }
-}
 
 function getDisplayName(user?: { firstName?: string; lastName?: string; userName?: string } | null): string {
   if (!user) return "—";
@@ -135,6 +121,8 @@ const Calendar: React.FC = () => {
     setSelectedBooking(null);
   };
 
+  const getEventClassNames = (_arg: EventContentArg): string[] => ["cursor-pointer"];
+
   const renderEventContent = (eventInfo: EventContentArg) => {
     const props = eventInfo.event.extendedProps as {
       status: string;
@@ -145,7 +133,7 @@ const Calendar: React.FC = () => {
 
     return (
       <div
-        className={`event-fc-color flex fc-event-main ${colorClass} p-1 rounded-sm ${props.isPast ? "opacity-60" : ""} ${isConfirmed ? "border-l-4 border-l-success-500" : ""}`}
+        className={`event-fc-color flex cursor-pointer fc-event-main ${colorClass} p-1 rounded-sm ${props.isPast ? "opacity-60" : ""} ${isConfirmed ? "border-l-4 border-l-success-500" : ""}`}
       >
         <div className="fc-daygrid-event-dot" />
         <div className="fc-event-time">{eventInfo.timeText}</div>
@@ -181,6 +169,7 @@ const Calendar: React.FC = () => {
           eventClick={handleEventClick}
           dateClick={handleDateClick}
           eventContent={renderEventContent}
+          eventClassNames={getEventClassNames}
           dayCellClassNames={(arg) => {
             const cellDay = dayjs(arg.date).startOf("day");
             const today = dayjs().startOf("day");

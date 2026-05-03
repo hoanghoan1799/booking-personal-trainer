@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import dayjs from "@/lib/date-time/utc-dayjs";
 import { formatInstantUtc } from "@/lib/date-time/utc-date-time.helper";
 import type { User } from "@/types/user.types";
@@ -8,6 +8,8 @@ import { createBooking, createBookingsBulk } from "@/services/bookings/bookings.
 import { getAvailableTrainers, getAvailableTrainersForPeriod } from "@/services/booking-discovery/booking-discovery.service";
 import { getErrorMessage } from "@/lib/error.utils";
 import { useToast } from "@/context/ToastContext";
+import BookingAvailabilityListSkeleton from "@/components/bookings/BookingAvailabilityListSkeleton";
+import FlatpickrDateOnlyInput from "@/components/form/FlatpickrDateOnlyInput";
 import { Modal } from "@/components/ui/modal";
 import Button from "@/components/ui/button/Button";
 import UserCard from "@/components/users/UserCard";
@@ -49,6 +51,16 @@ function minutesToClockTime(value: number): string | null {
   const h = Math.floor(value / 60);
   const m = value % 60;
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
+function getMinSelectableBookingDateLocal(): string {
+  const base = dayjs.utc().add(30, "minute");
+  const roundedMinute = Math.ceil(base.minute() / 30) * 30;
+  const t =
+    roundedMinute >= 60
+      ? base.add(1, "hour").minute(0).second(0).millisecond(0)
+      : base.minute(roundedMinute).second(0).millisecond(0);
+  return t.format(DATE_LOCAL_FORMAT);
 }
 
 function getDefaultEndClockTime(startTimeLocal: string): string {
@@ -112,6 +124,8 @@ export default function CreateBookingFromCalendarModal({
   const toast = useToast();
   const [availableTrainerList, setAvailableTrainerList] = useState<User[]>([]);
   const [isLoadingAvailability, setIsLoadingAvailability] = useState<boolean>(false);
+  /** True after a successful trainer availability API call (including an empty array). */
+  const [trainerAvailabilityFetched, setTrainerAvailabilityFetched] = useState<boolean>(false);
   const [selectedTrainer, setSelectedTrainer] = useState<User | null>(null);
   const [startDateLocal, setStartDateLocal] = useState<string>(selectedDateLocal);
   const [startClockTime, setStartClockTime] = useState<string>("");
@@ -132,7 +146,16 @@ export default function CreateBookingFromCalendarModal({
     [period, startDateLocal],
   );
 
-  useEffect(() => {
+  const handleSessionDateChange = (nextDate: string) => {
+    if (!dayjs.utc(nextDate, DATE_LOCAL_FORMAT, true).isValid()) return;
+    setStartDateLocal(nextDate);
+    setError(null);
+    setSelectedTrainer(null);
+    setAvailableTrainerList([]);
+    setTrainerAvailabilityFetched(false);
+  };
+
+  useLayoutEffect(() => {
     if (!isOpen) return;
     setError(null);
     setPeriod("day");
@@ -142,47 +165,58 @@ export default function CreateBookingFromCalendarModal({
     setStartClockTime(startTimeLocal);
     setEndClockTime(getDefaultEndClockTime(startTimeLocal));
     setAvailableTrainerList([]);
+    setTrainerAvailabilityFetched(false);
   }, [isOpen, prefilledStartClockTime, selectedDateLocal]);
 
-  const handleFindAvailableTrainers = async () => {
+  useEffect(() => {
+    if (!isOpen) return;
+    const startIso = combineDateAndTimeToIso({ dateLocal: startDateLocal, timeLocal: startClockTime });
+    const endIso = combineDateAndTimeToIso({ dateLocal: startDateLocal, timeLocal: endClockTime });
+    if (!startIso || !endIso) {
+      setAvailableTrainerList([]);
+      setTrainerAvailabilityFetched(false);
+      setIsLoadingAvailability(false);
+      return;
+    }
+    if (!isOnThirtyMinuteStep(startIso) || !isOnThirtyMinuteStep(endIso) || !isValidMinDuration(startIso, endIso)) {
+      setAvailableTrainerList([]);
+      setTrainerAvailabilityFetched(false);
+      setIsLoadingAvailability(false);
+      return;
+    }
+    let cancelled = false;
+    setTrainerAvailabilityFetched(false);
+    setIsLoadingAvailability(true);
     setError(null);
     setAvailableTrainerList([]);
     setSelectedTrainer(null);
-    const dateLocalForValidation = startDateLocal;
-    const startIso = combineDateAndTimeToIso({ dateLocal: dateLocalForValidation, timeLocal: startClockTime });
-    const endIso = combineDateAndTimeToIso({ dateLocal: dateLocalForValidation, timeLocal: endClockTime });
-    if (!startIso || !endIso) {
-      setError("Please select start and end time.");
-      return;
-    }
-    if (!isOnThirtyMinuteStep(startIso) || !isOnThirtyMinuteStep(endIso)) {
-      setError("Time must be in 30-minute increments.");
-      return;
-    }
-    if (!isValidMinDuration(startIso, endIso)) {
-      setError("Duration must be at least 1 hour.");
-      return;
-    }
-    setIsLoadingAvailability(true);
-    try {
-      if (period === "day") {
-        const trainers = await getAvailableTrainers({ startTime: startIso, endTime: endIso });
+    void (async () => {
+      try {
+        const trainers =
+          period === "day"
+            ? await getAvailableTrainers({ startTime: startIso, endTime: endIso })
+            : await getAvailableTrainersForPeriod({
+                startDate: startDateLocal,
+                startClockTime,
+                endClockTime,
+                period,
+              });
+        if (cancelled) return;
         setAvailableTrainerList(trainers);
-        return;
+        setTrainerAvailabilityFetched(true);
+      } catch (err) {
+        if (cancelled) return;
+        setError(getErrorMessage(err, "Failed to load available trainers"));
+        setAvailableTrainerList([]);
+        setTrainerAvailabilityFetched(false);
+      } finally {
+        if (!cancelled) setIsLoadingAvailability(false);
       }
-      const trainers = await getAvailableTrainersForPeriod({
-        startDate: startDateLocal,
-        startClockTime,
-        endClockTime,
-        period,
-      });
-      setAvailableTrainerList(trainers);
-    } catch (err) {
-      setError(getErrorMessage(err, "Failed to load available trainers"));
-    } finally {
-      setIsLoadingAvailability(false);
-    }
-  };
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, startDateLocal, startClockTime, endClockTime, period]);
 
   const handleSubmit = async () => {
     setError(null);
@@ -280,17 +314,12 @@ export default function CreateBookingFromCalendarModal({
           <div className="text-sm font-semibold text-gray-800 dark:text-white/90">Booking details</div>
 
           <div className="mt-3 text-sm font-medium text-gray-700 dark:text-gray-300">Date</div>
-          <input
-            type="date"
+          <FlatpickrDateOnlyInput
+            className="mt-2"
             value={startDateLocal}
-            onChange={(e) => {
-              setStartDateLocal(e.target.value);
-              setAvailableTrainerList([]);
-              setSelectedTrainer(null);
-              setError(null);
-            }}
-            className="mt-2 h-11 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
-            aria-label="Select booking date"
+            onDateChange={handleSessionDateChange}
+            minDate={getMinSelectableBookingDateLocal()}
+            ariaLabel="Select booking date"
           />
 
           <div className="mt-3 text-sm font-medium text-gray-700 dark:text-gray-300">Time</div>
@@ -315,6 +344,7 @@ export default function CreateBookingFromCalendarModal({
                   });
                   setAvailableTrainerList([]);
                   setSelectedTrainer(null);
+                  setTrainerAvailabilityFetched(false);
                   setError(null);
                 }}
                 className="h-11 w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm shadow-theme-xs focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800"
@@ -346,6 +376,7 @@ export default function CreateBookingFromCalendarModal({
                   setEndClockTime(e.target.value);
                   setAvailableTrainerList([]);
                   setSelectedTrainer(null);
+                  setTrainerAvailabilityFetched(false);
                   setError(null);
                 }}
                 className="h-11 w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm shadow-theme-xs focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800"
@@ -385,6 +416,7 @@ export default function CreateBookingFromCalendarModal({
               setPeriod(e.target.value as BookingPeriod);
               setAvailableTrainerList([]);
               setSelectedTrainer(null);
+              setTrainerAvailabilityFetched(false);
               setError(null);
             }}
             className="mt-2 h-11 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
@@ -410,25 +442,14 @@ export default function CreateBookingFromCalendarModal({
             This will create {periodDates.length} booking(s).
           </div>
 
-          <div className="mt-4 flex flex-wrap justify-end gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => void handleFindAvailableTrainers()}
-              disabled={isLoadingAvailability || isSubmitting}
-              aria-label="Find available trainers"
-            >
-              {isLoadingAvailability ? "Finding…" : "Find available trainers"}
-            </Button>
-          </div>
-
           <div className="mt-4 text-sm font-medium text-gray-700 dark:text-gray-300">Trainer</div>
           {isLoadingAvailability ? (
-            <div className="mt-2 text-sm text-gray-500 dark:text-gray-400">Loading…</div>
+            <BookingAvailabilityListSkeleton variant="trainers" />
           ) : availableTrainerList.length === 0 ? (
             <div className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-              Search for available trainers to see results.
+              {trainerAvailabilityFetched
+                ? "No trainers are available for this selection. Try other dates, times, or a different period."
+                : "Select start and end time to see available trainers."}
             </div>
           ) : (
             <ul className="mt-2 max-h-[22rem] space-y-2 overflow-y-auto pr-1 no-scrollbar" role="list" tabIndex={0}>

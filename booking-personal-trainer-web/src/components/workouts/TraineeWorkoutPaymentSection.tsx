@@ -224,13 +224,8 @@ export default function TraineeWorkoutPaymentSection(
     <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-900/40">
       <p className="text-sm font-semibold text-gray-800 dark:text-white/90">Unlock workout</p>
       <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-        Amount due (from billing quote):{" "}
+        Amount due:{" "}
         <span className="font-medium text-gray-900 dark:text-white/90">{formatQuotedPrice(access)}</span>
-      </p>
-      <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-        Payment goes to the platform first. After you pay, the webhook marks this workout as unlocked. Your trainer
-        receives their share via a separate Connect transfer once they have completed Stripe onboarding (otherwise
-        payout stays pending on our side).
       </p>
       {!clientSecret ? (
         <div className="mt-3">

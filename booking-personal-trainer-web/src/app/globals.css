@@ -645,7 +645,10 @@ span.flatpickr-weekday,
   @apply rounded-lg py-2.5 pl-4 pr-3;
 }
 .event-fc-color .fc-event-title {
-  @apply p-0 text-sm font-normal text-gray-700;
+  @apply p-0 text-sm font-normal text-gray-800 dark:text-gray-100;
+}
+.event-fc-color .fc-event-time {
+  @apply shrink-0 text-xs font-medium text-gray-600 dark:text-gray-200;
 }
 .fc-daygrid-event-dot {
   @apply w-1 h-5 ml-0 mr-3 border-none rounded-sm;
@@ -657,16 +660,16 @@ span.flatpickr-weekday,
   @apply !ml-3;
 }
 .event-fc-color.fc-bg-success {
-  @apply border-success-50 bg-success-50;
+  @apply border border-success-100 bg-success-50 dark:border-success-500/40 dark:bg-success-950/90;
 }
 .event-fc-color.fc-bg-danger {
-  @apply border-error-50 bg-error-50;
+  @apply border border-error-100 bg-error-50 dark:border-error-500/45 dark:bg-error-950/90;
 }
 .event-fc-color.fc-bg-primary {
-  @apply border-brand-50 bg-brand-50;
+  @apply border border-brand-100 bg-brand-50 dark:border-brand-500/40 dark:bg-brand-950/90;
 }
 .event-fc-color.fc-bg-warning {
-  @apply border-orange-50 bg-orange-50;
+  @apply border border-orange-100 bg-orange-50 dark:border-orange-500/40 dark:bg-orange-950/90;
 }
 .event-fc-color.fc-bg-success .fc-daygrid-event-dot {
   @apply bg-success-500;
@@ -689,7 +692,7 @@ span.flatpickr-weekday,
 .custom-calendar .fc-h-event {
   background-color: transparent;
   border: none;
-  color: black;
+  @apply text-gray-900 dark:text-gray-100;
 }
 .fc.fc-media-screen {
   @apply min-h-0;

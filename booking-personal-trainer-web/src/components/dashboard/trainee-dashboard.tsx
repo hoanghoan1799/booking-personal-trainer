@@ -201,65 +201,72 @@ export const TraineeDashboard = (): React.ReactNode => {
       </div>
 
       {showTrainerProgramBanner && trainerPromoVariant != null && !isTrainerBannerDismissed ? (
-        <section
-          className="w-full rounded-xl border border-[#E5E7EB] bg-gradient-to-r from-[#EFF6FF] to-[#EEF2FF] px-4 py-4 font-sans shadow-sm sm:px-5 dark:border-gray-700 dark:from-gray-900/75 dark:to-gray-900/55 dark:shadow-none"
-          aria-labelledby="trainee-trainer-banner-heading"
+<section
+  className="w-full rounded-xl border border-[#E5E7EB] bg-gradient-to-r from-[#EFF6FF] to-[#EEF2FF] px-4 py-4 font-sans shadow-sm sm:px-5 dark:border-gray-700 dark:from-gray-900/75 dark:to-gray-900/55 dark:shadow-none"
+  aria-labelledby="trainee-trainer-banner-heading"
+>
+  <div className="flex min-h-[72px] flex-col items-stretch justify-center gap-3 sm:min-h-[76px] sm:flex-row sm:items-center sm:gap-4">
+    <div className="flex min-w-0 flex-1 items-center gap-3">
+      <span
+        className="flex size-10 shrink-0 select-none items-center justify-center text-2xl leading-none"
+        aria-hidden
+      >
+        💪
+      </span>
+      <div className="min-w-0 flex-1">
+        <h2
+          id="trainee-trainer-banner-heading"
+          className="text-sm font-semibold leading-snug text-gray-900 sm:text-base dark:text-white/95"
         >
-          <div className="flex min-h-[72px] flex-col items-stretch justify-center gap-3 sm:min-h-[76px] sm:flex-row sm:items-center sm:gap-4">
-            <div className="flex min-w-0 flex-1 items-center gap-3">
-              <span
-                className="flex size-10 shrink-0 select-none items-center justify-center text-2xl leading-none"
-                aria-hidden
-              >
-                💪
-              </span>
-              <div className="min-w-0 flex-1">
-                <h2
-                  id="trainee-trainer-banner-heading"
-                  className="text-sm font-semibold leading-snug text-gray-900 sm:text-base dark:text-white/95"
-                >
-                  {trainerBannerTitle[trainerPromoVariant]}
-                </h2>
-                <p
-                  id={TRAINER_BANNER_SUBTITLE_ID}
-                  className="mt-0.5 line-clamp-2 text-xs font-normal leading-snug text-slate-600 sm:text-sm dark:text-gray-400"
-                >
-                  {trainerBannerSubtitle[trainerPromoVariant]}
-                </p>
-              </div>
-            </div>
-            <div className="flex shrink-0 items-center justify-end gap-2 sm:gap-3">
-              {trainerPromoVariant === "pending" ? (
-                <span
-                  className="inline-flex h-9 items-center justify-center rounded-lg border border-slate-200/90 bg-white/70 px-3 text-xs font-medium text-slate-600 shadow-sm dark:border-gray-600 dark:bg-gray-800/80 dark:text-gray-300"
-                  role="status"
-                >
-                  In review
-                </span>
-              ) : (
-                <button
-                  type="button"
-                  disabled={isTrainerRequestSubmitting}
-                  aria-busy={isTrainerRequestSubmitting}
-                  aria-describedby={TRAINER_BANNER_SUBTITLE_ID}
-                  aria-label={primaryCtaLabel[trainerPromoVariant]}
-                  onClick={() => void handleRequestTrainerRole()}
-                  className="inline-flex h-9 min-h-[36px] shrink-0 items-center justify-center rounded-lg bg-gradient-to-r from-[#3B82F6] to-[#2563EB] px-4 text-sm font-medium text-white shadow-sm transition hover:from-[#2563EB] hover:to-[#1D4ED8] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 disabled:pointer-events-none disabled:opacity-60 sm:h-10"
-                >
-                  {isTrainerRequestSubmitting ? "Submitting…" : primaryCtaLabel[trainerPromoVariant]}
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={handleDismissTrainerBanner}
-                className="flex size-9 shrink-0 items-center justify-center rounded-lg text-[#94A3B8] transition hover:bg-black/[0.04] hover:text-slate-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-400 dark:hover:bg-white/[0.06] dark:hover:text-gray-300"
-                aria-label="Dismiss trainer promotion"
-              >
-                <CloseLineIcon className="size-5 fill-current" />
-              </button>
-            </div>
-          </div>
-        </section>
+          {trainerBannerTitle[trainerPromoVariant]}
+        </h2>
+        <p
+          id={TRAINER_BANNER_SUBTITLE_ID}
+          className="mt-0.5 line-clamp-2 text-xs font-normal leading-snug text-slate-600 sm:text-sm dark:text-gray-400"
+        >
+          {trainerBannerSubtitle[trainerPromoVariant]}
+        </p>
+      </div>
+    </div>
+    <div className="flex shrink-0 items-center justify-end gap-2 sm:gap-3">
+     {trainerPromoVariant === "pending" ? (
+  <div
+    className="inline-flex min-h-[40px] items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-700 shadow-sm dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300"
+    role="status"
+    aria-live="polite"
+  >
+    <span
+      className="size-2 rounded-full bg-amber-500 dark:bg-amber-400"
+      aria-hidden="true"
+    />
+    <span>Application in review</span>
+  </div>
+) : (
+  <button
+    type="button"
+    disabled={isTrainerRequestSubmitting}
+    aria-busy={isTrainerRequestSubmitting}
+    aria-describedby={TRAINER_BANNER_SUBTITLE_ID}
+    aria-label={primaryCtaLabel[trainerPromoVariant]}
+    onClick={() => void handleRequestTrainerRole()}
+    className="inline-flex h-9 min-h-[36px] min-w-[132px] shrink-0 cursor-pointer items-center justify-center rounded-lg bg-gradient-to-r from-[#3B82F6] to-[#2563EB] px-4 text-sm font-medium text-white shadow-sm transition hover:from-[#2563EB] hover:to-[#1D4ED8] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 disabled:pointer-events-none disabled:opacity-60 sm:h-10"
+  >
+    {isTrainerRequestSubmitting
+      ? "Submitting…"
+      : primaryCtaLabel[trainerPromoVariant]}
+  </button>
+)}
+      <button
+        type="button"
+        onClick={handleDismissTrainerBanner}
+        className="flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-lg text-[#94A3B8] transition hover:bg-black/[0.04] hover:text-slate-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-400 dark:hover:bg-white/[0.06] dark:hover:text-gray-300"
+        aria-label="Dismiss trainer promotion"
+      >
+        <CloseLineIcon className="size-5 fill-current" />
+      </button>
+    </div>
+  </div>
+</section>
       ) : null}
 
       {listError ? <DashboardStateMessage variant="error" message={listError.message} /> : null}

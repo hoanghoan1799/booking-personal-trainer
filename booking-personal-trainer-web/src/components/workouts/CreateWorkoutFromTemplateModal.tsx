@@ -8,7 +8,7 @@ import { formatInstantUtc } from "@/lib/date-time/utc-date-time.helper";
 import { createWorkoutForBookingFromTemplate } from "@/services/workouts/workouts.service";
 import { createTemplate, createTemplateItem } from "@/services/templates/templates.service";
 import { fetchAllExercises } from "@/services/exercises/exercises.service";
-import { normalizeCurrencyCode, parseMajorUnitsToCents } from "@/lib/price-major-to-cents";
+import { parseMajorUnitsToCents } from "@/lib/price-major-to-cents";
 import { getErrorMessage } from "@/lib/error.utils";
 import { useToast } from "@/context/ToastContext";
 import { Modal } from "@/components/ui/modal";
@@ -90,7 +90,6 @@ export default function CreateWorkoutFromTemplateModal({
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [priceMajorInput, setPriceMajorInput] = useState<string>("");
-  const [currencyInput, setCurrencyInput] = useState<string>("USD");
   const [catalogExercises, setCatalogExercises] = useState<Exercise[]>([]);
   const [catalogLoading, setCatalogLoading] = useState<boolean>(false);
   const toast = useToast();
@@ -112,7 +111,6 @@ export default function CreateWorkoutFromTemplateModal({
       notes: "",
     });
     setPriceMajorInput("");
-    setCurrencyInput("USD");
     setError(null);
   }, [isOpen]);
 
@@ -239,11 +237,7 @@ export default function CreateWorkoutFromTemplateModal({
       setError("Enter a valid price in dollars (e.g. 50 for $50.00). Minimum $0.01.");
       return;
     }
-    const currency = normalizeCurrencyCode(currencyInput);
-    if (currency == null) {
-      setError("Enter a 3-letter currency code, for example USD.");
-      return;
-    }
+    const currency = "USD";
     setIsSubmitting(true);
     setError(null);
     try {
@@ -529,25 +523,16 @@ export default function CreateWorkoutFromTemplateModal({
               required
               aria-label="Workout price in dollars"
             />
-            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              Enter dollars (50 = $50.00). Converted to cents for the trainee billing quote.
-            </p>
           </label>
-          <label>
-            <span className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Currency *
-            </span>
-            <input
-              value={currencyInput}
-              onChange={(e) => setCurrencyInput(e.target.value.toUpperCase().replace(/[^A-Z]/g, "").slice(0, 3))}
-              type="text"
-              maxLength={3}
-              placeholder="USD"
-              className={selectClass}
-              required
-              aria-label="Billing currency code"
-            />
-          </label>
+          <div>
+            <span className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Currency</span>
+            <div
+              className={`${selectClass} flex cursor-default items-center bg-gray-50 text-gray-800 select-none dark:bg-white/[0.06] dark:text-white/90`}
+              aria-label="Billing currency (USD only)"
+            >
+              USD
+            </div>
+          </div>
         </div>
 
         {selectedTemplate ? (
@@ -864,7 +849,6 @@ export default function CreateWorkoutFromTemplateModal({
               isSubmitting ||
               catalogLoading ||
               parseMajorUnitsToCents(priceMajorInput) == null ||
-              normalizeCurrencyCode(currencyInput) == null ||
               (!hasExplicitBooking &&
                 (confirmedBookings.length === 0 ||
                   !selectedTraineeId ||

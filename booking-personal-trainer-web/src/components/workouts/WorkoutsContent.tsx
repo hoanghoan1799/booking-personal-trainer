@@ -13,6 +13,7 @@ import {
   type Workout,
 } from "@/services/workouts/workouts.service";
 import WorkoutCard from "./WorkoutCard";
+import { isTraineeFacingWorkoutUnlockedPayload } from "@/lib/workouts/trainee-payment-payload.helper";
 import WorkoutDetailModal from "./WorkoutDetailModal";
 import CreateWorkoutFromTemplateModal from "./CreateWorkoutFromTemplateModal";
 import Button from "@/components/ui/button/Button";
@@ -105,6 +106,16 @@ export default function WorkoutsContent() {
     if (currentUser.role === "TRAINER" && workout.trainer?.id === currentUser.id)
       return true;
     return false;
+  };
+
+  const resolveTraineeListPaymentUnlocked = (w: Workout): boolean | undefined => {
+    if (currentUserRole !== "TRAINEE" || !currentUserId) {
+      return undefined;
+    }
+    if (w.trainee?.id !== currentUserId) {
+      return undefined;
+    }
+    return isTraineeFacingWorkoutUnlockedPayload(w);
   };
 
   const handleSaveWorkout = async (
@@ -246,7 +257,11 @@ export default function WorkoutsContent() {
               <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3" role="list">
                 {group.workouts.map((w) => (
                   <li key={w.id}>
-                    <WorkoutCard workout={w} onClick={handleWorkoutClick} />
+                    <WorkoutCard
+                      workout={w}
+                      onClick={handleWorkoutClick}
+                      traineeListPaymentUnlocked={resolveTraineeListPaymentUnlocked(w)}
+                    />
                   </li>
                 ))}
               </ul>

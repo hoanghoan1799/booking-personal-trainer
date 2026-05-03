@@ -5,6 +5,8 @@ import { formatInstantUtc } from "@/lib/date-time/utc-date-time.helper";
 import type { Workout } from "@/services/workouts/workouts.service";
 import { getUserDisplayName } from "@/lib/user-display";
 import { WorkoutStatusBadge } from "./workout-status-badge";
+import { TraineeWorkoutPaymentListBadge } from "@/components/workouts/TraineeWorkoutPaymentListBadge";
+import { isTraineeFacingWorkoutUnlockedPayload } from "@/lib/workouts/trainee-payment-payload.helper";
 
 export type WorkoutsTablePerspective = "admin" | "trainer" | "trainee";
 
@@ -44,7 +46,9 @@ export const WorkoutsTable = (props: WorkoutsTableProps): React.ReactNode => {
             {perspective === "trainee" ? (
               <th className="px-4 py-3 font-medium text-gray-700 dark:text-gray-200">Trainer</th>
             ) : null}
-            <th className="px-4 py-3 font-medium text-gray-700 dark:text-gray-200">Status</th>
+            <th className="px-4 py-3 font-medium text-gray-700 dark:text-gray-200">
+              {perspective === "trainee" ? "Payment" : "Status"}
+            </th>
             <th className="px-4 py-3 font-medium text-gray-700 dark:text-gray-200">Start</th>
             <th className="px-4 py-3 font-medium text-gray-700 dark:text-gray-200">Progress</th>
           </tr>
@@ -53,6 +57,10 @@ export const WorkoutsTable = (props: WorkoutsTableProps): React.ReactNode => {
           {workouts.map((w) => {
             const total = w.totalExercises ?? w.exercises?.length ?? 0;
             const done = w.completedExercises ?? 0;
+            const traineeHasAccess =
+              perspective !== "trainee" || isTraineeFacingWorkoutUnlockedPayload(w);
+            const progressLabel =
+              total > 0 ? `${done} / ${total}` : "—";
             return (
               <tr key={w.id} className="bg-white dark:bg-transparent">
                 {perspective === "admin" ? (
@@ -76,11 +84,17 @@ export const WorkoutsTable = (props: WorkoutsTableProps): React.ReactNode => {
                   </td>
                 ) : null}
                 <td className="px-4 py-3">
-                  <WorkoutStatusBadge status={w.status} />
+                  {perspective === "trainee" ? (
+                    <TraineeWorkoutPaymentListBadge
+                      isPaid={isTraineeFacingWorkoutUnlockedPayload(w)}
+                    />
+                  ) : (
+                    <WorkoutStatusBadge status={w.status} />
+                  )}
                 </td>
                 <td className="px-4 py-3 text-gray-600 dark:text-gray-300">{formatDateTime(w.startTime)}</td>
                 <td className="px-4 py-3 text-gray-600 dark:text-gray-300">
-                  {total > 0 ? `${done} / ${total}` : "—"}
+                  {traineeHasAccess ? progressLabel : null}
                 </td>
               </tr>
             );

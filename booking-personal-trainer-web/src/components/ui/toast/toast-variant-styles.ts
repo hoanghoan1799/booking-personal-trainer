@@ -10,28 +10,28 @@ export type ToastVariantStyleSet = {
 export const toastVariantStyles: Record<ToastVariant, ToastVariantStyleSet> = {
   success: {
     container:
-      "border-green-400 bg-green-50 dark:border-green-500 dark:bg-green-950/35",
+      "border-green-400 bg-green-50 dark:border-green-600 dark:bg-gray-900",
     iconWrap: "bg-green-500 text-white",
     iconGlyph: "text-white",
     progressBar: "bg-green-500 dark:bg-green-400",
   },
   info: {
     container:
-      "border-blue-400 bg-blue-50 dark:border-blue-500 dark:bg-blue-950/35",
+      "border-blue-400 bg-blue-50 dark:border-blue-600 dark:bg-gray-900",
     iconWrap: "bg-blue-500 text-white",
     iconGlyph: "text-white",
     progressBar: "bg-blue-500 dark:bg-blue-400",
   },
   warning: {
     container:
-      "border-yellow-400 bg-yellow-50 dark:border-yellow-500 dark:bg-yellow-950/30",
+      "border-yellow-400 bg-yellow-50 dark:border-yellow-600 dark:bg-gray-900",
     iconWrap: "bg-yellow-500 text-white",
     iconGlyph: "text-white",
     progressBar: "bg-yellow-500 dark:bg-yellow-400",
   },
   error: {
     container:
-      "border-red-400 bg-red-50 dark:border-red-500 dark:bg-red-950/35",
+      "border-red-400 bg-red-50 dark:border-red-600 dark:bg-gray-900",
     iconWrap: "bg-red-500 text-white",
     iconGlyph: "text-white",
     progressBar: "bg-red-500 dark:bg-red-400",

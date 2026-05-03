@@ -20,6 +20,8 @@ import { getErrorMessage } from "@/lib/error.utils";
 import { useToast } from "@/context/ToastContext";
 import { Modal } from "@/components/ui/modal";
 import Button from "@/components/ui/button/Button";
+import FlatpickrDateOnlyInput from "@/components/form/FlatpickrDateOnlyInput";
+import BookingAvailabilityListSkeleton from "@/components/bookings/BookingAvailabilityListSkeleton";
 import UserCard from "./UserCard";
 
 interface CreateBookingModalProps {
@@ -60,8 +62,8 @@ function getDefaultEndTime(): string {
   return getEarliestStartTime().add(1, "hour").format(DATETIME_LOCAL_FORMAT);
 }
 
-function getMinStartTime(): string {
-  return getEarliestStartTime().format(DATETIME_LOCAL_FORMAT);
+function getMinSelectableBookingDateLocal(): string {
+  return getEarliestStartTime().format(DATE_LOCAL_FORMAT);
 }
 
 function getDefaultDate(): string {
@@ -192,7 +194,24 @@ export default function CreateBookingModal({
   const [isLoadingAvailability, setIsLoadingAvailability] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** True after a successful availability API call (including an empty array). */
+  const [trainerAvailabilityFetched, setTrainerAvailabilityFetched] = useState(false);
+  const [slotsAvailabilityFetched, setSlotsAvailabilityFetched] = useState(false);
   const toast = useToast();
+
+  const handleSessionDateChange = (nextDate: string) => {
+    if (!dayjs.utc(nextDate, DATE_LOCAL_FORMAT, true).isValid()) return;
+    setSelectedDate(nextDate);
+    setStartTime((prev) =>
+      updateDatePartOfDateTimeLocal({ dateLocal: nextDate, dateTimeLocal: prev }),
+    );
+    setEndTime((prev) =>
+      updateDatePartOfDateTimeLocal({ dateLocal: nextDate, dateTimeLocal: prev }),
+    );
+    setTrainerAvailabilityFetched(false);
+    setSlotsAvailabilityFetched(false);
+    setError(null);
+  };
 
   const clockTimeOptions = useMemo(() => getClockTimeOptions(), []);
 
@@ -237,6 +256,8 @@ export default function CreateBookingModal({
     setAvailableTrainerList([]);
     setAvailableSlots([]);
     setSelectedSlot(null);
+    setTrainerAvailabilityFetched(false);
+    setSlotsAvailabilityFetched(false);
     setError(null);
     onClose();
   };
@@ -266,58 +287,6 @@ export default function CreateBookingModal({
     }
   };
 
-  const handleFindAvailableTrainers = async () => {
-    const startIso =
-      combineDateAndTimeToIso({ dateLocal: selectedDate, timeLocal: startClockTime }) ??
-      dayjs.utc(startTime, DATETIME_LOCAL_FORMAT, true).toISOString();
-    const endIso =
-      combineDateAndTimeToIso({ dateLocal: selectedDate, timeLocal: endClockTime }) ??
-      dayjs.utc(endTime, DATETIME_LOCAL_FORMAT, true).toISOString();
-    if (!isOnThirtyMinuteStep(startIso) || !isOnThirtyMinuteStep(endIso)) {
-      setError("Time must be in 30-minute increments.");
-      return;
-    }
-    if (!isValidMinDuration(startIso, endIso)) {
-      setError("Duration must be at least 1 hour.");
-      return;
-    }
-    setIsLoadingAvailability(true);
-    setError(null);
-    setAvailableTrainerList([]);
-    setSelectedTrainer(null);
-    setAvailableSlots([]);
-    setSelectedSlot(null);
-    try {
-      const trainers = await getAvailableTrainers({ startTime: startIso, endTime: endIso });
-      setAvailableTrainerList(trainers);
-    } catch (err) {
-      setError(getErrorMessage(err, "Failed to load available trainers"));
-    } finally {
-      setIsLoadingAvailability(false);
-    }
-  };
-
-  const handleFindAvailableSlots = async (input: { trainerId: string; rangeStart: string; rangeEnd: string }) => {
-    setIsLoadingAvailability(true);
-    setError(null);
-    setAvailableSlots([]);
-    setSelectedSlot(null);
-    try {
-      const slots = await getAvailableSlots({
-        trainerId: input.trainerId,
-        rangeStart: input.rangeStart,
-        rangeEnd: input.rangeEnd,
-        durationMinutes: 60,
-        stepMinutes: 30,
-      });
-      setAvailableSlots(slots);
-    } catch (err) {
-      setError(getErrorMessage(err, "Failed to load available slots"));
-    } finally {
-      setIsLoadingAvailability(false);
-    }
-  };
-
   const displayName = getDisplayName(selectedTrainer);
 
   const rangeForSelectedDate = useMemo(() => {
@@ -326,6 +295,117 @@ export default function CreateBookingModal({
     if (!start.isValid() || !end.isValid()) return { rangeStartIso: "", rangeEndIso: "" };
     return { rangeStartIso: start.toISOString(), rangeEndIso: end.toISOString() };
   }, [selectedDate]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    if (resolvedMode !== "timeFirst") return;
+    if (timeFirstPeriod !== "day") {
+      setIsLoadingAvailability(false);
+      return;
+    }
+    const startIso =
+      combineDateAndTimeToIso({ dateLocal: selectedDate, timeLocal: startClockTime }) ??
+      (dayjs.utc(startTime, DATETIME_LOCAL_FORMAT, true).isValid()
+        ? dayjs.utc(startTime, DATETIME_LOCAL_FORMAT, true).toISOString()
+        : null);
+    const endIso =
+      combineDateAndTimeToIso({ dateLocal: selectedDate, timeLocal: endClockTime }) ??
+      (dayjs.utc(endTime, DATETIME_LOCAL_FORMAT, true).isValid()
+        ? dayjs.utc(endTime, DATETIME_LOCAL_FORMAT, true).toISOString()
+        : null);
+    if (!startIso || !endIso) {
+      setAvailableTrainerList([]);
+      setTrainerAvailabilityFetched(false);
+      setIsLoadingAvailability(false);
+      return;
+    }
+    if (!isOnThirtyMinuteStep(startIso) || !isOnThirtyMinuteStep(endIso) || !isValidMinDuration(startIso, endIso)) {
+      setAvailableTrainerList([]);
+      setTrainerAvailabilityFetched(false);
+      setIsLoadingAvailability(false);
+      return;
+    }
+    let cancelled = false;
+    setTrainerAvailabilityFetched(false);
+    setIsLoadingAvailability(true);
+    setError(null);
+    setAvailableTrainerList([]);
+    setSelectedTrainer(null);
+    setAvailableSlots([]);
+    setSelectedSlot(null);
+    void (async () => {
+      try {
+        const trainers = await getAvailableTrainers({ startTime: startIso, endTime: endIso });
+        if (cancelled) return;
+        setAvailableTrainerList(trainers);
+        setTrainerAvailabilityFetched(true);
+      } catch (err) {
+        if (cancelled) return;
+        setError(getErrorMessage(err, "Failed to load available trainers"));
+        setAvailableTrainerList([]);
+        setTrainerAvailabilityFetched(false);
+      } finally {
+        if (!cancelled) setIsLoadingAvailability(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    isOpen,
+    resolvedMode,
+    timeFirstPeriod,
+    selectedDate,
+    startClockTime,
+    endClockTime,
+    startTime,
+    endTime,
+  ]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    if (resolvedMode !== "trainerFirst") return;
+    const trainerId = selectedTrainer?.id;
+    if (!trainerId) return;
+    const rangeStart = rangeForSelectedDate.rangeStartIso;
+    const rangeEnd = rangeForSelectedDate.rangeEndIso;
+    if (!rangeStart || !rangeEnd) {
+      setAvailableSlots([]);
+      setSlotsAvailabilityFetched(false);
+      setIsLoadingAvailability(false);
+      return;
+    }
+    let cancelled = false;
+    setSlotsAvailabilityFetched(false);
+    setIsLoadingAvailability(true);
+    setError(null);
+    setAvailableSlots([]);
+    setSelectedSlot(null);
+    void (async () => {
+      try {
+        const slots = await getAvailableSlots({
+          trainerId,
+          rangeStart,
+          rangeEnd,
+          durationMinutes: 60,
+          stepMinutes: 30,
+        });
+        if (cancelled) return;
+        setAvailableSlots(slots);
+        setSlotsAvailabilityFetched(true);
+      } catch (err) {
+        if (cancelled) return;
+        setError(getErrorMessage(err, "Failed to load available slots"));
+        setAvailableSlots([]);
+        setSlotsAvailabilityFetched(false);
+      } finally {
+        if (!cancelled) setIsLoadingAvailability(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, resolvedMode, selectedTrainer?.id, rangeForSelectedDate.rangeStartIso, rangeForSelectedDate.rangeEndIso]);
 
   const timeFirstWeekStart = useMemo(() => {
     const start = dayjs.utc(selectedWeek, "GGGG-[W]WW", true).startOf("isoWeek");
@@ -441,6 +521,8 @@ export default function CreateBookingModal({
               setAvailableTrainerList([]);
               setAvailableSlots([]);
               setSelectedSlot(null);
+              setTrainerAvailabilityFetched(false);
+              setSlotsAvailabilityFetched(false);
               setError(null);
             }}
             aria-label="Change booking mode"
@@ -484,7 +566,12 @@ export default function CreateBookingModal({
                 ) : (
                   <div className="mt-2 space-y-2">
                     {isLoadingTrainers ? (
-                      <div className="text-sm text-gray-500 dark:text-gray-400">Loading trainers…</div>
+                      <BookingAvailabilityListSkeleton
+                        variant="trainers"
+                        maxHeightClass="max-h-[18rem]"
+                        rowCount={4}
+                        withOuterMargin={false}
+                      />
                     ) : trainerList.length === 0 ? (
                       <div className="text-sm text-gray-500 dark:text-gray-400">No trainers found.</div>
                     ) : (
@@ -506,60 +593,18 @@ export default function CreateBookingModal({
                   </div>
                 )}
 
-                <div className="mt-4 text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Date
-                </div>
-                <input
-                  type="date"
+                <div className="mt-4 text-sm font-medium text-gray-700 dark:text-gray-300">Date</div>
+                <FlatpickrDateOnlyInput
+                  className="mt-2"
                   value={selectedDate}
-                  onChange={(e) => {
-                    const nextDate = e.target.value;
-                    setSelectedDate(nextDate);
-                    setStartTime((prev) =>
-                      updateDatePartOfDateTimeLocal({
-                        dateLocal: nextDate,
-                        dateTimeLocal: prev,
-                      }),
-                    );
-                    setEndTime((prev) =>
-                      updateDatePartOfDateTimeLocal({
-                        dateLocal: nextDate,
-                        dateTimeLocal: prev,
-                      }),
-                    );
-                  }}
-                  className="mt-2 h-11 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
-                  aria-label="Select date"
+                  onDateChange={handleSessionDateChange}
+                  minDate={getMinSelectableBookingDateLocal()}
+                  ariaLabel="Select session date"
                 />
                 <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
                   {dayjs.utc(selectedDate, DATE_LOCAL_FORMAT, true).isValid()
                     ? dayjs.utc(selectedDate, DATE_LOCAL_FORMAT, true).format("ddd, MMM D, YYYY")
                     : "—"}
-                </div>
-                <div className="mt-3 flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      if (!selectedTrainer) {
-                        setError("Please select a trainer first.");
-                        return;
-                      }
-                      if (!rangeForSelectedDate.rangeStartIso || !rangeForSelectedDate.rangeEndIso) {
-                        setError("Please select a valid date.");
-                        return;
-                      }
-                      void handleFindAvailableSlots({
-                        trainerId: selectedTrainer.id,
-                        rangeStart: rangeForSelectedDate.rangeStartIso,
-                        rangeEnd: rangeForSelectedDate.rangeEndIso,
-                      });
-                    }}
-                    disabled={isLoadingAvailability}
-                    aria-label="Find available time slots for selected trainer"
-                  >
-                    {isLoadingAvailability ? "Finding…" : "Find available times"}
-                  </Button>
                 </div>
               </>
             ) : (
@@ -576,6 +621,8 @@ export default function CreateBookingModal({
                     setSelectedTrainer(null);
                     setAvailableSlots([]);
                     setSelectedSlot(null);
+                    setTrainerAvailabilityFetched(false);
+                    setSlotsAvailabilityFetched(false);
                     setError(null);
                   }}
                   className="mt-2 h-11 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
@@ -586,34 +633,15 @@ export default function CreateBookingModal({
                 </select>
 
                 <div className="mt-4 text-sm font-medium text-gray-700 dark:text-gray-300">
-                  {timeFirstPeriod === "day"
-                    ? "Date"
-                    : timeFirstPeriod === "week"
-                      ? "Week"
-                      : "Date"}
+                  {timeFirstPeriod === "day" ? "Date" : "Week"}
                 </div>
                 {timeFirstPeriod === "day" && (
-                  <input
-                    type="date"
+                  <FlatpickrDateOnlyInput
+                    className="mt-2"
                     value={selectedDate}
-                    onChange={(e) => {
-                      const nextDate = e.target.value;
-                      setSelectedDate(nextDate);
-                      setStartTime((prev) =>
-                        updateDatePartOfDateTimeLocal({
-                          dateLocal: nextDate,
-                          dateTimeLocal: prev,
-                        }),
-                      );
-                      setEndTime((prev) =>
-                        updateDatePartOfDateTimeLocal({
-                          dateLocal: nextDate,
-                          dateTimeLocal: prev,
-                        }),
-                      );
-                    }}
-                    className="mt-2 h-11 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
-                    aria-label="Select date"
+                    onDateChange={handleSessionDateChange}
+                    minDate={getMinSelectableBookingDateLocal()}
+                    ariaLabel="Select session date"
                   />
                 )}
                 {timeFirstPeriod === "week" && (
@@ -702,17 +730,6 @@ export default function CreateBookingModal({
                           })}
                         </select>
                       </div>
-                    </div>
-                    <div className="mt-3 flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => void handleFindAvailableTrainers()}
-                        disabled={isLoadingAvailability}
-                        aria-label="Find trainers available for selected time range"
-                      >
-                        {isLoadingAvailability ? "Finding…" : "Find available trainers"}
-                      </Button>
                     </div>
                   </>
                 ) : (
@@ -844,10 +861,12 @@ export default function CreateBookingModal({
                   Available trainers
                 </div>
                 {isLoadingAvailability ? (
-                  <div className="mt-2 text-sm text-gray-500 dark:text-gray-400">Loading…</div>
+                  <BookingAvailabilityListSkeleton variant="trainers" />
                 ) : availableTrainerList.length === 0 ? (
                   <div className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                    Search for available trainers to see results.
+                    {trainerAvailabilityFetched
+                      ? "No trainers are available for this time range. Try different times or another day."
+                      : "Select start and end time to see available trainers."}
                   </div>
                 ) : (
                   <ul className="mt-2 max-h-[22rem] space-y-2 overflow-y-auto pr-1 no-scrollbar" role="list" tabIndex={0}>
@@ -874,7 +893,12 @@ export default function CreateBookingModal({
                 </div>
                 <div className="mt-3 space-y-2">
                   {isLoadingTrainers ? (
-                    <div className="text-sm text-gray-500 dark:text-gray-400">Loading trainers…</div>
+                    <BookingAvailabilityListSkeleton
+                      variant="trainers"
+                      maxHeightClass="max-h-[22rem]"
+                      rowCount={5}
+                      withOuterMargin={false}
+                    />
                   ) : trainerList.length === 0 ? (
                     <div className="text-sm text-gray-500 dark:text-gray-400">No trainers found.</div>
                   ) : (
@@ -900,10 +924,12 @@ export default function CreateBookingModal({
                   Available time slots
                 </div>
                 {isLoadingAvailability ? (
-                  <div className="mt-2 text-sm text-gray-500 dark:text-gray-400">Loading…</div>
+                  <BookingAvailabilityListSkeleton variant="slots" />
                 ) : availableSlots.length === 0 ? (
                   <div className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                    Pick a trainer and search to see available slots.
+                    {slotsAvailabilityFetched
+                      ? "No open time slots for this trainer on the selected date. Try another day or a different trainer."
+                      : "Select a trainer and date to see available slots."}
                   </div>
                 ) : (
                   <ul className="mt-2 max-h-[22rem] space-y-2 overflow-y-auto px-1 no-scrollbar" role="list" tabIndex={0}>
