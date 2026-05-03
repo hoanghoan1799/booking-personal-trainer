@@ -1,4 +1,9 @@
-import { Module, forwardRef } from '@nestjs/common';
+import {
+  MiddlewareConsumer,
+  Module,
+  NestModule,
+  forwardRef,
+} from '@nestjs/common';
 import { MikroOrmModule } from '@mikro-orm/nestjs';
 
 // Entities
@@ -17,6 +22,12 @@ import { WorkoutPaymentPolicyService } from './services/workout-payment-policy.s
 // Controllers
 import { WorkoutPaymentsController } from './controllers/workout-payments.controller';
 import { StripeWebhookController } from './controllers/stripe-webhook.controller';
+
+// Middleware
+import { StripeWebhookRawBodyMiddleware } from './middleware/stripe-webhook-raw-body.middleware';
+
+// Guards
+import { StripeWebhookSignatureGuard } from './guards/stripe-webhook-signature.guard';
 import { TrainerStripeConnectController } from './controllers/trainer-stripe-connect.controller';
 
 // Repositories
@@ -49,6 +60,8 @@ import { TrainerPayoutsService } from './services/trainer-payouts.service';
     TrainerPayoutsController,
   ],
   providers: [
+    StripeWebhookRawBodyMiddleware,
+    StripeWebhookSignatureGuard,
     PaymentsService,
     StripeWebhookService,
     WorkoutPaymentPolicyService,
@@ -67,4 +80,10 @@ import { TrainerPayoutsService } from './services/trainer-payouts.service';
     PaymentRepositoryToken,
   ],
 })
-export class PaymentsModule {}
+export class PaymentsModule implements NestModule {
+  configure(consumer: MiddlewareConsumer): void {
+    consumer
+      .apply(StripeWebhookRawBodyMiddleware)
+      .forRoutes(StripeWebhookController);
+  }
+}

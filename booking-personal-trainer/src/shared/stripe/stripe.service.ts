@@ -1,7 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Stripe from 'stripe';
 import { createHash } from 'crypto';
+import { ERROR_MESSAGES } from '../../common/constants/message.constant';
+
+import type { StripeWebhookConstructedEvent } from './stripe-webhook-constructed-event.type';
 
 type StripeIdempotencyKeyInput = {
   readonly operation: string;
@@ -26,6 +29,32 @@ export class StripeService {
    */
   getClient(): InstanceType<typeof Stripe> {
     return this.client;
+  }
+
+  /**
+   * Validates the Stripe webhook signature and returns the parsed event.
+   */
+  constructWebhookEvent(
+    rawBody: Buffer,
+    stripeSignatureHeader: string,
+  ): StripeWebhookConstructedEvent {
+    const webhookSecret: string = this.configService.getOrThrow<string>(
+      'STRIPE_WEBHOOK_SECRET',
+    );
+    try {
+      return this.client.webhooks.constructEvent(
+        rawBody,
+        stripeSignatureHeader,
+        webhookSecret,
+      );
+    } catch (err: unknown) {
+      if (err instanceof Stripe.errors.StripeSignatureVerificationError) {
+        throw new BadRequestException(
+          ERROR_MESSAGES.STRIPE.INVALID_STRIPE_SIGNATURE,
+        );
+      }
+      throw err;
+    }
   }
 
   /**

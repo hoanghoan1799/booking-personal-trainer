@@ -108,6 +108,9 @@ export const ERROR_MESSAGES = {
   STRIPE: {
     MISSING_STRIPE_CONFIG: 'Missing Stripe configuration',
     MISSING_URL: 'FRONTEND_URL is required for Stripe onboarding links',
+    INVALID_STRIPE_SIGNATURE: 'Invalid Stripe webhook payload or signature',
+    MISSING_RAW_BODY: 'Missing raw body for Stripe webhook verification',
+    MISSING_SIGNATURE_HEADER: 'Missing Stripe signature header',
   },
 
   EMAIL: {},
